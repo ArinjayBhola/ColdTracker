@@ -4,7 +4,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
-import { FiArrowLeft, FiExternalLink, FiMail, FiLinkedin, FiCalendar, FiClock } from "react-icons/fi";
+import { FiArrowLeft, FiExternalLink, FiMail, FiLinkedin, FiCalendar, FiClock, FiFileText, FiUser, FiBriefcase } from "react-icons/fi";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { OutreachActions } from "@/components/outreach-actions";
@@ -18,94 +18,197 @@ export default async function OutreachDetailPage({ params }: { params: Promise<{
     notFound();
   }
 
+  const isOverdue = new Date(item.followUpDueAt) < new Date();
+
   return (
-    <div className="flex h-screen overflow-hidden bg-background text-foreground">
+    <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto bg-muted/5 p-8">
-        <div className="max-w-4xl mx-auto">
-            <div className="mb-10">
-            <Button variant="ghost" size="sm" asChild className="mb-6 -ml-4 text-muted-foreground hover:text-foreground">
-                <Link href="/dashboard" className="gap-2">
-                        <FiArrowLeft className="h-4 w-4" />
-                Back to Dashboard
-                </Link>
-            </Button>
+      <main className="flex-1 overflow-y-auto p-8">
+        <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
+            {/* Header */}
+            <div className="space-y-6">
+              <Button variant="ghost" size="sm" asChild className="gap-2 -ml-2">
+                  <Link href="/dashboard">
+                      <FiArrowLeft className="h-5 w-5" />
+                      Back to Dashboard
+                  </Link>
+              </Button>
             
-            <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                    <h1 className="text-3xl font-bold tracking-tight text-foreground">{item.companyName}</h1>
-                    <div className="flex items-center gap-2 text-lg text-muted-foreground">
-                        <span>{item.personName}</span>
-                        <span className="text-border">•</span>
-                        <span>{item.personRole}</span>
-                    </div>
-                </div>
-                <div className="flex items-center gap-4">
-                    <StatusBadge status={item.status} />
-                    <OutreachActions id={item.id} currentStatus={item.status} />
-                </div>
-            </div>
+              <div className="flex items-start justify-between gap-6">
+                  <div className="space-y-3 flex-1">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shadow-md">
+                          <FiBriefcase className="w-6 h-6 text-primary-foreground" />
+                        </div>
+                        <div>
+                          <h1 className="text-4xl font-bold tracking-tight">{item.companyName}</h1>
+                          <p className="text-lg text-muted-foreground mt-1">{item.roleTargeted}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 text-muted-foreground ml-15">
+                          <FiUser className="w-4 h-4" />
+                          <span className="font-medium">{item.personName}</span>
+                          <span>•</span>
+                          <span>{item.personRole}</span>
+                      </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                      <StatusBadge status={item.status} />
+                      <OutreachActions id={item.id} currentStatus={item.status} />
+                  </div>
+              </div>
             </div>
 
-            <div className="grid gap-10 md:grid-cols-3">
-                <div className="md:col-span-2 space-y-10">
-                    {/* Details Section */}
-                    <div className="space-y-6">
-                        <div className="flex items-center gap-3 pb-2 border-b border-border/40">
-                            <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Details</h2>
-                        </div>
-                        <div className="grid grid-cols-2 gap-y-8 gap-x-4">
-                            <div>
-                                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground block mb-2">Target Role</label>
-                                <span className="font-medium text-foreground">{item.roleTargeted}</span>
-                            </div>
-                            <div>
-                                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground block mb-2">Website</label>
-                                {item.companyLink ? (
-                                    <a href={item.companyLink} target="_blank" className="inline-flex items-center gap-1 text-primary hover:text-primary/80 font-medium transition-colors">
-                                        Visit Page <FiExternalLink className="h-3 w-3" />
-                                    </a>
-                                ) : (
-                                    <span className="text-muted-foreground">-</span>
-                                )}
-                            </div>
-                            <div>
-                                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground block mb-2">Contact Method</label>
-                                <div className="flex items-center gap-2 font-medium">
-                                    {item.contactMethod === 'EMAIL' ? <FiMail className="h-4 w-4" /> : <FiLinkedin className="h-4 w-4" />}
-                                    {item.contactMethod}
+            <div className="grid gap-8 lg:grid-cols-3">
+                {/* Main Details */}
+                <div className="lg:col-span-2 space-y-8">
+                    {/* Details Card */}
+                    <Card className="border-2">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <div className="w-1.5 h-6 rounded-full bg-primary" />
+                                Details
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                        <FiBriefcase className="w-3.5 h-3.5" />
+                                        Target Role
+                                    </label>
+                                    <p className="font-semibold text-lg">{item.roleTargeted}</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                        <FiExternalLink className="w-3.5 h-3.5" />
+                                        Website
+                                    </label>
+                                    {item.companyLink ? (
+                                        <a 
+                                          href={item.companyLink} 
+                                          target="_blank" 
+                                          className="inline-flex items-center gap-2 text-primary hover:text-primary/80 font-semibold transition-colors group"
+                                        >
+                                            Visit Page 
+                                            <FiExternalLink className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                                        </a>
+                                    ) : (
+                                        <span className="text-muted-foreground">-</span>
+                                    )}
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                        {item.contactMethod === 'EMAIL' ? <FiMail className="w-3.5 h-3.5" /> : <FiLinkedin className="w-3.5 h-3.5" />}
+                                        Contact Method
+                                    </label>
+                                    <div className="flex items-center gap-2 font-semibold">
+                                        {item.contactMethod}
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                        <FiMail className="w-3.5 h-3.5" />
+                                        Email
+                                    </label>
+                                    <p className="font-semibold">{item.emailAddress || "-"}</p>
                                 </div>
                             </div>
-                            <div>
-                                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground block mb-2">Email</label>
-                                <span className="font-medium">{item.emailAddress || "-"}</span>
-                            </div>
-                            <div>
-                                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground block mb-2">Sent Date</label>
-                                <div className="flex items-center gap-2 font-medium">
-                                    <FiCalendar className="h-4 w-4 text-muted-foreground" />
-                                    {format(item.messageSentAt, "MMMM d, yyyy")}
-                                </div>
-                            </div>
-                            <div>
-                                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground block mb-2">Follow-up Due</label>
-                                <div className={cn("flex items-center gap-2 font-medium", new Date(item.followUpDueAt) < new Date() ? "text-destructive" : "")}>
-                                    <FiClock className="h-4 w-4" />
-                                    {format(item.followUpDueAt, "MMMM d, yyyy")}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                        </CardContent>
+                    </Card>
 
-                     {/* Notes Section */}
-                     <div className="space-y-6">
-                        <div className="flex items-center gap-3 pb-2 border-b border-border/40">
-                            <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Notes</h2>
-                        </div>
-                         <div className="min-h-[150px] whitespace-pre-wrap text-sm leading-relaxed text-foreground bg-card border shadow-sm p-6 rounded-xl">
-                            {item.notes || <span className="text-muted-foreground italic">No notes added.</span>}
-                        </div>
-                    </div>
+                     {/* Notes Card */}
+                     <Card className="border-2">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <FiFileText className="w-5 h-5 text-primary" />
+                                Notes
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                             <div className="min-h-[200px] whitespace-pre-wrap text-sm leading-relaxed p-6 rounded-xl bg-muted/30 border">
+                                {item.notes || <span className="text-muted-foreground italic">No notes added.</span>}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Timeline Sidebar */}
+                <div className="space-y-6">
+                    {/* Dates Card */}
+                    <Card className="border-2 border-primary/20 bg-primary/5">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-lg">
+                                <FiCalendar className="w-5 h-5 text-primary" />
+                                Timeline
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-3 p-4 rounded-xl bg-background/50 backdrop-blur-sm border">
+                                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                                        <FiCalendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sent Date</p>
+                                        <p className="font-bold text-sm mt-0.5">{format(item.messageSentAt, "MMMM d, yyyy")}</p>
+                                    </div>
+                                </div>
+
+                                <div className={cn(
+                                    "flex items-center gap-3 p-4 rounded-xl backdrop-blur-sm border",
+                                    isOverdue 
+                                      ? "bg-destructive/10 border-destructive/30" 
+                                      : "bg-background/50 border-border"
+                                )}>
+                                    <div className={cn(
+                                        "w-10 h-10 rounded-xl flex items-center justify-center",
+                                        isOverdue ? "bg-destructive/20" : "bg-amber-500/10"
+                                    )}>
+                                        <FiClock className={cn(
+                                            "w-5 h-5",
+                                            isOverdue ? "text-destructive" : "text-amber-600 dark:text-amber-400"
+                                        )} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Follow-up Due</p>
+                                        <p className={cn(
+                                            "font-bold text-sm mt-0.5",
+                                            isOverdue && "text-destructive"
+                                        )}>
+                                            {format(item.followUpDueAt, "MMMM d, yyyy")}
+                                        </p>
+                                        {isOverdue && (
+                                            <p className="text-xs text-destructive font-semibold mt-1">Overdue</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Contact Card */}
+                    <Card className="border-2">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-lg">
+                                <FiUser className="w-5 h-5 text-primary" />
+                                Contact
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/30 border">
+                                    <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg">
+                                        {item.personName.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <p className="font-bold">{item.personName}</p>
+                                        <p className="text-sm text-muted-foreground">{item.personRole}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
         </div>
