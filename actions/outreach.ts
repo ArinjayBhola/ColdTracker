@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { outreach } from "@/db/schema";
-import { outreachFormSchema } from "@/lib/validations";
+import { outreachFormSchema, STATUSES } from "@/lib/validations";
 import { auth } from "@/lib/auth";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -145,9 +145,8 @@ export async function updateOutreachStatus(id: string, newStatus: string) {
     if (!session?.user?.id) return { error: "Unauthorized" };
 
     // Validate status
-    const statusEnum = outreachFormSchema.shape.status.unwrap();
-    // @ts-expect-error - Zod enum parsing is tricky with strings directly
-    if (!statusEnum.options.includes(newStatus)) {
+    // @ts-expect-error - checked against STATUSES array
+    if (!STATUSES.includes(newStatus)) {
         return { error: "Invalid status" };
     }
 

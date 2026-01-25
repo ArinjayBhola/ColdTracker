@@ -99,18 +99,18 @@ export default function NewOutreachPage() {
                                     
                                     <div className="grid gap-4">
                                         <div className="space-y-1.5">
-                                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1" htmlFor="companyName">Company Name</label>
+                                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1" htmlFor="companyName">Company Name<span className="text-destructive ml-1">*</span></label>
                                             <Input id="companyName" name="companyName" placeholder="e.g., Google" required className="h-11" />
                                             {state.details?.companyName && <p className="text-destructive text-[10px] ml-1">{state.details.companyName[0]}</p>}
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1" htmlFor="roleTargeted">Position</label>
+                                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1" htmlFor="roleTargeted">Position<span className="text-destructive ml-1">*</span></label>
                                             <Input id="roleTargeted" name="roleTargeted" placeholder="e.g., Software Engineer" required className="h-11" />
                                             {state.details?.roleTargeted && <p className="text-destructive text-[10px] ml-1">{state.details.roleTargeted[0]}</p>}
                                         </div>
                                         <div className="space-y-1.5">
                                              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1" htmlFor="companyLink">Company URL (Optional)</label>
-                                             <Input id="companyLink" name="companyLink" placeholder="https://..." type="url" className="h-11" />
+                                             <Input id="companyLink" name="companyLink" placeholder="example.com" type="text" className="h-11" />
                                              {state.details?.companyLink && <p className="text-destructive text-[10px] ml-1">{state.details.companyLink[0]}</p>}
                                          </div>
                                      </div>
@@ -190,7 +190,7 @@ export default function NewOutreachPage() {
                                                  )}
                                                  <div className="grid gap-4 md:grid-cols-2">
                                                      <div className="space-y-1.5">
-                                                         <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Name</label>
+                                                          <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Name<span className="text-destructive ml-1">*</span></label>
                                                          <Input 
                                                              name={`contacts.${index}.personName`} 
                                                              placeholder="e.g., Example" 
@@ -200,7 +200,7 @@ export default function NewOutreachPage() {
                                                           {state.details?.[`contacts.${index}.personName`] && <p className="text-destructive text-[9px] ml-1">{state.details[`contacts.${index}.personName`][0]}</p>}
                                                      </div>
                                                       <div className="space-y-1.5">
-                                                          <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Role</label>
+                                                           <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Role<span className="text-destructive ml-1">*</span></label>
                                                           <Select name={`contacts.${index}.personRole`} required>
                                                              <SelectTrigger className="h-10 rounded-lg text-sm">
                                                                  <SelectValue placeholder="Select" />
@@ -215,7 +215,7 @@ export default function NewOutreachPage() {
                                                           </Select>
                                                      </div>
                                                      <div className="space-y-1.5">
-                                                          <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Method</label>
+                                                           <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Method<span className="text-destructive ml-1">*</span></label>
                                                            <Select name={`contacts.${index}.contactMethod`} required>
                                                              <SelectTrigger className="h-10 rounded-lg text-sm">
                                                                  <SelectValue placeholder="Select" />
@@ -241,7 +241,7 @@ export default function NewOutreachPage() {
                                                            <Input 
                                                              name={`contacts.${index}.linkedinProfileUrl`} 
                                                              placeholder="https://linkedin.com/in/..." 
-                                                             type="url" 
+                                                             type="text" 
                                                              className="h-10 text-sm" 
                                                            />
                                                            {state.details?.[`contacts.${index}.linkedinProfileUrl`] && <p className="text-destructive text-[9px] ml-1">{state.details[`contacts.${index}.linkedinProfileUrl`][0]}</p>}

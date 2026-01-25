@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const PERSON_ROLES = ["HR", "CEO", "CTO", "RECRUITER", "OTHER"] as const;
 const CONTACT_METHODS = ["EMAIL", "LINKEDIN"] as const;
-const STATUSES = [
+export const STATUSES = [
   "DRAFT",
   "SENT",
   "REPLIED",
