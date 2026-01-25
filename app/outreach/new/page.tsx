@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Sidebar } from "@/components/sidebar";
-import { FiArrowLeft, FiSave, FiBriefcase, FiUser, FiFileText } from "react-icons/fi";
+import { FiArrowLeft, FiSave, FiBriefcase, FiUser, FiFileText, FiCalendar } from "react-icons/fi";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -141,19 +141,58 @@ export default function NewOutreachPage() {
                                         </SelectContent>
                                       </Select>
                                 </div>
-                                <div className="space-y-2">
-                                     <label className="text-sm font-semibold text-foreground ml-1" htmlFor="emailAddress">Email (Optional)</label>
-                                     <Input id="emailAddress" name="emailAddress" placeholder="contact@company.com" type="email" className="h-12" />
-                                </div>
-                            </div>
-                        </section>
+                                 <div className="space-y-2">
+                                      <label className="text-sm font-semibold text-foreground ml-1" htmlFor="emailAddress">Email (Optional)</label>
+                                      <Input id="emailAddress" name="emailAddress" placeholder="contact@company.com" type="email" className="h-12" />
+                                 </div>
+                             </div>
+                         </section>
 
+                         {/* Timing Section */}
+                         <section className="space-y-6">
+                             <div className="flex items-center gap-4 pb-3 border-b-2 border-border/30">
+                                 <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg shadow-md">
+                                     3
+                                 </div>
+                                 <div>
+                                     <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+                                         <FiCalendar className="w-6 h-6 text-primary" />
+                                         Timing
+                                     </h2>
+                                     <p className="text-sm text-muted-foreground">When was this sent and when to follow up?</p>
+                                 </div>
+                             </div>
+                             
+                             <div className="grid gap-6 md:grid-cols-2">
+                                 <div className="space-y-2">
+                                     <label className="text-sm font-semibold text-foreground ml-1" htmlFor="messageSentAt">Sent Date (Optional)</label>
+                                     <Input 
+                                        id="messageSentAt" 
+                                        name="messageSentAt" 
+                                        type="date" 
+                                        className="h-12" 
+                                        defaultValue={new Date().toISOString().split('T')[0]}
+                                     />
+                                     <p className="text-[10px] text-muted-foreground ml-1">Defaults to today if left empty</p>
+                                 </div>
+                                 <div className="space-y-2">
+                                     <label className="text-sm font-semibold text-foreground ml-1" htmlFor="followUpDueAt">Follow-up Date (Optional)</label>
+                                     <Input 
+                                        id="followUpDueAt" 
+                                        name="followUpDueAt" 
+                                        type="date" 
+                                        className="h-12" 
+                                     />
+                                     <p className="text-[10px] text-muted-foreground ml-1">Defaults to 3 days from sent date if left empty</p>
+                                 </div>
+                             </div>
+                         </section>
 
                          {/* Notes Section */}
                          <section className="space-y-6">
                             <div className="flex items-center gap-4 pb-3 border-b-2 border-border/30">
                                 <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg shadow-md">
-                                    3
+                                    4
                                 </div>
                                 <div>
                                     <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">

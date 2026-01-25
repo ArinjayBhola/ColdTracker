@@ -3,7 +3,7 @@
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { FiArrowUpRight, FiMail, FiLinkedin } from "react-icons/fi";
+import { FiArrowUpRight, FiMail, FiLinkedin, FiCalendar, FiXCircle } from "react-icons/fi";
 import Link from "next/link";
 import { OutreachActions } from "@/components/outreach-actions";
 import { DeleteArchiveActions } from "@/components/delete-archive-actions";
@@ -25,11 +25,35 @@ type OutreachItem = {
 
 export function OutreachTable({ items }: { items: OutreachItem[] }) {
   const [filter, setFilter] = useState<"ALL" | "EMAIL" | "LINKEDIN">("ALL");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
 
   const filteredItems = items.filter((item) => {
-    if (filter === "ALL") return true;
-    return item.contactMethod === filter;
+    // Contact Method Filter
+    const matchesMethod = filter === "ALL" || item.contactMethod === filter;
+    
+    // Date Filter
+    let matchesDate = true;
+    const itemDate = new Date(item.messageSentAt);
+    itemDate.setHours(0, 0, 0, 0);
+
+    if (startDate) {
+      const start = new Date(startDate + "T00:00:00");
+      if (itemDate < start) matchesDate = false;
+    }
+
+    if (endDate) {
+      const end = new Date(endDate + "T00:00:00");
+      if (itemDate > end) matchesDate = false;
+    }
+
+    return matchesMethod && matchesDate;
   });
+
+  const clearDateFilters = () => {
+    setStartDate("");
+    setEndDate("");
+  };
 
   return (
     <div className="rounded-2xl border-2 border-border/50 bg-card overflow-hidden">
@@ -82,6 +106,47 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
               <FiLinkedin className="w-4 h-4" />
               LinkedIn
             </button>
+          </div>
+        </div>
+
+        {/* Date Filters Row */}
+        <div className="mt-6 flex flex-wrap items-center gap-4 pt-6 border-t border-border/50">
+          <div className="flex items-center gap-2">
+            <FiCalendar className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Date Range:</span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="bg-background border-2 border-border/50 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-primary transition-colors h-10"
+                placeholder="Start Date"
+              />
+              <span className="absolute -top-2 left-2 bg-card px-1 text-[10px] font-bold text-muted-foreground uppercase">From</span>
+            </div>
+            <div className="relative">
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="bg-background border-2 border-border/50 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-primary transition-colors h-10"
+                placeholder="End Date"
+              />
+              <span className="absolute -top-2 left-2 bg-card px-1 text-[10px] font-bold text-muted-foreground uppercase">To</span>
+            </div>
+            {(startDate || endDate) && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={clearDateFilters}
+                className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1 h-10"
+              >
+                <FiXCircle className="w-4 h-4" />
+                Clear Dates
+              </Button>
+            )}
           </div>
         </div>
       </div>

@@ -5,11 +5,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useTransition } from "react";
 import { FiUser, FiMail, FiLock } from "react-icons/fi";
 
 export default function SignUpPage() {
   const [state, formAction, isPending] = useActionState(signUpAction, null);
+  const [isGooglePending, startGoogleTransition] = useTransition();
+
+  const isAnyPending = isPending || isGooglePending;
+
+  const handleGoogleSignIn = async () => {
+    startGoogleTransition(async () => {
+      await googleSignIn();
+    });
+  };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4 relative overflow-hidden">
@@ -90,7 +99,7 @@ export default function SignUpPage() {
               </div>
             </div>
             
-            <Button className="w-full h-11 text-base font-medium shadow-sm hover:shadow-md transition-all active:scale-[0.98]" type="submit" disabled={isPending}>
+            <Button className="w-full h-11 text-base font-medium shadow-sm hover:shadow-md transition-all active:scale-[0.98]" type="submit" disabled={isAnyPending}>
               {isPending ? "Creating account..." : "Create account"}
             </Button>
           </form>
@@ -106,12 +115,23 @@ export default function SignUpPage() {
             </div>
           </div>
 
-          <form action={googleSignIn}>
-            <Button variant="outline" className="w-full h-11 gap-3 font-medium border-border/60 hover:bg-muted/50 hover:border-border transition-all active:scale-[0.98]" type="submit">
-              <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="currentColor">
-                <path d="M12.0003 20.45c-4.6667 0-8.45-3.7833-8.45-8.45 0-4.6667 3.7833-8.45 8.45-8.45 2.2833 0 4.2 0.8333 5.6667 2.2l-3.3 3.1c-0.6334-0.6167-1.5-0.9667-2.3667-0.9667-2.7333 0-4.95 2.2167-4.95 4.95 0 2.7333 2.2167 4.95 4.95 4.95 3.0167 0 4.15-2.1667 4.3167-3.2833h-4.3167v-3.3h7.8833c0.1 0.6 0.1667 1.2333 0.1667 1.9333 0 4.9167-3.2833 8.4167-8.05 8.4167z"></path>
-              </svg>
-              Google
+          <form action={handleGoogleSignIn}>
+            <Button 
+                variant="outline" 
+                className="w-full h-11 gap-3 font-medium border-border/60 hover:bg-muted/50 hover:border-border transition-all active:scale-[0.98]" 
+                type="submit"
+                disabled={isAnyPending}
+            >
+              {isGooglePending ? (
+                "Connecting..."
+              ) : (
+                <>
+                  <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="currentColor">
+                    <path d="M12.0003 20.45c-4.6667 0-8.45-3.7833-8.45-8.45 0-4.6667 3.7833-8.45 8.45-8.45 2.2833 0 4.2 0.8333 5.6667 2.2l-3.3 3.1c-0.6334-0.6167-1.5-0.9667-2.3667-0.9667-2.7333 0-4.95 2.2167-4.95 4.95 0 2.7333 2.2167 4.95 4.95 4.95 3.0167 0 4.15-2.1667 4.3167-3.2833h-4.3167v-3.3h7.8833c0.1 0.6 0.1667 1.2333 0.1667 1.9333 0 4.9167-3.2833 8.4167-8.05 8.4167z"></path>
+                  </svg>
+                  Google
+                </>
+              )}
             </Button>
           </form>
 

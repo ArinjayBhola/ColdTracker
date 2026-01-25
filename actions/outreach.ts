@@ -39,12 +39,21 @@ export async function createOutreachAction(prevState: ActionState, formData: For
     emailAddress,
     linkedinProfileUrl,
     notes,
-    status
+    status,
+    messageSentAt,
+    followUpDueAt: userFollowUpDueAt
   } = parsed.data;
 
-  // Auto-calculate follow-up date (3 days from now) if not provided
   const now = new Date();
-  const followUpDueAt = addDays(now, 3);
+  const sentAt = messageSentAt || now;
+  
+  // Auto-calculate follow-up date (3 days from now) if not provided
+  const followUpDueAt = userFollowUpDueAt || addDays(sentAt, 3);
+
+  // Validation: follow-up should be ahead of sent date
+  if (followUpDueAt <= sentAt) {
+    return { error: "Follow-up date must be after the sent date" };
+  }
 
   try {
     await db.insert(outreach).values({
@@ -57,8 +66,8 @@ export async function createOutreachAction(prevState: ActionState, formData: For
       companyLink: companyLink || null,
       emailAddress: emailAddress || null,
       linkedinProfileUrl: linkedinProfileUrl || null,
-      status: status || "SENT", // Default to SENT if not specified
-      messageSentAt: now, // Assuming created means sent for now, or we can add a 'messageSentAt' field in form
+      status: status || "SENT", 
+      messageSentAt: sentAt,
       followUpDueAt,
       notes,
     });

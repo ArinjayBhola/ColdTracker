@@ -24,8 +24,8 @@ export const outreachFormSchema = z.object({
   linkedinProfileUrl: z.string().url("Invalid URL").optional().or(z.literal("")),
   status: z.enum(STATUSES).optional(),
   notes: z.string().optional(),
-  messageSentAt: z.date().optional(),
-  followUpDueAt: z.date().optional(),
+  messageSentAt: z.preprocess((val) => val === "" ? undefined : val, z.coerce.date()).optional(),
+  followUpDueAt: z.preprocess((val) => val === "" ? undefined : val, z.coerce.date()).optional(),
 });
 
 export type OutreachFormValues = z.infer<typeof outreachFormSchema>;
