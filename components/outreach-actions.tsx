@@ -1,44 +1,71 @@
 "use client";
 
 import { updateOutreachStatus } from "@/actions/outreach";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { FiLoader } from "react-icons/fi";
-import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-hot-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-// Simplified action menu without installing all Radix primitive deps for Dropdown if I can avoid it.
-// Ah, shadcn/ui Dropdown requires @radix-ui/react-dropdown-menu.
-// I haven't installed it. I should use a native select or just simple buttons for now to avoid dependency issues.
-// OR I can quickly install it. The user wants "Production-ready patterns".
-// Using a native select for status change is robust and fast.
+const STATUS_OPTIONS = [
+  { value: "DRAFT", label: "Draft", color: "text-gray-600 dark:text-gray-400" },
+  { value: "SENT", label: "Sent", color: "text-blue-600 dark:text-blue-400" },
+  { value: "REPLIED", label: "Replied", color: "text-purple-600 dark:text-purple-400" },
+  { value: "GHOSTED", label: "Ghosted", color: "text-orange-600 dark:text-orange-400" },
+  { value: "INTERVIEW", label: "Interview", color: "text-amber-600 dark:text-amber-400" },
+  { value: "REJECTED", label: "Rejected", color: "text-red-600 dark:text-red-400" },
+  { value: "OFFER", label: "Offer", color: "text-emerald-600 dark:text-emerald-400" },
+  { value: "CLOSED", label: "Closed", color: "text-gray-600 dark:text-gray-400" },
+];
 
 export function OutreachActions({ id, currentStatus }: { id: string; currentStatus: string }) {
-    const [loading, setLoading] = useState(false);
+    const queryClient = useQueryClient();
 
-    const handleStatusChange = async (newStatus: string) => {
+    const { mutate, isPending } = useMutation({
+        mutationFn: (newStatus: string) => updateOutreachStatus(id, newStatus),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["outreach"] });
+            toast.success("Status updated");
+        },
+        onError: () => {
+            toast.error("Failed to update status");
+        }
+    });
+
+    const handleStatusChange = (newStatus: string) => {
         if (newStatus === currentStatus) return;
-        setLoading(true);
-        await updateOutreachStatus(id, newStatus);
-        setLoading(false);
+        mutate(newStatus);
     };
 
     return (
         <div className="flex items-center gap-2">
-            <select
-                disabled={loading}
-                value={currentStatus}
-                onChange={(e) => handleStatusChange(e.target.value)}
-                className="h-8 w-[130px] rounded-md border border-input bg-background px-2 py-1 text-xs font-medium shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
-            >
-                <option value="DRAFT">Draft</option>
-                <option value="SENT">Sent</option>
-                <option value="REPLIED">Replied</option>
-                <option value="GHOSTED">Ghosted</option>
-                <option value="INTERVIEW">Interview</option>
-                <option value="REJECTED">Rejected</option>
-                <option value="OFFER">Offer</option>
-                <option value="CLOSED">Closed</option>
-            </select>
-            {loading && <FiLoader className="h-3 w-3 animate-spin text-muted-foreground" />}
+            <Select value={currentStatus} onValueChange={handleStatusChange} disabled={isPending}>
+                <SelectTrigger className={cn(
+                    "h-9 min-w-[140px] px-3 py-2 rounded-lg border-2 border-border bg-background",
+                    "text-sm font-semibold",
+                    STATUS_OPTIONS.find(opt => opt.value === currentStatus)?.color
+                )}>
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                    {STATUS_OPTIONS.map((option) => (
+                        <SelectItem 
+                            key={option.value} 
+                            value={option.value}
+                            className={option.color}
+                        >
+                            {option.label}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+            {isPending && <FiLoader className="h-4 w-4 animate-spin text-muted-foreground" />}
         </div>
     );
 }

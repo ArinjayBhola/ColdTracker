@@ -7,8 +7,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
-import { FiArrowLeft, FiSave, FiBriefcase, FiUser, FiFileText } from "react-icons/fi";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Sidebar } from "@/components/sidebar";
+import { FiArrowLeft, FiSave, FiBriefcase, FiUser, FiFileText } from "react-icons/fi";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -21,7 +28,7 @@ function SubmitButton() {
 }
 
 export default function NewOutreachPage() {
-    const [state, formAction] = useActionState(createOutreachAction, {});
+    const [state, formAction] = useActionState(createOutreachAction, { error: undefined, details: undefined });
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -109,34 +116,30 @@ export default function NewOutreachPage() {
                                 </div>
                                  <div className="space-y-2">
                                      <label className="text-sm font-semibold text-foreground ml-1" htmlFor="personRole">Their Role</label>
-                                     <select 
-                                        id="personRole"
-                                        name="personRole" 
-                                        className="flex h-12 w-full rounded-xl border-2 border-input bg-background px-4 py-2.5 text-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 hover:border-muted-foreground/30"
-                                        required
-                                        defaultValue=""
-                                     >
-                                         <option value="" disabled>Select Role</option>
-                                         <option value="HR">HR / Talent</option>
-                                         <option value="RECRUITER">Recruiter</option>
-                                         <option value="CEO">CEO / Founder</option>
-                                         <option value="CTO">Engineering Lead</option>
-                                         <option value="OTHER">Other</option>
-                                     </select>
+                                     <Select name="personRole" required>
+                                        <SelectTrigger className="h-12 rounded-xl">
+                                            <SelectValue placeholder="Select Role" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="HR">HR / Talent</SelectItem>
+                                            <SelectItem value="RECRUITER">Recruiter</SelectItem>
+                                            <SelectItem value="CEO">CEO / Founder</SelectItem>
+                                            <SelectItem value="CTO">Engineering Lead</SelectItem>
+                                            <SelectItem value="OTHER">Other</SelectItem>
+                                        </SelectContent>
+                                     </Select>
                                 </div>
                                 <div className="space-y-2">
                                      <label className="text-sm font-semibold text-foreground ml-1" htmlFor="contactMethod">Contact Method</label>
-                                      <select
-                                        id="contactMethod"
-                                        name="contactMethod"
-                                        className="flex h-12 w-full rounded-xl border-2 border-input bg-background px-4 py-2.5 text-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 hover:border-muted-foreground/30"
-                                        required
-                                        defaultValue=""
-                                     >
-                                         <option value="" disabled>Select Method</option>
-                                         <option value="EMAIL">Email</option>
-                                         <option value="LINKEDIN">LinkedIn</option>
-                                     </select>
+                                      <Select name="contactMethod" required>
+                                        <SelectTrigger className="h-12 rounded-xl">
+                                            <SelectValue placeholder="Select Method" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="EMAIL">Email</SelectItem>
+                                            <SelectItem value="LINKEDIN">LinkedIn</SelectItem>
+                                        </SelectContent>
+                                      </Select>
                                 </div>
                                 <div className="space-y-2">
                                      <label className="text-sm font-semibold text-foreground ml-1" htmlFor="emailAddress">Email (Optional)</label>
@@ -144,6 +147,7 @@ export default function NewOutreachPage() {
                                 </div>
                             </div>
                         </section>
+
 
                          {/* Notes Section */}
                          <section className="space-y-6">

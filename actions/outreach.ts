@@ -141,3 +141,23 @@ export async function deleteOutreach(id: string) {
     
     revalidatePath("/dashboard");
 }
+
+export async function updateOutreachNotes(id: string, notes: string) {
+    const session = await auth();
+    if (!session?.user?.id) return { error: "Unauthorized" };
+
+    await db.update(outreach)
+        .set({ 
+            notes, 
+            updatedAt: new Date() 
+        })
+        .where(
+            and(
+                eq(outreach.id, id),
+                eq(outreach.userId, session.user.id)
+            )
+        );
+    
+    revalidatePath("/dashboard");
+    revalidatePath(`/outreach/${id}`);
+}

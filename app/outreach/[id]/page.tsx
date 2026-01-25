@@ -8,6 +8,8 @@ import { FiArrowLeft, FiExternalLink, FiMail, FiLinkedin, FiCalendar, FiClock, F
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { OutreachActions } from "@/components/outreach-actions";
+import { DeleteArchiveActions } from "@/components/delete-archive-actions";
+import { NotesEditor } from "@/components/notes-editor";
 import { cn } from "@/lib/utils";
 
 export default async function OutreachDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -24,7 +26,7 @@ export default async function OutreachDetailPage({ params }: { params: Promise<{
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
       <main className="flex-1 overflow-y-auto p-8">
-        <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
+        <div className="max-w-5xl mx-auto space-y-8">
             {/* Header */}
             <div className="space-y-6">
               <Button variant="ghost" size="sm" asChild className="gap-2 -ml-2">
@@ -41,7 +43,21 @@ export default async function OutreachDetailPage({ params }: { params: Promise<{
                           <FiBriefcase className="w-6 h-6 text-primary-foreground" />
                         </div>
                         <div>
-                          <h1 className="text-4xl font-bold tracking-tight">{item.companyName}</h1>
+                          <div className="flex items-center gap-2">
+                            <h1 className="text-4xl font-bold tracking-tight">{item.companyName}</h1>
+                            <span className={cn(
+                              "inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-sm font-semibold border",
+                              item.contactMethod === "EMAIL"
+                                ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                                : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
+                            )}>
+                              {item.contactMethod === "EMAIL" ? (
+                                <><FiMail className="w-4 h-4" /> Email</>
+                              ) : (
+                                <><FiLinkedin className="w-4 h-4" /> LinkedIn</>
+                              )}
+                            </span>
+                          </div>
                           <p className="text-lg text-muted-foreground mt-1">{item.roleTargeted}</p>
                         </div>
                       </div>
@@ -55,6 +71,7 @@ export default async function OutreachDetailPage({ params }: { params: Promise<{
                   <div className="flex items-center gap-4">
                       <StatusBadge status={item.status} />
                       <OutreachActions id={item.id} currentStatus={item.status} />
+                      <DeleteArchiveActions id={item.id} />
                   </div>
               </div>
             </div>
@@ -126,9 +143,7 @@ export default async function OutreachDetailPage({ params }: { params: Promise<{
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                             <div className="min-h-[200px] whitespace-pre-wrap text-sm leading-relaxed p-6 rounded-xl bg-muted/30 border">
-                                {item.notes || <span className="text-muted-foreground italic">No notes added.</span>}
-                            </div>
+                            <NotesEditor id={item.id} initialNotes={item.notes} />
                         </CardContent>
                     </Card>
                 </div>

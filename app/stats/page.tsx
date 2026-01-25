@@ -16,8 +16,8 @@ export default async function StatsPage() {
       title: "Total Outreach",
       value: stats.sent,
       icon: FiSend,
-      gradient: "from-blue-500/10 to-cyan-500/10",
       iconColor: "text-blue-600 dark:text-blue-400",
+      bgColor: "bg-blue-500/10",
       borderColor: "border-blue-500/20",
       description: "Applications sent",
     },
@@ -25,8 +25,8 @@ export default async function StatsPage() {
       title: "Response Rate",
       value: `${responseRate}%`,
       icon: FiPercent,
-      gradient: "from-purple-500/10 to-pink-500/10",
       iconColor: "text-purple-600 dark:text-purple-400",
+      bgColor: "bg-purple-500/10",
       borderColor: "border-purple-500/20",
       description: `${stats.replies} replies received`,
     },
@@ -34,8 +34,8 @@ export default async function StatsPage() {
       title: "Interview Rate",
       value: `${interviewRate}%`,
       icon: FiVideo,
-      gradient: "from-amber-500/10 to-orange-500/10",
       iconColor: "text-amber-600 dark:text-amber-400",
+      bgColor: "bg-amber-500/10",
       borderColor: "border-amber-500/20",
       description: `${stats.interviews} interviews scheduled`,
     },
@@ -43,8 +43,8 @@ export default async function StatsPage() {
       title: "Offer Rate",
       value: `${offerRate}%`,
       icon: FiAward,
-      gradient: "from-emerald-500/10 to-green-500/10",
       iconColor: "text-emerald-600 dark:text-emerald-400",
+      bgColor: "bg-emerald-500/10",
       borderColor: "border-emerald-500/20",
       description: `${stats.offers} offers received`,
     },
@@ -63,7 +63,7 @@ export default async function StatsPage() {
       <main className="flex-1 overflow-y-auto p-8">
         <div className="max-w-7xl mx-auto space-y-10">
           {/* Header */}
-          <div className="space-y-2 animate-fade-in">
+          <div className="space-y-2">
             <h1 className="text-4xl font-bold tracking-tight">Statistics</h1>
             <p className="text-muted-foreground text-lg flex items-center gap-2">
               <FiTrendingUp className="w-5 h-5" />
@@ -72,26 +72,25 @@ export default async function StatsPage() {
           </div>
 
           {/* Main Stats Grid */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 animate-slide-in">
-            {mainStats.map((stat, index) => (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {mainStats.map((stat) => (
               <Card 
                 key={stat.title}
                 className={cn(
-                  "hover-lift border-2 overflow-hidden relative group",
-                  stat.borderColor
+                  "border-2 overflow-hidden",
+                  stat.borderColor,
+                  stat.bgColor
                 )}
-                style={{ animationDelay: `${index * 100}ms` }}
               >
-                <div className={cn("absolute inset-0 opacity-50", stat.gradient)} />
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                   <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                     {stat.title}
                   </CardTitle>
-                  <div className={cn("p-2.5 rounded-xl bg-background/80 backdrop-blur-sm", stat.iconColor)}>
+                  <div className={cn("p-2.5 rounded-xl bg-background/80", stat.iconColor)}>
                     <stat.icon className="h-5 w-5" />
                   </div>
                 </CardHeader>
-                <CardContent className="relative z-10">
+                <CardContent>
                   <div className="text-4xl font-bold tracking-tight mb-2">{stat.value}</div>
                   <p className="text-xs text-muted-foreground">{stat.description}</p>
                 </CardContent>

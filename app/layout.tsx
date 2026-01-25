@@ -12,6 +12,8 @@ export const metadata: Metadata = {
   description: "Track your job hunt outreach efficiently with a modern dashboard.",
 };
 
+import { Providers } from "@/components/providers";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -20,17 +22,20 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.className} min-h-screen bg-background text-foreground antialiased`}>
-        <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <NextTopLoader color="#2563eb" showSpinner={false} />
-            <ToastProvider />
-            {children}
-        </ThemeProvider>
+        <Providers>
+          <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
+              <NextTopLoader color="#2563eb" showSpinner={false} />
+              <ToastProvider />
+              {children}
+          </ThemeProvider>
+        </Providers>
       </body>
     </html>
   );
 }
+
