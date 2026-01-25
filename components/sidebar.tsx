@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { FiLayout, FiPlusCircle, FiBarChart2, FiLogOut, FiCheckSquare, FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import { FiLayout, FiPlusCircle, FiBarChart2, FiLogOut, FiCheckSquare, FiChevronLeft, FiChevronRight, FiSettings } from "react-icons/fi";
 import { Button } from "./ui/button";
 import { signOut } from "next-auth/react";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -136,8 +136,23 @@ export function Sidebar() {
           })}
         </nav>
 
-        {/* Sign Out Button */}
-        <div className="mt-auto pt-6 border-t border-border/50">
+        {/* Bottom Actions */}
+        <div className="mt-auto pt-6 border-t border-border/50 flex flex-col gap-2">
+          <Link
+            href="/settings"
+            className={cn(
+              "flex items-center rounded-xl transition-all duration-200 group",
+              pathname === "/settings" 
+                ? "bg-primary/10 text-primary" 
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+              (isCollapsed && !isMobileOpen) ? "justify-center p-2.5" : "px-4 py-3 gap-3"
+            )}
+            title="Settings"
+          >
+            <FiSettings className={cn("h-5 w-5", pathname === "/settings" && "animate-spin-slow")} />
+            {(!isCollapsed || isMobileOpen) && <span className="font-semibold text-sm">Settings</span>}
+          </Link>
+
           <Button 
               variant="ghost" 
               className={cn(
