@@ -59,7 +59,7 @@ export default function SignUpPage() {
                 </label>
                 <Input
                   name="name"
-                  placeholder="John Doe"
+                  placeholder="Name"
                   required
                   minLength={2}
                   type="text"

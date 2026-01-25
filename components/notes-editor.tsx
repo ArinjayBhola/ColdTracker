@@ -6,19 +6,34 @@ import { Textarea } from "@/components/ui/textarea";
 import { FiEdit2, FiSave, FiX } from "react-icons/fi";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 
 export function NotesEditor({ id, initialNotes }: { id: string; initialNotes: string | null }) {
     const [isEditing, setIsEditing] = useState(false);
     const [notes, setNotes] = useState(initialNotes || "");
     const [isSaving, setIsSaving] = useState(false);
     const router = useRouter();
+    const { toast } = useToast();
 
     const handleSave = async () => {
         setIsSaving(true);
-        await updateOutreachNotes(id, notes);
+        const result = await updateOutreachNotes(id, notes);
+        
         setIsSaving(false);
-        setIsEditing(false);
-        router.refresh();
+        if (result.success) {
+            setIsEditing(false);
+            toast({
+                title: "Notes saved",
+                description: "Your updates have been stored successfully.",
+            });
+            router.refresh();
+        } else {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: result.error || "Failed to save notes.",
+            });
+        }
     };
 
     const handleCancel = () => {

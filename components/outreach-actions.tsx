@@ -4,7 +4,7 @@ import { updateOutreachStatus } from "@/actions/outreach";
 import { cn } from "@/lib/utils";
 import { FiLoader } from "react-icons/fi";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-hot-toast";
+import { useToast } from "@/hooks/use-toast";
 import {
   Select,
   SelectContent,
@@ -26,15 +26,23 @@ const STATUS_OPTIONS = [
 
 export function OutreachActions({ id, currentStatus }: { id: string; currentStatus: string }) {
     const queryClient = useQueryClient();
+    const { toast } = useToast();
 
     const { mutate, isPending } = useMutation({
         mutationFn: (newStatus: string) => updateOutreachStatus(id, newStatus),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["outreach"] });
-            toast.success("Status updated");
+            toast({
+                title: "Status updated",
+                description: "The outreach status has been successfully updated.",
+            });
         },
         onError: () => {
-            toast.error("Failed to update status");
+            toast({
+                variant: "destructive",
+                title: "Failed to update status",
+                description: "There was an error updating the outreach status.",
+            });
         }
     });
 

@@ -5,6 +5,7 @@ import { FiTrash2, FiMoreVertical, FiAlertTriangle } from "react-icons/fi";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +23,7 @@ export function DeleteArchiveActions({ id }: { id: string }) {
     const [isDeleting, setIsDeleting] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
+    const { toast } = useToast();
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -44,11 +46,27 @@ export function DeleteArchiveActions({ id }: { id: string }) {
         setShowDeleteDialog(true);
     };
 
-    const handleConfirmDelete = async () => {
+    const handleConfirmDelete = async (e: React.MouseEvent) => {
+        e.preventDefault(); // Keep dialog open
         setIsDeleting(true);
-        await deleteOutreach(id);
-        router.push("/dashboard");
-        router.refresh();
+        const result = await deleteOutreach(id);
+        
+        if (result.success) {
+            toast({
+                title: "Deleted",
+                description: "The job opportunity has been permanently removed.",
+            });
+            setShowDeleteDialog(false);
+            router.push("/dashboard");
+            router.refresh();
+        } else {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: result.error || "Failed to delete entry.",
+            });
+            setIsDeleting(false);
+        }
     };
 
     return (

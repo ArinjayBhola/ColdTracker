@@ -10,7 +10,9 @@ import { redirect } from "next/navigation";
 import { addDays } from "date-fns";
 export type ActionState = {
   error?: string;
+  success?: boolean;
   details?: Record<string, string[]>;
+  outreachId?: string;
 };
 
 export async function createOutreachAction(prevState: ActionState, formData: FormData): Promise<ActionState> {
@@ -19,57 +21,86 @@ export async function createOutreachAction(prevState: ActionState, formData: For
     return { error: "Unauthorized" };
   }
 
-  const rawData = Object.fromEntries(formData.entries());
+  // Helper to extract contacts from formData
+  const contacts: any[] = [];
+  let i = 0;
+  while (formData.has(`contacts.${i}.personName`)) {
+    contacts.push({
+      personName: formData.get(`contacts.${i}.personName`),
+      personRole: formData.get(`contacts.${i}.personRole`),
+      contactMethod: formData.get(`contacts.${i}.contactMethod`),
+      emailAddress: formData.get(`contacts.${i}.emailAddress`),
+      linkedinProfileUrl: formData.get(`contacts.${i}.linkedinProfileUrl`),
+    });
+    i++;
+  }
+
+  const rawData = {
+    companyName: formData.get("companyName"),
+    companyLink: formData.get("companyLink"),
+    roleTargeted: formData.get("roleTargeted"),
+    status: formData.get("status"),
+    notes: formData.get("notes"),
+    messageSentAt: formData.get("messageSentAt"),
+    followUpDueAt: formData.get("followUpDueAt"),
+    contacts,
+  };
+
   const parsed = outreachFormSchema.safeParse(rawData);
   
   if (!parsed.success) {
+    console.error("Validation failed:", parsed.error.flatten().fieldErrors);
     return { 
-        error: "Invalid data", 
-        details: parsed.error.flatten().fieldErrors 
+        error: "Please check the form for errors", 
+        details: parsed.error.flatten().fieldErrors as any
     };
   }
 
   const {
     companyName,
     roleTargeted,
-    personName,
-    personRole,
-    contactMethod,
     companyLink,
-    emailAddress,
-    linkedinProfileUrl,
     notes,
     status,
-    messageSentAt,
-    followUpDueAt: userFollowUpDueAt
+    contacts: validatedContacts,
   } = parsed.data;
 
   const now = new Date();
-  const sentAt = messageSentAt || now;
-  
-  // Auto-calculate follow-up date (3 days from now) if not provided
-  const followUpDueAt = userFollowUpDueAt || addDays(sentAt, 3);
+  const sentAt = parsed.data.messageSentAt instanceof Date ? parsed.data.messageSentAt : now;
+  const followUpDueAt = parsed.data.followUpDueAt instanceof Date ? parsed.data.followUpDueAt : addDays(sentAt, 3);
 
   // Validation: follow-up should be ahead of sent date
   if (followUpDueAt <= sentAt) {
     return { error: "Follow-up date must be after the sent date" };
   }
 
+  let firstOutreachId: string | undefined;
+
   try {
-    await db.insert(outreach).values({
-      userId: session.user.id,
-      companyName,
-      roleTargeted,
-      personName,
-      personRole,
-      contactMethod,
-      companyLink: companyLink || null,
-      emailAddress: emailAddress || null,
-      linkedinProfileUrl: linkedinProfileUrl || null,
-      status: status || "SENT", 
-      messageSentAt: sentAt,
-      followUpDueAt,
-      notes,
+    // Insert each contact as a separate outreach entry
+    await db.transaction(async (tx) => {
+      for (const contact of validatedContacts) {
+        const result = await tx.insert(outreach).values({
+          userId: session.user.id,
+          companyName,
+          roleTargeted,
+          personName: contact.personName,
+          personRole: contact.personRole,
+          contactMethod: contact.contactMethod,
+          companyLink: companyLink || null,
+          emailAddress: contact.emailAddress || null,
+          linkedinProfileUrl: contact.linkedinProfileUrl || null,
+          status: status || "SENT", 
+          messageSentAt: sentAt,
+          followUpDueAt,
+          notes,
+        }).returning({ id: outreach.id });
+        
+        // Capture the first outreach ID for redirect
+        if (!firstOutreachId && result[0]) {
+          firstOutreachId = result[0].id;
+        }
+      }
     });
   } catch (error) {
     console.error("Failed to create outreach:", error);
@@ -77,7 +108,7 @@ export async function createOutreachAction(prevState: ActionState, formData: For
   }
 
   revalidatePath("/dashboard");
-  redirect("/dashboard");
+  return { success: true, outreachId: firstOutreachId };
 }
 
 export async function getOutreachItems() {
@@ -120,53 +151,137 @@ export async function updateOutreachStatus(id: string, newStatus: string) {
         return { error: "Invalid status" };
     }
 
-    await db.update(outreach)
-        .set({ 
-            // @ts-expect-error - we validated it above
-            status: newStatus, 
-            updatedAt: new Date() 
-        })
-        .where(
-            and(
-                eq(outreach.id, id),
-                eq(outreach.userId, session.user.id)
-            )
-        );
-    
-    revalidatePath("/dashboard");
+    try {
+        await db.update(outreach)
+            .set({ 
+                // @ts-expect-error - we validated it above
+                status: newStatus, 
+                updatedAt: new Date() 
+            })
+            .where(
+                and(
+                    eq(outreach.id, id),
+                    eq(outreach.userId, session.user.id)
+                )
+            );
+        
+        revalidatePath("/dashboard");
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to update status:", error);
+        return { error: "Database error" };
+    }
 }
 
 export async function deleteOutreach(id: string) {
     const session = await auth();
     if (!session?.user?.id) return { error: "Unauthorized" };
 
-    await db.delete(outreach)
-        .where(
-            and(
-                eq(outreach.id, id),
-                eq(outreach.userId, session.user.id)
-            )
-        );
-    
-    revalidatePath("/dashboard");
+    try {
+        await db.delete(outreach)
+            .where(
+                and(
+                    eq(outreach.id, id),
+                    eq(outreach.userId, session.user.id)
+                )
+            );
+        
+        revalidatePath("/dashboard");
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to delete outreach:", error);
+        return { error: "Database error" };
+    }
 }
 
 export async function updateOutreachNotes(id: string, notes: string) {
     const session = await auth();
     if (!session?.user?.id) return { error: "Unauthorized" };
 
-    await db.update(outreach)
-        .set({ 
-            notes, 
-            updatedAt: new Date() 
-        })
-        .where(
-            and(
-                eq(outreach.id, id),
-                eq(outreach.userId, session.user.id)
-            )
-        );
-    
+    try {
+        await db.update(outreach)
+            .set({ 
+                notes, 
+                updatedAt: new Date() 
+            })
+            .where(
+                and(
+                    eq(outreach.id, id),
+                    eq(outreach.userId, session.user.id)
+                )
+            );
+        
+        revalidatePath("/dashboard");
+        revalidatePath(`/outreach/${id}`);
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to update notes:", error);
+        return { error: "Database error" };
+    }
+}
+
+export async function getCompanyContacts(companyName: string) {
+    const session = await auth();
+    if (!session?.user?.id) return [];
+
+    return await db.query.outreach.findMany({
+        where: and(
+            eq(outreach.userId, session.user.id),
+            eq(outreach.companyName, companyName)
+        ),
+        orderBy: [desc(outreach.createdAt)]
+    });
+}
+
+export async function addContactToCompanyAction(outreachId: string, formData: FormData) {
+    const session = await auth();
+    if (!session?.user?.id) return { error: "Unauthorized" };
+
+    const personName = formData.get("personName") as string;
+    const personRole = formData.get("personRole") as any;
+    const contactMethod = formData.get("contactMethod") as any;
+    const rawEmail = formData.get("emailAddress") as string;
+    const rawLinkedin = formData.get("linkedinProfileUrl") as string;
+
+    const emailAddress = rawEmail === "" ? null : rawEmail;
+    const linkedinProfileUrl = rawLinkedin === "" ? null : rawLinkedin;
+
+    if (!personName || !personRole || !contactMethod) {
+        return { error: "Required fields missing" };
+    }
+
+    // Get the base outreach info
+    const baseOutreach = await db.query.outreach.findFirst({
+        where: and(
+            eq(outreach.id, outreachId),
+            eq(outreach.userId, session.user.id)
+        )
+    });
+
+    if (!baseOutreach) return { error: "Outreach not found" };
+
+    try {
+        await db.insert(outreach).values({
+            userId: session.user.id,
+            companyName: baseOutreach.companyName,
+            companyLink: baseOutreach.companyLink,
+            roleTargeted: baseOutreach.roleTargeted,
+            personName,
+            personRole,
+            contactMethod,
+            emailAddress: emailAddress || null,
+            linkedinProfileUrl: linkedinProfileUrl || null,
+            status: "DRAFT", // Default to draft for new contacts added this way
+            messageSentAt: new Date(),
+            followUpDueAt: addDays(new Date(), 3),
+            notes: "",
+        });
+    } catch (error) {
+        console.error("Failed to add contact:", error);
+        return { error: "Database error" };
+    }
+
     revalidatePath("/dashboard");
-    revalidatePath(`/outreach/${id}`);
+    revalidatePath(`/outreach/${outreachId}`);
+    return { success: true };
 }

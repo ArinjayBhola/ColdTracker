@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Recursive } from "next/font/google";
 import ToastProvider from "@/components/toast-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import NextTopLoader from "nextjs-toploader";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const recursive = Recursive({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "ColdTrack | Professional Outreach CRM",
@@ -21,7 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} min-h-screen bg-background text-foreground antialiased`}>
+      <body className={`${recursive.className} min-h-screen bg-background text-foreground antialiased`}>
         <Providers>
           <ThemeProvider
               attribute="class"

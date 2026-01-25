@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { FiArrowRight, FiCheckCircle, FiTarget, FiZap, FiLayout } from "react-icons/fi";
+import { FiArrowRight, FiTarget, FiZap, FiLayout } from "react-icons/fi";
 
 export default function LandingPage() {
   return (
@@ -66,16 +66,6 @@ export default function LandingPage() {
                   View live demo
                 </Button>
               </Link>
-            </div>
-            
-            <div className="mt-20 pt-10 border-t border-border/40 animate-fade-in delay-300">
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] mb-8">Trusted by outreach specialists at</p>
-              <div className="flex flex-wrap justify-center gap-x-12 gap-y-8 grayscale opacity-40 hover:opacity-70 transition-opacity">
-                <div className="text-2xl font-black tracking-tighter">VOLT</div>
-                <div className="text-2xl font-black tracking-tighter">STRIDE</div>
-                <div className="text-2xl font-black tracking-tighter">PULSE</div>
-                <div className="text-2xl font-black tracking-tighter">CORE</div>
-              </div>
             </div>
           </div>
         </section>

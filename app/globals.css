@@ -311,44 +311,46 @@
 
 :root {
     --radius: 0.75rem;
-    
+
     /* Warm Minimalist Palette (OKLCH) */
     /* Background: Warm ivory/off-white */
-    --background: oklch(0.98 0.01 70); 
-    --foreground: oklch(0.25 0.02 70); /* Charcoal cocoa */
-    
+    --background: oklch(0.98 0.01 70);
+    --foreground: oklch(0.25 0.02 70);
+    /* Charcoal cocoa */
+
     --card: oklch(0.98 0.01 70);
     --card-foreground: oklch(0.25 0.02 70);
-    
+
     --popover: oklch(0.98 0.01 70);
     --popover-foreground: oklch(0.25 0.02 70);
-    
+
     /* Accent: Muted Terracotta */
-    --primary: oklch(0.60 0.12 45); 
+    --primary: oklch(0.60 0.12 45);
     --primary-foreground: oklch(0.98 0.01 70);
-    
-    --secondary: oklch(0.95 0.02 70); /* Sand gray */
+
+    --secondary: oklch(0.95 0.02 70);
+    /* Sand gray */
     --secondary-foreground: oklch(0.35 0.02 70);
-    
+
     --muted: oklch(0.95 0.02 70);
     --muted-foreground: oklch(0.55 0.03 70);
-    
+
     --accent: oklch(0.95 0.02 70);
     --accent-foreground: oklch(0.35 0.02 70);
-    
+
     --destructive: oklch(0.55 0.15 25);
     --destructive-foreground: oklch(0.98 0.01 70);
-    
+
     --border: oklch(0.92 0.02 70);
     --input: oklch(0.92 0.02 70);
     --ring: oklch(0.60 0.12 45 / 50%);
-    
+
     --chart-1: oklch(0.60 0.12 45);
     --chart-2: oklch(0.55 0.10 80);
     --chart-3: oklch(0.70 0.08 60);
     --chart-4: oklch(0.65 0.11 30);
     --chart-5: oklch(0.75 0.09 90);
-    
+
     --sidebar: oklch(0.97 0.01 70);
     --sidebar-foreground: oklch(0.35 0.02 70);
     --sidebar-primary: oklch(0.60 0.12 45);
@@ -363,32 +365,33 @@
     /* "Deep Warm" theme - Deep chocolate/charcoal instead of pure black */
     --background: oklch(0.20 0.02 70);
     --foreground: oklch(0.95 0.01 70);
-    
+
     --card: oklch(0.22 0.02 70);
     --card-foreground: oklch(0.95 0.01 70);
-    
+
     --popover: oklch(0.22 0.02 70);
     --popover-foreground: oklch(0.95 0.01 70);
-    
-    --primary: oklch(0.70 0.10 45); /* Slightly lighter for contrast */
+
+    --primary: oklch(0.70 0.10 45);
+    /* Slightly lighter for contrast */
     --primary-foreground: oklch(0.20 0.02 70);
-    
+
     --secondary: oklch(0.28 0.02 70);
     --secondary-foreground: oklch(0.90 0.01 70);
-    
+
     --muted: oklch(0.28 0.02 70);
     --muted-foreground: oklch(0.70 0.02 70);
-    
+
     --accent: oklch(0.28 0.02 70);
     --accent-foreground: oklch(0.90 0.01 70);
-    
+
     --destructive: oklch(0.50 0.18 25);
     --destructive-foreground: oklch(0.95 0.01 70);
-    
+
     --border: oklch(0.30 0.02 70 / 50%);
     --input: oklch(0.30 0.02 70 / 50%);
     --ring: oklch(0.70 0.10 45 / 50%);
-    
+
     --sidebar: oklch(0.18 0.02 70);
     --sidebar-foreground: oklch(0.85 0.02 70);
     --sidebar-primary: oklch(0.70 0.10 45);
@@ -409,12 +412,35 @@
     }
 
     /* Softer Button feel */
-    button, .btn {
+    button,
+    .btn {
         @apply transition-all active:scale-[0.98] duration-200;
     }
 
     /* Soft Card shadows */
-    .card, [class*="rounded-xl"] {
+    .card,
+    [class*="rounded-xl"] {
         @apply shadow-sm ring-1 ring-border/50 border-none transition-shadow hover:shadow-md;
+    }
+
+    /* Date Picker Styling */
+    input[type="date"] {
+        @apply relative appearance-none;
+    }
+
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        @apply absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10;
+    }
+
+    /* Select Styling Polish */
+    [role="combobox"] {
+        @apply bg-background/50 backdrop-blur-sm border-border/50 hover:border-primary/50 transition-colors;
+    }
+
+    /* Input Focus States */
+    input,
+    textarea,
+    select {
+        @apply focus:ring-2 focus:ring-primary/20 focus:border-primary/50 outline-none transition-all;
     }
 }

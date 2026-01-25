@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { FiDownload } from "react-icons/fi";
 import * as XLSX from "xlsx";
 import { format } from "date-fns";
-import toast from "react-hot-toast";
+import { useToast } from "@/hooks/use-toast";
 
 interface ExportExcelProps {
   data: any[];
@@ -12,10 +12,16 @@ interface ExportExcelProps {
 }
 
 export function ExportExcel({ data, fileName = "outreach-data" }: ExportExcelProps) {
+  const { toast } = useToast();
+
   const handleExport = () => {
     try {
       if (!data || data.length === 0) {
-        toast.error("No data to export");
+        toast({
+            variant: "destructive",
+            title: "No data to export",
+            description: "There are no outreach records to export at this time.",
+        });
         return;
       }
 
@@ -41,10 +47,17 @@ export function ExportExcel({ data, fileName = "outreach-data" }: ExportExcelPro
       // Generate buffer
       XLSX.writeFile(workbook, `${fileName}-${format(new Date(), "yyyy-MM-dd")}.xlsx`);
       
-      toast.success("Export successful!");
+      toast({
+          title: "Export successful!",
+          description: "Your outreach data has been exported to Excel.",
+      });
     } catch (error) {
       console.error("Export failed", error);
-      toast.error("Failed to export data");
+      toast({
+          variant: "destructive",
+          title: "Export failed",
+          description: "There was an error exporting your data.",
+      });
     }
   };
 

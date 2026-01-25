@@ -9,6 +9,7 @@ import { OutreachActions } from "@/components/outreach-actions";
 import { DeleteArchiveActions } from "@/components/delete-archive-actions";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { DatePicker } from "@/components/ui/date-picker";
 
 type OutreachItem = {
   id: string;
@@ -117,24 +118,22 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <div className="relative">
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="bg-background border-2 border-border/50 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-primary transition-colors h-10"
+              <span className="absolute -top-2 left-2 bg-card px-1 text-[10px] font-bold text-muted-foreground uppercase z-10">From</span>
+              <DatePicker 
+                value={startDate ? new Date(startDate) : undefined}
+                onChange={(date) => setStartDate(date ? format(date, "yyyy-MM-dd") : "")}
                 placeholder="Start Date"
+                className="w-[180px]"
               />
-              <span className="absolute -top-2 left-2 bg-card px-1 text-[10px] font-bold text-muted-foreground uppercase">From</span>
             </div>
             <div className="relative">
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="bg-background border-2 border-border/50 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-primary transition-colors h-10"
+              <span className="absolute -top-2 left-2 bg-card px-1 text-[10px] font-bold text-muted-foreground uppercase z-10">To</span>
+               <DatePicker 
+                value={endDate ? new Date(endDate) : undefined}
+                onChange={(date) => setEndDate(date ? format(date, "yyyy-MM-dd") : "")}
                 placeholder="End Date"
+                className="w-[180px]"
               />
-              <span className="absolute -top-2 left-2 bg-card px-1 text-[10px] font-bold text-muted-foreground uppercase">To</span>
             </div>
             {(startDate || endDate) && (
               <Button 
@@ -155,36 +154,36 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
         <table className="w-full caption-bottom text-sm">
           <thead className="border-b border-border/50 bg-muted/30">
             <tr>
-              <th className="h-14 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Company</th>
-              <th className="h-14 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Role</th>
-              <th className="h-14 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Status</th>
-              <th className="h-14 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Date</th>
-              <th className="h-14 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Follow Up</th>
-              <th className="h-14 px-6 text-right align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Actions</th>
+              <th className="h-12 px-4 md:px-6 text-left align-middle font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">Company</th>
+              <th className="hidden md:table-cell h-12 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Role</th>
+              <th className="h-12 px-4 md:px-6 text-left align-middle font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground">Status</th>
+              <th className="hidden lg:table-cell h-12 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Date</th>
+              <th className="hidden sm:table-cell h-12 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Follow Up</th>
+              <th className="h-12 px-4 md:px-6 text-right align-middle font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground">Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredItems.length === 0 ? (
               <tr>
-                <td colSpan={6} className="p-12 text-center">
+                <td colSpan={6} className="p-8 md:p-12 text-center">
                   <div className="flex flex-col items-center gap-4">
-                    <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center">
+                    <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-muted/50 flex items-center justify-center">
                       {filter === "EMAIL" ? (
-                        <FiMail className="w-8 h-8 text-muted-foreground/50" />
+                        <FiMail className="w-6 h-6 md:w-8 md:h-8 text-muted-foreground/50" />
                       ) : filter === "LINKEDIN" ? (
-                        <FiLinkedin className="w-8 h-8 text-muted-foreground/50" />
+                        <FiLinkedin className="w-6 h-6 md:w-8 md:h-8 text-muted-foreground/50" />
                       ) : (
-                        <FiMail className="w-8 h-8 text-muted-foreground/50" />
+                        <FiMail className="w-6 h-6 md:w-8 md:h-8 text-muted-foreground/50" />
                       )}
                     </div>
                     <div>
-                      <p className="text-lg font-semibold text-foreground mb-1">
+                      <p className="text-base md:text-lg font-semibold text-foreground mb-1">
                         No {filter === "ALL" ? "" : filter.toLowerCase()} outreach tracked yet
                       </p>
-                      <p className="text-muted-foreground">
+                      <p className="text-xs md:text-sm text-muted-foreground">
                         {filter === "ALL" 
                           ? "Start applying and track your progress!" 
-                          : `No ${filter.toLowerCase()} messages found. Try a different filter.`}
+                          : `No ${filter.toLowerCase()} messages found.`}
                       </p>
                     </div>
                   </div>
@@ -196,53 +195,48 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
                   key={item.id}
                   className="border-b border-border/30 transition-all duration-200 hover:bg-muted/30 group"
                 >
-                  <td className="p-6 align-middle">
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base font-semibold tracking-tight group-hover:text-primary transition-colors">{item.companyName}</span>
+                  <td className="p-3 md:p-6 align-middle">
+                    <div className="flex flex-col gap-1 md:gap-2">
+                      <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
+                        <span className="text-sm md:text-base font-semibold tracking-tight group-hover:text-primary transition-colors truncate max-w-[120px] md:max-w-none">{item.companyName}</span>
                         <span className={cn(
-                          "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold border",
+                          "inline-flex w-fit items-center gap-1 px-1.5 md:px-2 py-0.5 rounded-md text-[10px] font-semibold border",
                           item.contactMethod === "EMAIL"
                             ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
                             : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
                         )}>
                           {item.contactMethod === "EMAIL" ? (
-                            <><FiMail className="w-3 h-3" /> Email</>
+                            <><FiMail className="w-2.5 h-2.5 md:w-3 md:h-3" /> <span className="hidden md:inline">Email</span></>
                           ) : (
-                            <><FiLinkedin className="w-3 h-3" /> LinkedIn</>
+                            <><FiLinkedin className="w-2.5 h-2.5 md:w-3 md:h-3" /> <span className="hidden md:inline">LinkedIn</span></>
                           )}
                         </span>
                       </div>
-                      {item.companyLink && (
-                        <a 
-                          href={item.companyLink} 
-                          target="_blank" 
-                          className="text-xs text-muted-foreground hover:text-primary transition-colors truncate max-w-[200px] flex items-center gap-1"
-                        >
-                          {item.companyLink.replace(/^https?:\/\//, '')}
-                          <FiArrowUpRight className="w-3 h-3" />
-                        </a>
-                      )}
+                      <div className="md:hidden text-[10px] text-muted-foreground truncate max-w-[120px]">
+                        {item.roleTargeted}
+                      </div>
                     </div>
                   </td>
-                  <td className="p-6 align-middle">
+                  <td className="hidden md:table-cell p-6 align-middle">
                     <div className="flex flex-col gap-1">
                       <span className="font-semibold text-foreground">{item.roleTargeted}</span>
                       <span className="text-xs text-muted-foreground">{item.personName} • {item.personRole}</span>
                     </div>
                   </td>
-                  <td className="p-6 align-middle">
-                    <StatusBadge status={item.status} />
+                  <td className="p-3 md:p-6 align-middle">
+                    <div className="scale-90 md:scale-100 origin-left">
+                        <StatusBadge status={item.status} />
+                    </div>
                   </td>
-                  <td className="p-6 align-middle">
+                  <td className="hidden lg:table-cell p-6 align-middle">
                     <span className="font-mono text-xs text-muted-foreground font-medium whitespace-nowrap">
                       {format(item.messageSentAt, "MMM d, yyyy")}
                     </span>
                   </td>
-                  <td className="p-6 align-middle">
+                  <td className="hidden sm:table-cell p-6 align-middle">
                     {item.status !== "REPLIED" && item.status !== "CLOSED" && item.status !== "REJECTED" ? (
                       <span className={cn(
-                        "text-xs font-semibold px-3 py-1.5 rounded-full border whitespace-nowrap inline-block",
+                        "text-[10px] md:text-xs font-semibold px-2 md:px-3 py-1 md:py-1.5 rounded-full border whitespace-nowrap inline-block",
                         new Date(item.followUpDueAt) < new Date() 
                           ? "bg-destructive/10 text-destructive border-destructive/30" 
                           : "bg-background text-muted-foreground border-border"
@@ -253,13 +247,17 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
                       <span className="text-muted-foreground">-</span>
                     )}
                   </td>
-                  <td className="p-6 align-middle text-right">
-                    <div className="flex items-center justify-end gap-2">
-                       <OutreachActions id={item.id} currentStatus={item.status} />
-                      <Button variant="outline" size="sm" asChild className="h-9">
-                        <Link href={`/outreach/${item.id}`}>View Details</Link>
+                  <td className="p-3 md:p-6 align-middle text-right">
+                    <div className="flex items-center justify-end gap-1 md:gap-2">
+                       <div className="hidden md:block">
+                            <OutreachActions id={item.id} currentStatus={item.status} />
+                       </div>
+                      <Button variant="outline" size="sm" asChild className="h-8 md:h-9 px-2 md:px-3">
+                        <Link href={`/outreach/${item.id}`} className="text-[10px] md:text-sm">View</Link>
                       </Button>
-                      <DeleteArchiveActions id={item.id} />
+                      <div className="hidden md:block">
+                        <DeleteArchiveActions id={item.id} />
+                      </div>
                     </div>
                   </td>
                 </tr>
