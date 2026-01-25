@@ -28,8 +28,14 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
   const [filter, setFilter] = useState<"ALL" | "EMAIL" | "LINKEDIN">("ALL");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   const filteredItems = items.filter((item) => {
+    // Search Filter
+    const matchesSearch = 
+      item.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.personName.toLowerCase().includes(searchQuery.toLowerCase());
+
     // Contact Method Filter
     const matchesMethod = filter === "ALL" || item.contactMethod === filter;
     
@@ -48,7 +54,7 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
       if (itemDate > end) matchesDate = false;
     }
 
-    return matchesMethod && matchesDate;
+    return matchesSearch && matchesMethod && matchesDate;
   });
 
   const clearDateFilters = () => {
@@ -59,7 +65,7 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
   return (
     <div className="rounded-2xl border-2 border-border/50 bg-card overflow-hidden">
       <div className="p-6 border-b border-border/50 bg-muted/30">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
               <div className="w-1.5 h-6 rounded-full bg-primary" />
@@ -70,43 +76,64 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
             </p>
           </div>
           
-          {/* Filter Buttons */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setFilter("ALL")}
-              className={cn(
-                "px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-colors",
-                filter === "ALL"
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background border-border hover:bg-muted/50"
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            {/* Search Input */}
+            <div className="relative w-full sm:w-64">
+              <input
+                type="text"
+                placeholder="Search company or contact..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-10 pl-4 pr-10 rounded-lg border-2 border-border bg-background text-sm focus:outline-none focus:border-primary transition-colors"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <FiXCircle className="w-4 h-4" />
+                </button>
               )}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setFilter("EMAIL")}
-              className={cn(
-                "px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-colors flex items-center gap-2",
-                filter === "EMAIL"
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background border-border hover:bg-muted/50"
-              )}
-            >
-              <FiMail className="w-4 h-4" />
-              Email
-            </button>
-            <button
-              onClick={() => setFilter("LINKEDIN")}
-              className={cn(
-                "px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-colors flex items-center gap-2",
-                filter === "LINKEDIN"
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background border-border hover:bg-muted/50"
-              )}
-            >
-              <FiLinkedin className="w-4 h-4" />
-              LinkedIn
-            </button>
+            </div>
+
+            {/* Filter Buttons */}
+            <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0">
+              <button
+                onClick={() => setFilter("ALL")}
+                className={cn(
+                  "px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-colors whitespace-nowrap",
+                  filter === "ALL"
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background border-border hover:bg-muted/50"
+                )}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setFilter("EMAIL")}
+                className={cn(
+                  "px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-colors flex items-center gap-2 whitespace-nowrap",
+                  filter === "EMAIL"
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background border-border hover:bg-muted/50"
+                )}
+              >
+                <FiMail className="w-4 h-4" />
+                Email
+              </button>
+              <button
+                onClick={() => setFilter("LINKEDIN")}
+                className={cn(
+                  "px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-colors flex items-center gap-2 whitespace-nowrap",
+                  filter === "LINKEDIN"
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background border-border hover:bg-muted/50"
+                )}
+              >
+                <FiLinkedin className="w-4 h-4" />
+                LinkedIn
+              </button>
+            </div>
           </div>
         </div>
 
@@ -178,12 +205,16 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
                     </div>
                     <div>
                       <p className="text-base md:text-lg font-semibold text-foreground mb-1">
-                        No {filter === "ALL" ? "" : filter.toLowerCase()} outreach tracked yet
+                        {searchQuery 
+                          ? `No results found for "${searchQuery}"`
+                          : `No ${filter === "ALL" ? "" : filter.toLowerCase()} outreach tracked yet`}
                       </p>
                       <p className="text-xs md:text-sm text-muted-foreground">
-                        {filter === "ALL" 
-                          ? "Start applying and track your progress!" 
-                          : `No ${filter.toLowerCase()} messages found.`}
+                        {searchQuery
+                          ? "Try adjusting your search or filters."
+                          : filter === "ALL" 
+                            ? "Start applying and track your progress!" 
+                            : `No ${filter.toLowerCase()} messages found.`}
                       </p>
                     </div>
                   </div>
