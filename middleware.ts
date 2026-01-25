@@ -6,6 +6,7 @@ export default auth((req) => {
   const isAuthPage =
     req.nextUrl.pathname.startsWith("/signin") ||
     req.nextUrl.pathname.startsWith("/signup");
+  const isPublicPage = req.nextUrl.pathname === "/";
 
   if (isAuthPage) {
     if (isLoggedIn) {
@@ -14,7 +15,7 @@ export default auth((req) => {
     return null;
   }
 
-  if (!isLoggedIn) {
+  if (!isLoggedIn && !isPublicPage) {
     let callbackUrl = req.nextUrl.pathname;
     if (req.nextUrl.search) {
       callbackUrl += req.nextUrl.search;

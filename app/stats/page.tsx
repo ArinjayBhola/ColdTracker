@@ -63,11 +63,11 @@ export default async function StatsPage() {
       <main className="flex-1 overflow-y-auto p-8">
         <div className="max-w-7xl mx-auto space-y-10">
           {/* Header */}
-          <div className="space-y-2">
-            <h1 className="text-4xl font-bold tracking-tight">Statistics</h1>
-            <p className="text-muted-foreground text-lg flex items-center gap-2">
-              <FiTrendingUp className="w-5 h-5" />
-              Analyze your job search performance
+          <div className="space-y-1">
+            <h1 className="text-4xl font-extrabold tracking-tight">Statistics</h1>
+            <p className="text-muted-foreground text-sm flex items-center gap-2">
+              <FiTrendingUp className="w-4 h-4 text-primary" />
+              Detailed analysis of your search lifecycle
             </p>
           </div>
 
@@ -77,58 +77,58 @@ export default async function StatsPage() {
               <Card 
                 key={stat.title}
                 className={cn(
-                  "border-2 overflow-hidden",
-                  stat.borderColor,
+                  "border-none ring-1 transition-all hover:shadow-md",
+                  stat.borderColor.replace('border-', 'ring-'),
                   stat.bgColor
                 )}
               >
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                  <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                  <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     {stat.title}
                   </CardTitle>
-                  <div className={cn("p-2.5 rounded-xl bg-background/80", stat.iconColor)}>
-                    <stat.icon className="h-5 w-5" />
+                  <div className={cn("p-2 rounded-lg bg-background/80 shadow-sm", stat.iconColor)}>
+                    <stat.icon className="h-4 w-4" />
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-4xl font-bold tracking-tight mb-2">{stat.value}</div>
-                  <p className="text-xs text-muted-foreground">{stat.description}</p>
+                  <div className="text-4xl font-extrabold tracking-tight mb-2">{stat.value}</div>
+                  <p className="text-[11px] font-medium text-muted-foreground/60">{stat.description}</p>
                 </CardContent>
               </Card>
             ))}
           </div>
 
           {/* Detailed Breakdown */}
-          <div className="grid gap-6 md:grid-cols-2 animate-fade-in">
+          <div className="grid gap-8 md:grid-cols-2 animate-fade-in">
             {/* Conversion Funnel */}
-            <Card className="border-2">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+            <Card className="border-none ring-1 ring-border/50 shadow-premium">
+              <CardHeader className="pb-8">
+                <CardTitle className="flex items-center gap-2 text-xl">
                   <FiTarget className="w-5 h-5 text-primary" />
                   Conversion Funnel
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-8">
                 {detailStats.map((stat, index) => {
                   const percentage = stats.sent > 0 ? (stat.value / stats.sent) * 100 : 0;
                   return (
-                    <div key={stat.label} className="space-y-2">
+                    <div key={stat.label} className="space-y-3">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="font-semibold">{stat.label}</span>
-                        <span className={cn("font-bold", stat.color)}>{stat.value}</span>
+                        <span className="font-bold text-foreground/80">{stat.label}</span>
+                        <div className="flex items-center gap-2">
+                          <span className={cn("text-xs font-bold px-2 py-0.5 rounded-full bg-muted", stat.color)}>{stat.value}</span>
+                          <span className="text-[10px] font-bold text-muted-foreground/40">{percentage.toFixed(0)}%</span>
+                        </div>
                       </div>
-                      <div className="h-3 bg-muted rounded-full overflow-hidden">
+                      <div className="h-2 bg-muted/50 rounded-full overflow-hidden">
                         <div 
                           className={cn("h-full rounded-full transition-all duration-1000 ease-out", stat.color.replace('text-', 'bg-'))}
                           style={{ 
                             width: `${percentage}%`,
-                            animationDelay: `${index * 200}ms`
+                            animationDelay: `${index * 150}ms`
                           }}
                         />
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        {percentage.toFixed(1)}% of total outreach
-                      </p>
                     </div>
                   );
                 })}
@@ -136,9 +136,9 @@ export default async function StatsPage() {
             </Card>
 
             {/* Success Metrics */}
-            <Card className="border-2">
+            <Card className="border-none ring-1 ring-border/50 shadow-premium">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-xl font-bold">
                   <FiTrendingUp className="w-5 h-5 text-primary" />
                   Success Metrics
                 </CardTitle>

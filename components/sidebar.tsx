@@ -22,15 +22,15 @@ export function Sidebar() {
     <div className="flex h-screen w-72 flex-col border-r border-border/50 bg-card/50 backdrop-blur-xl px-5 py-8 shadow-premium">
       {/* Logo & Theme Toggle */}
       <div className="mb-10 flex items-center justify-between px-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-md">
-            <span className="text-lg font-bold text-primary-foreground">CT</span>
+        <div className="flex items-center gap-3 group cursor-pointer">
+          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform">
+            <span className="text-lg font-bold text-primary-foreground italic tracking-tighter">CT</span>
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-primary">
+            <h1 className="text-xl font-bold tracking-tight text-foreground/90 leading-none mb-1">
               ColdTrack
             </h1>
-            <p className="text-xs text-muted-foreground">Outreach Manager</p>
+            <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground/60">Outreach Manager</p>
           </div>
         </div>
         <ThemeToggle />

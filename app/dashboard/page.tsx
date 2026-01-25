@@ -53,16 +53,16 @@ export default async function DashboardPage() {
       <main className="flex-1 overflow-y-auto p-8">
         {/* Header */}
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between mb-10">
-          <div className="space-y-2">
-            <h1 className="text-4xl font-bold tracking-tight">Dashboard</h1>
-            <p className="text-muted-foreground text-lg flex items-center gap-2">
-              <FiTrendingUp className="w-5 h-5" />
-              Track your job search progress
+          <div className="space-y-1">
+            <h1 className="text-4xl font-extrabold tracking-tight">Dashboard</h1>
+            <p className="text-muted-foreground text-sm flex items-center gap-2">
+              <FiTrendingUp className="w-4 h-4 text-primary" />
+              Real-time job search performance metrics
             </p>
           </div>
           <div className="flex items-center gap-3">
             <ExportExcel data={outreachItems} fileName="cold-track-export" />
-            <Button asChild className="gap-2 h-12 px-6">
+            <Button asChild className="gap-2 h-11 px-6 font-bold rounded-xl shadow-lg shadow-primary/20 hover:shadow-xl transition-all">
                 <Link href="/outreach/new">
                 <FiPlus className="h-5 w-5" />
                 New Outreach
@@ -77,8 +77,8 @@ export default async function DashboardPage() {
             <Card 
               key={stat.title} 
               className={cn(
-                "border-2 overflow-hidden",
-                stat.borderColor,
+                "border-none ring-1 transition-all hover:shadow-md",
+                stat.borderColor.replace('border-', 'ring-'),
                 stat.bgColor
               )}
             >
