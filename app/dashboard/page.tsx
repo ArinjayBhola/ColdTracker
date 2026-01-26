@@ -1,4 +1,4 @@
-import { getOutreachItems, getStats } from "@/actions/outreach";
+import { getGroupedOutreachByCompany, getStats } from "@/actions/outreach";
 import { Sidebar } from "@/components/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { OutreachTable } from "@/components/outreach-table";
 import { DashboardRefreshButton } from "@/components/dashboard-refresh-button";
 
 export default async function DashboardPage() {
-  const outreachItems = await getOutreachItems();
+  const outreachItems = await getGroupedOutreachByCompany();
   const stats = await getStats();
 
   const statCards = [

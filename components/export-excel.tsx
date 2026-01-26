@@ -28,6 +28,7 @@ export function ExportExcel({ data, fileName = "outreach-data" }: ExportExcelPro
       // Format data for export
       const formattedData = data.map((item) => ({
         Company: item.companyName,
+        "Contact Count": item.contactCount || 1,
         Role: item.roleTargeted,
         Website: item.companyLink || "",
         "Person Name": item.personName,

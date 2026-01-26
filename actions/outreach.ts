@@ -140,6 +140,85 @@ export async function getStats() {
     };
 }
 
+export async function getGroupedOutreachByCompany() {
+  const session = await auth();
+  if (!session?.user?.id) return [];
+
+  const items = await db.query.outreach.findMany({
+    where: eq(outreach.userId, session.user.id),
+    orderBy: [desc(outreach.messageSentAt)],
+  });
+
+  // Group items by company name
+  const groupedMap = new Map<string, {
+    companyName: string;
+    companyLink: string | null;
+    roleTargeted: string;
+    contactCount: number;
+    contacts: typeof items;
+    mostRecentContact: typeof items[0];
+    statuses: string[];
+    earliestMessageSentAt: Date;
+    latestFollowUpDueAt: Date;
+  }>();
+
+  for (const item of items) {
+    const existing = groupedMap.get(item.companyName);
+
+    if (!existing) {
+      groupedMap.set(item.companyName, {
+        companyName: item.companyName,
+        companyLink: item.companyLink,
+        roleTargeted: item.roleTargeted,
+        contactCount: 1,
+        contacts: [item],
+        mostRecentContact: item,
+        statuses: [item.status],
+        earliestMessageSentAt: item.messageSentAt,
+        latestFollowUpDueAt: item.followUpDueAt,
+      });
+    } else {
+      existing.contactCount++;
+      existing.contacts.push(item);
+      
+      // Add status if it's not already in the list
+      if (!existing.statuses.includes(item.status)) {
+        existing.statuses.push(item.status);
+      }
+      
+      // Update most recent contact if this one is newer
+      if (item.messageSentAt > existing.mostRecentContact.messageSentAt) {
+        existing.mostRecentContact = item;
+      }
+      
+      // Track earliest message sent
+      if (item.messageSentAt < existing.earliestMessageSentAt) {
+        existing.earliestMessageSentAt = item.messageSentAt;
+      }
+      
+      // Track latest follow-up due date
+      if (item.followUpDueAt > existing.latestFollowUpDueAt) {
+        existing.latestFollowUpDueAt = item.followUpDueAt;
+      }
+    }
+  }
+
+  // Convert map to array and return
+  return Array.from(groupedMap.values()).map(group => ({
+    id: group.mostRecentContact.id, // Use most recent contact's ID for linking
+    companyName: group.companyName,
+    companyLink: group.companyLink,
+    roleTargeted: group.roleTargeted,
+    personName: group.mostRecentContact.personName,
+    personRole: group.mostRecentContact.personRole,
+    status: group.mostRecentContact.status,
+    messageSentAt: group.earliestMessageSentAt, // Show when first contact was made
+    followUpDueAt: group.latestFollowUpDueAt, // Show latest follow-up date
+    contactMethod: group.mostRecentContact.contactMethod,
+    contactCount: group.contactCount,
+  }));
+}
+
 export async function updateOutreachStatus(id: string, newStatus: string) {
     const session = await auth();
     if (!session?.user?.id) return { error: "Unauthorized" };

@@ -58,7 +58,7 @@ export default async function SettingsPage() {
                   </div>
                   <div className="text-center space-y-1">
                     <CardTitle className="text-xl font-bold tracking-tight">{user.name || "User"}</CardTitle>
-                    <CardDescription className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">{user.email}</CardDescription>
+                    <CardDescription className="text-xs font-semibold text-muted-foreground tracking-widest">{user.email}</CardDescription>
                   </div>
                 </CardHeader>
               </Card>

@@ -3,7 +3,7 @@
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { FiArrowUpRight, FiMail, FiLinkedin, FiCalendar, FiXCircle } from "react-icons/fi";
+import { FiMail, FiLinkedin, FiCalendar, FiXCircle } from "react-icons/fi";
 import Link from "next/link";
 import { OutreachActions } from "@/components/outreach-actions";
 import { DeleteArchiveActions } from "@/components/delete-archive-actions";
@@ -22,6 +22,7 @@ type OutreachItem = {
   messageSentAt: Date;
   followUpDueAt: Date;
   contactMethod: string;
+  contactCount?: number;
 };
 
 export function OutreachTable({ items }: { items: OutreachItem[] }) {
@@ -29,12 +30,13 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 10;
 
   const filteredItems = items.filter((item) => {
-    // Search Filter
+    // Search Filter - only search by company name
     const matchesSearch = 
-      item.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.personName.toLowerCase().includes(searchQuery.toLowerCase());
+      item.companyName.toLowerCase().includes(searchQuery.toLowerCase());
 
     // Contact Method Filter
     const matchesMethod = filter === "ALL" || item.contactMethod === filter;
@@ -57,9 +59,77 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
     return matchesSearch && matchesMethod && matchesDate;
   });
 
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedItems = filteredItems.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  const handleFilterChange = (newFilter: "ALL" | "EMAIL" | "LINKEDIN") => {
+    setFilter(newFilter);
+    setCurrentPage(1);
+  };
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+    setCurrentPage(1);
+  };
+
+  const handleDateChange = (type: "start" | "end", date: string) => {
+    if (type === "start") {
+      setStartDate(date);
+    } else {
+      setEndDate(date);
+    }
+    setCurrentPage(1);
+  };
+
   const clearDateFilters = () => {
     setStartDate("");
     setEndDate("");
+    setCurrentPage(1);
+  };
+
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
+
+  // Generate page numbers to display
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const maxVisiblePages = 5;
+
+    if (totalPages <= maxVisiblePages) {
+      // Show all pages if total is less than max
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Always show first page
+      pages.push(1);
+
+      if (currentPage > 3) {
+        pages.push("...");
+      }
+
+      // Show pages around current page
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+
+      if (currentPage < totalPages - 2) {
+        pages.push("...");
+      }
+
+      // Always show last page
+      pages.push(totalPages);
+    }
+
+    return pages;
   };
 
   return (
@@ -72,7 +142,7 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
               Recent Outreach
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
-              {filteredItems.length} of {items.length} applications
+              Showing {filteredItems.length === 0 ? 0 : startIndex + 1}-{Math.min(endIndex, filteredItems.length)} of {filteredItems.length} {filteredItems.length !== items.length ? `(filtered from ${items.length} total)` : "applications"}
             </p>
           </div>
           
@@ -81,9 +151,9 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
             <div className="relative w-full sm:w-64">
               <input
                 type="text"
-                placeholder="Search company or contact..."
+                placeholder="Search by company..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full h-10 pl-4 pr-10 rounded-lg border-2 border-border bg-background text-sm focus:outline-none focus:border-primary transition-colors"
               />
               {searchQuery && (
@@ -99,7 +169,7 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
             {/* Filter Buttons */}
             <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0">
               <button
-                onClick={() => setFilter("ALL")}
+                onClick={() => handleFilterChange("ALL")}
                 className={cn(
                   "px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-colors whitespace-nowrap",
                   filter === "ALL"
@@ -110,7 +180,7 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
                 All
               </button>
               <button
-                onClick={() => setFilter("EMAIL")}
+                onClick={() => handleFilterChange("EMAIL")}
                 className={cn(
                   "px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-colors flex items-center gap-2 whitespace-nowrap",
                   filter === "EMAIL"
@@ -122,7 +192,7 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
                 Email
               </button>
               <button
-                onClick={() => setFilter("LINKEDIN")}
+                onClick={() => handleFilterChange("LINKEDIN")}
                 className={cn(
                   "px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-colors flex items-center gap-2 whitespace-nowrap",
                   filter === "LINKEDIN"
@@ -148,7 +218,7 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
               <span className="absolute -top-2 left-2 bg-card px-1 text-[10px] font-bold text-muted-foreground uppercase z-10">From</span>
               <DatePicker 
                 value={startDate ? new Date(startDate) : undefined}
-                onChange={(date) => setStartDate(date ? format(date, "yyyy-MM-dd") : "")}
+                onChange={(date) => handleDateChange("start", date ? format(date, "yyyy-MM-dd") : "")}
                 placeholder="Start Date"
                 className="w-[180px]"
               />
@@ -157,7 +227,7 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
               <span className="absolute -top-2 left-2 bg-card px-1 text-[10px] font-bold text-muted-foreground uppercase z-10">To</span>
                <DatePicker 
                 value={endDate ? new Date(endDate) : undefined}
-                onChange={(date) => setEndDate(date ? format(date, "yyyy-MM-dd") : "")}
+                onChange={(date) => handleDateChange("end", date ? format(date, "yyyy-MM-dd") : "")}
                 placeholder="End Date"
                 className="w-[180px]"
               />
@@ -221,7 +291,7 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
                 </td>
               </tr>
             ) : (
-              filteredItems.map((item) => (
+              paginatedItems.map((item) => (
                 <tr
                   key={item.id}
                   className="border-b border-border/30 transition-all duration-200 hover:bg-muted/30 group"
@@ -229,7 +299,14 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
                   <td className="p-3 md:p-6 align-middle">
                     <div className="flex flex-col gap-1 md:gap-2">
                       <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
-                        <span className="text-sm md:text-base font-semibold tracking-tight group-hover:text-primary transition-colors truncate max-w-[120px] md:max-w-none">{item.companyName}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm md:text-base font-semibold tracking-tight group-hover:text-primary transition-colors truncate max-w-[120px] md:max-w-none">{item.companyName}</span>
+                          {item.contactCount && item.contactCount > 1 && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
+                              {item.contactCount} contacts
+                            </span>
+                          )}
+                        </div>
                         <span className={cn(
                           "inline-flex w-fit items-center gap-1 px-1.5 md:px-2 py-0.5 rounded-md text-[10px] font-semibold border",
                           item.contactMethod === "EMAIL"
@@ -249,10 +326,7 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
                     </div>
                   </td>
                   <td className="hidden md:table-cell p-6 align-middle">
-                    <div className="flex flex-col gap-1">
-                      <span className="font-semibold text-foreground">{item.roleTargeted}</span>
-                      <span className="text-xs text-muted-foreground">{item.personName} • {item.personRole}</span>
-                    </div>
+                    <span className="font-semibold text-foreground">{item.roleTargeted}</span>
                   </td>
                   <td className="p-3 md:p-6 align-middle">
                     <div className="scale-90 md:scale-100 origin-left">
@@ -297,6 +371,85 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination Controls */}
+      {filteredItems.length > 0 && totalPages > 1 && (
+        <div className="p-4 md:p-6 border-t border-border/50 bg-muted/30">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            {/* Mobile page info */}
+            <div className="text-sm text-muted-foreground sm:hidden">
+              Page {currentPage} of {totalPages}
+            </div>
+
+            {/* Pagination buttons */}
+            <div className="flex items-center gap-2">
+              {/* Previous button */}
+              <button
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className={cn(
+                  "px-3 md:px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-all",
+                  currentPage === 1
+                    ? "bg-muted/50 text-muted-foreground border-border/50 cursor-not-allowed opacity-50"
+                    : "bg-background border-border hover:bg-primary hover:text-primary-foreground hover:border-primary"
+                )}
+              >
+                Previous
+              </button>
+
+              {/* Page numbers */}
+              <div className="hidden sm:flex items-center gap-1">
+                {getPageNumbers().map((page, index) => {
+                  if (page === "...") {
+                    return (
+                      <span
+                        key={`ellipsis-${index}`}
+                        className="px-3 py-2 text-muted-foreground"
+                      >
+                        ...
+                      </span>
+                    );
+                  }
+
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => goToPage(page as number)}
+                      className={cn(
+                        "min-w-[40px] h-10 px-3 rounded-lg text-sm font-semibold border-2 transition-all",
+                        currentPage === page
+                          ? "bg-primary text-primary-foreground border-primary shadow-md"
+                          : "bg-background border-border hover:bg-muted/50"
+                      )}
+                    >
+                      {page}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Next button */}
+              <button
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className={cn(
+                  "px-3 md:px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-all",
+                  currentPage === totalPages
+                    ? "bg-muted/50 text-muted-foreground border-border/50 cursor-not-allowed opacity-50"
+                    : "bg-background border-border hover:bg-primary hover:text-primary-foreground hover:border-primary"
+                )}
+              >
+                Next
+              </button>
+            </div>
+
+            {/* Desktop page info */}
+            <div className="hidden sm:block text-sm text-muted-foreground">
+              Page {currentPage} of {totalPages}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
