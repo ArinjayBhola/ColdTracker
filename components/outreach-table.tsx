@@ -21,6 +21,7 @@ type OutreachItem = {
   status: string;
   messageSentAt: Date;
   followUpDueAt: Date;
+  followUpSentAt?: Date | null;
   contactMethod: string;
   contactCount?: number;
 };
@@ -300,6 +301,20 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
                     <div className="flex flex-col gap-1 md:gap-2">
                       <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
                         <div className="flex items-center gap-2">
+                          {/* Follow-up Indication */}
+                          {!["REPLIED", "REJECTED", "OFFER", "CLOSED"].includes(item.status) && !item.followUpSentAt && (
+                            <div className={cn(
+                              "w-2.5 h-2.5 rounded-full flex-shrink-0 animate-pulse",
+                              new Date(item.followUpDueAt) < new Date()
+                                ? "bg-destructive shadow-[0_0_8px_rgba(239,68,68,0.5)]"
+                                : new Date(item.followUpDueAt).toDateString() === new Date().toDateString()
+                                ? "bg-primary shadow-[0_0_8px_rgba(var(--primary),0.5)]"
+                                : "hidden"
+                            )} />
+                          )}
+                          {item.followUpSentAt && (
+                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0" title="Follow-up Sent" />
+                          )}
                           <span className="text-sm md:text-base font-semibold tracking-tight group-hover:text-primary transition-colors truncate max-w-[120px] md:max-w-none">{item.companyName}</span>
                           {item.contactCount && item.contactCount > 1 && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">

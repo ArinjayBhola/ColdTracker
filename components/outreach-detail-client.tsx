@@ -7,7 +7,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
-import { FiExternalLink, FiMail, FiLinkedin, FiCalendar, FiClock, FiFileText, FiUser, FiBriefcase, FiUsers, FiLink, FiRefreshCw } from "react-icons/fi";
+import { FiExternalLink, FiMail, FiLinkedin, FiCalendar, FiClock, FiFileText, FiUser, FiBriefcase, FiUsers, FiLink, FiRefreshCw, FiCheckCircle, FiX } from "react-icons/fi";
 import Link from "next/link";
 import { OutreachActions } from "@/components/outreach-actions";
 import { DeleteArchiveActions } from "@/components/delete-archive-actions";
@@ -15,6 +15,10 @@ import { NotesEditor } from "@/components/notes-editor";
 import { AddContactDialog } from "@/components/add-contact-dialog";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { toggleFollowUpSentAction, updateFollowUpDateAction } from "@/actions/follow-ups";
+import { useToast } from "@/hooks/use-toast";
+import { DatePicker } from "@/components/ui/date-picker";
+import { FiEdit2 } from "react-icons/fi";
 
 type OutreachDetailClientProps = {
   initialData: Awaited<ReturnType<typeof getOutreachById>>;
@@ -24,6 +28,10 @@ type OutreachDetailClientProps = {
 
 export function OutreachDetailClient({ initialData, initialContacts, id }: OutreachDetailClientProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isUpdatingFollowUp, setIsUpdatingFollowUp] = useState(false);
+  const [isEditingDate, setIsEditingDate] = useState(false);
+  const [newDueDate, setNewDueDate] = useState<Date | undefined>(undefined);
+  const { toast } = useToast();
 
   const { data: item, refetch: refetchItem } = useQuery({
     queryKey: ["outreach", id],
@@ -44,6 +52,52 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
     setIsRefreshing(true);
     await Promise.all([refetchItem(), refetchContacts()]);
     setTimeout(() => setIsRefreshing(false), 500);
+  };
+
+  const handleToggleFollowUp = async () => {
+    if (!item) return;
+    
+    setIsUpdatingFollowUp(true);
+    const isSent = !!item.followUpSentAt;
+    const res = await toggleFollowUpSentAction(item.id, !isSent);
+    
+    if (res.success) {
+      toast({
+        title: !isSent ? "Follow-up marked as sent" : "Follow-up marked as unsent",
+        description: !isSent ? "The follow-up status has been updated." : "The follow-up status has been reverted.",
+      });
+      await refetchItem();
+    } else {
+      toast({
+        title: "Error",
+        description: res.error || "Failed to update follow-up status",
+        variant: "destructive",
+      });
+    }
+    setIsUpdatingFollowUp(false);
+  };
+
+  const handleUpdateDate = async () => {
+    if (!item || !newDueDate) return;
+    
+    setIsUpdatingFollowUp(true);
+    const res = await updateFollowUpDateAction(item.id, newDueDate);
+    
+    if (res.success) {
+      toast({
+        title: "Follow-up date updated",
+        description: "The due date has been changed successfully.",
+      });
+      await refetchItem();
+      setIsEditingDate(false);
+    } else {
+      toast({
+        title: "Error",
+        description: res.error || "Failed to update date",
+        variant: "destructive",
+      });
+    }
+    setIsUpdatingFollowUp(false);
   };
 
   if (!item) {
@@ -249,17 +303,110 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
                     )} />
                   </div>
                   <div className="flex-1">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Follow-up Due</p>
-                    <p className={cn(
-                      "font-bold text-sm mt-0.5",
-                      isOverdue && "text-destructive"
-                    )}>
-                      {format(item.followUpDueAt, "MMMM d, yyyy")}
-                    </p>
-                    {isOverdue && (
-                      <p className="text-[10px] text-destructive font-extrabold mt-1 tracking-wider uppercase">Action Overdue</p>
+                    <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Follow-up Due</p>
+                        {!item.followUpSentAt && (
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-6 w-6 text-muted-foreground hover:text-primary"
+                                onClick={() => {
+                                    setIsEditingDate(!isEditingDate);
+                                    setNewDueDate(new Date(item.followUpDueAt));
+                                }}
+                            >
+                                <FiEdit2 className="h-3 w-3" />
+                            </Button>
+                        )}
+                    </div>
+                    {isEditingDate ? (
+                        <div className="mt-2 space-y-3">
+                            <DatePicker 
+                                value={newDueDate}
+                                onChange={setNewDueDate}
+                                className="h-9"
+                            />
+                            <div className="flex items-center gap-2">
+                                <Button 
+                                    size="sm" 
+                                    className="h-8 flex-1 font-bold"
+                                    onClick={handleUpdateDate}
+                                    disabled={isUpdatingFollowUp}
+                                >
+                                    Save
+                                </Button>
+                                <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="h-8 flex-1 font-bold"
+                                    onClick={() => setIsEditingDate(false)}
+                                    disabled={isUpdatingFollowUp}
+                                >
+                                    Cancel
+                                </Button>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            <p className={cn(
+                              "font-bold text-sm mt-0.5",
+                              isOverdue && !item.followUpSentAt && "text-destructive"
+                            )}>
+                              {format(item.followUpDueAt, "MMMM d, yyyy")}
+                            </p>
+                            {isOverdue && !item.followUpSentAt && (
+                              <p className="text-[10px] text-destructive font-extrabold mt-1 tracking-wider uppercase">Action Overdue</p>
+                            )}
+                        </>
                     )}
                   </div>
+                </div>
+
+                {/* Follow-up Sent Toggle */}
+                <div className={cn(
+                  "flex flex-col gap-3 p-4 rounded-xl border-2 transition-all shadow-sm",
+                  item.followUpSentAt 
+                    ? "bg-emerald-500/5 border-emerald-500/20" 
+                    : "bg-background/50 border-border"
+                )}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center border",
+                        item.followUpSentAt ? "bg-emerald-500/20 border-emerald-500/30" : "bg-muted border-border"
+                      )}>
+                        <FiCheckCircle className={cn(
+                          "w-5 h-5",
+                          item.followUpSentAt ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
+                        )} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Follow-up Sent</p>
+                        <p className="font-bold text-sm mt-0.5">
+                          {item.followUpSentAt ? format(new Date(item.followUpSentAt), "MMM d, yyyy") : "Not sent yet"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <Button 
+                    variant={item.followUpSentAt ? "outline" : "default"}
+                    size="sm"
+                    className={cn(
+                       "w-full h-9 font-bold transition-all",
+                       item.followUpSentAt ? "hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30" : ""
+                    )}
+                    onClick={handleToggleFollowUp}
+                    disabled={isUpdatingFollowUp}
+                  >
+                    {isUpdatingFollowUp ? (
+                      <FiRefreshCw className="w-4 h-4 animate-spin mr-2" />
+                    ) : item.followUpSentAt ? (
+                      <FiX className="w-4 h-4 mr-2" />
+                    ) : (
+                      <FiCheckCircle className="w-4 h-4 mr-2" />
+                    )}
+                    {item.followUpSentAt ? "Mark as Unsent" : "Mark as Sent"}
+                  </Button>
                 </div>
               </div>
             </CardContent>

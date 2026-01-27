@@ -67,7 +67,7 @@ export async function createOutreachAction(prevState: ActionState, formData: For
 
   const now = new Date();
   const sentAt = parsed.data.messageSentAt instanceof Date ? parsed.data.messageSentAt : now;
-  const followUpDueAt = parsed.data.followUpDueAt instanceof Date ? parsed.data.followUpDueAt : addDays(sentAt, 3);
+  const followUpDueAt = parsed.data.followUpDueAt instanceof Date ? parsed.data.followUpDueAt : addDays(sentAt, 5);
 
   // Validation: follow-up should be ahead of sent date
   if (followUpDueAt <= sentAt) {
@@ -160,6 +160,7 @@ export async function getGroupedOutreachByCompany() {
     statuses: string[];
     earliestMessageSentAt: Date;
     latestFollowUpDueAt: Date;
+    latestFollowUpSentAt: Date | null;
   }>();
 
   for (const item of items) {
@@ -176,6 +177,7 @@ export async function getGroupedOutreachByCompany() {
         statuses: [item.status],
         earliestMessageSentAt: item.messageSentAt,
         latestFollowUpDueAt: item.followUpDueAt,
+        latestFollowUpSentAt: item.followUpSentAt,
       });
     } else {
       existing.contactCount++;
@@ -200,6 +202,11 @@ export async function getGroupedOutreachByCompany() {
       if (item.followUpDueAt > existing.latestFollowUpDueAt) {
         existing.latestFollowUpDueAt = item.followUpDueAt;
       }
+
+      // Track latest follow-up sent date
+      if (item.followUpSentAt && (!existing.latestFollowUpSentAt || item.followUpSentAt > existing.latestFollowUpSentAt)) {
+        existing.latestFollowUpSentAt = item.followUpSentAt;
+      }
     }
   }
 
@@ -214,6 +221,7 @@ export async function getGroupedOutreachByCompany() {
     status: group.mostRecentContact.status,
     messageSentAt: group.earliestMessageSentAt, // Show when first contact was made
     followUpDueAt: group.latestFollowUpDueAt, // Show latest follow-up date
+    followUpSentAt: group.latestFollowUpSentAt,
     contactMethod: group.mostRecentContact.contactMethod,
     contactCount: group.contactCount,
   }));
@@ -351,7 +359,7 @@ export async function addContactToCompanyAction(outreachId: string, formData: Fo
             linkedinProfileUrl: linkedinProfileUrl || null,
             status: "DRAFT", // Default to draft for new contacts added this way
             messageSentAt: new Date(),
-            followUpDueAt: addDays(new Date(), 3),
+            followUpDueAt: addDays(new Date(), 5),
             notes: "",
         });
     } catch (error) {

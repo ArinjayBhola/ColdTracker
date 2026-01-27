@@ -4,7 +4,7 @@ import { FiCheckCircle } from "react-icons/fi";
 import { FollowUpSections } from "@/components/follow-up-sections";
 
 export default async function FollowUpsPage() {
-  const { today, overdue, upcoming } = await getFollowUpItems();
+  const { today, overdue, upcoming, sent } = await getFollowUpItems();
 
   const sections = [
     {
@@ -30,6 +30,14 @@ export default async function FollowUpsPage() {
       color: "text-muted-foreground",
       dotColor: "bg-muted-foreground/30",
       emptyMessage: "No upcoming follow-ups scheduled.",
+    },
+    {
+      title: "Sent",
+      items: sent,
+      iconType: "check" as const,
+      color: "text-emerald-500",
+      dotColor: "bg-emerald-500",
+      emptyMessage: "No follow-ups marked as sent yet.",
     },
   ];
 

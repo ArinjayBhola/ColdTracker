@@ -3,12 +3,16 @@
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { FiCalendar, FiClock, FiMail, FiLinkedin, FiAlertCircle } from "react-icons/fi";
+import { FiCalendar, FiClock, FiMail, FiLinkedin, FiAlertCircle, FiX, FiChevronDown, FiChevronUp } from "react-icons/fi";
 import Link from "next/link";
 import { OutreachActions } from "@/components/outreach-actions";
 import { DeleteArchiveActions } from "@/components/delete-archive-actions";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { toggleFollowUpSentAction } from "@/actions/follow-ups";
+import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
+import { FiCheckCircle, FiRefreshCw } from "react-icons/fi";
 
 type FollowUpItem = {
   id: string;
@@ -18,12 +22,13 @@ type FollowUpItem = {
   status: string;
   followUpDueAt: Date;
   contactMethod: string;
+  followUpSentAt?: Date | null;
 };
 
 type FollowUpSectionProps = {
   title: string;
   items: FollowUpItem[];
-  iconType: "alert" | "clock" | "calendar";
+  iconType: "alert" | "clock" | "calendar" | "check";
   color: string;
   dotColor: string;
   emptyMessage: string;
@@ -33,6 +38,7 @@ const iconMap = {
   alert: FiAlertCircle,
   clock: FiClock,
   calendar: FiCalendar,
+  check: FiCheckCircle,
 };
 
 export function FollowUpSections({ 
@@ -41,6 +47,37 @@ export function FollowUpSections({
   sections: FollowUpSectionProps[] 
 }) {
   const [filter, setFilter] = useState<"ALL" | "EMAIL" | "LINKEDIN">("ALL");
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  const { toast } = useToast();
+  const router = useRouter();
+
+  const toggleSection = (title: string) => {
+    setCollapsedSections(prev => ({
+      ...prev,
+      [title]: !prev[title]
+    }));
+  };
+
+  const handleToggleFollowUp = async (id: string, currentlySent: boolean) => {
+    setUpdatingId(id);
+    const res = await toggleFollowUpSentAction(id, !currentlySent);
+    
+    if (res.success) {
+      toast({
+        title: !currentlySent ? "Follow-up marked as sent" : "Follow-up marked as unsent",
+        description: "The queue will update momentarily.",
+      });
+      router.refresh();
+    } else {
+      toast({
+        title: "Error",
+        description: res.error || "Failed to update follow-up",
+        variant: "destructive",
+      });
+    }
+    setUpdatingId(null);
+  };
 
   return (
     <div className="space-y-8">
@@ -85,26 +122,45 @@ export function FollowUpSections({
 
       {sections.map((section) => {
         const filteredItems = section.items.filter((item) => {
+          // If it's the "Sent" section, we only show sent items.
+          // For other sections, we only show non-sent items (already handled by getFollowUpItems, but double checking here)
+          if (section.title === "Sent") {
+            if (!item.followUpSentAt) return false;
+          } else {
+            if (item.followUpSentAt) return false;
+          }
+          
           if (filter === "ALL") return true;
           return item.contactMethod === filter;
         });
 
         const SectionIcon = iconMap[section.iconType];
+        const isCollapsed = collapsedSections[section.title];
 
         return (
           <section key={section.title}>
-            <div className="flex items-center gap-3 mb-5">
-              <div className={cn("w-3 h-3 rounded-full", section.dotColor)} />
-              <h2 className="text-xl font-bold tracking-tight flex items-center gap-2">
-                <SectionIcon className={cn("w-5 h-5", section.color)} />
-                {section.title}
-                <span className="text-sm font-semibold text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
-                  {filteredItems.length}
-                </span>
-              </h2>
+            <div 
+              className="flex items-center justify-between mb-5 cursor-pointer group/header"
+              onClick={() => toggleSection(section.title)}
+            >
+              <div className="flex items-center gap-3">
+                <div className={cn("w-3 h-3 rounded-full", section.dotColor)} />
+                <h2 className="text-xl font-bold tracking-tight flex items-center gap-2 group-hover/header:text-primary transition-colors">
+                  <SectionIcon className={cn("w-5 h-5", section.color)} />
+                  {section.title}
+                  <span className="text-sm font-semibold text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
+                    {filteredItems.length}
+                  </span>
+                </h2>
+              </div>
+              <div className="text-muted-foreground group-hover/header:text-primary transition-colors">
+                {isCollapsed ? <FiChevronDown className="w-5 h-5" /> : <FiChevronUp className="w-5 h-5" />}
+              </div>
             </div>
 
-            {filteredItems.length === 0 ? (
+            {!isCollapsed && (
+              <>
+                {filteredItems.length === 0 ? (
               <div className="rounded-2xl border-2 border-dashed border-border/50 bg-muted/20 p-8 text-center">
                 <p className="text-muted-foreground italic">
                   {filter === "ALL" 
@@ -129,9 +185,11 @@ export function FollowUpSections({
                               ? "bg-destructive/10 border-destructive/30 text-destructive"
                               : section.title === "Due Today"
                               ? "bg-primary/10 border-primary/30 text-primary"
+                              : section.title === "Sent"
+                              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600"
                               : "bg-muted border-border text-muted-foreground"
                           )}>
-                            <FiCalendar className="w-5 h-5" />
+                            {section.title === "Sent" ? <FiCheckCircle className="w-5 h-5" /> : <FiCalendar className="w-5 h-5" />}
                           </div>
                           {index < filteredItems.length - 1 && (
                             <div className="w-0.5 h-8 bg-border/50" />
@@ -184,8 +242,40 @@ export function FollowUpSections({
                       {/* Actions */}
                       <div className="flex items-center gap-3 ml-6">
                         <OutreachActions id={item.id} currentStatus={item.status} />
+                        {section.title !== "Sent" && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-9 gap-2 font-bold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-200"
+                            onClick={() => handleToggleFollowUp(item.id, false)}
+                            disabled={updatingId === item.id}
+                          >
+                            {updatingId === item.id ? (
+                              <FiRefreshCw className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <FiCheckCircle className="w-4 h-4" />
+                            )}
+                            Mark Sent
+                          </Button>
+                        )}
+                        {section.title === "Sent" && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-9 gap-2 font-bold text-muted-foreground hover:text-destructive hover:bg-destructive/5 hover:border-destructive/20"
+                            onClick={() => handleToggleFollowUp(item.id, true)}
+                            disabled={updatingId === item.id}
+                          >
+                            {updatingId === item.id ? (
+                              <FiRefreshCw className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <FiX className="w-4 h-4" />
+                            )}
+                            Undo
+                          </Button>
+                        )}
                         <Button variant="outline" size="sm" asChild className="h-9">
-                          <Link href={`/outreach/${item.id}`}>View Details</Link>
+                          <Link href={`/outreach/${item.id}`}>View</Link>
                         </Button>
                         <DeleteArchiveActions id={item.id} />
                       </div>
@@ -193,6 +283,8 @@ export function FollowUpSections({
                   ))}
                 </div>
               </div>
+            )}
+            </>
             )}
           </section>
         );
