@@ -56,7 +56,7 @@ export function Sidebar() {
       {/* Mobile Toggle Button */}
       <button 
         onClick={() => setIsMobileOpen(!isMobileOpen)}
-        className="md:hidden fixed top-4 left-4 z-[60] p-2 rounded-xl bg-primary text-primary-foreground shadow-lg active:scale-95 transition-all"
+        className="md:hidden fixed top-4 left-4 z-[40] p-2 rounded-xl bg-primary text-primary-foreground shadow-lg active:scale-95 transition-all"
       >
         {isMobileOpen ? <FiChevronLeft size={20} /> : <FiLayout size={20} />}
       </button>
@@ -64,20 +64,20 @@ export function Sidebar() {
       {/* Mobile Overlay */}
       {isMobileOpen && (
         <div 
-          className="md:hidden fixed inset-0 bg-background/80 backdrop-blur-sm z-[55] animate-in fade-in duration-200"
+          className="md:hidden fixed inset-0 bg-background/80 backdrop-blur-sm z-[35] animate-in fade-in duration-200"
           onClick={() => setIsMobileOpen(false)}
         />
       )}
 
       <div className={cn(
-        "fixed inset-y-0 left-0 z-[56] md:relative flex h-screen flex-col border-r border-border/50 bg-card/50 backdrop-blur-xl py-8 shadow-premium transition-all duration-300 ease-in-out",
+        "fixed inset-y-0 left-0 z-[36] md:relative flex h-screen flex-col border-r border-border/50 bg-card/50 backdrop-blur-xl py-8 shadow-premium transition-all duration-300 ease-in-out",
         isCollapsed ? "w-20 px-3" : "w-72 px-5",
         isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       )}>
         {/* Collapse Toggle Button (Desktop) */}
         <button 
           onClick={toggleSidebar}
-          className="hidden md:flex absolute -right-3 top-10 w-6 h-6 rounded-full bg-primary items-center justify-center text-primary-foreground shadow-lg hover:scale-110 transition-transform z-50 border-2 border-background"
+          className="hidden md:flex absolute -right-3 top-10 w-6 h-6 rounded-full bg-primary items-center justify-center text-primary-foreground shadow-lg hover:scale-110 transition-transform z-[37] border-2 border-background"
         >
           {isCollapsed ? <FiChevronRight size={14} /> : <FiChevronLeft size={14} />}
         </button>

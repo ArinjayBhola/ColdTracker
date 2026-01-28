@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
 } from "./ui/alert-dialog";
 
-export function DeleteArchiveActions({ id }: { id: string }) {
+export function DeleteArchiveActions({ id, isIcon = false }: { id: string; isIcon?: boolean }) {
     const [isOpen, setIsOpen] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -71,39 +71,54 @@ export function DeleteArchiveActions({ id }: { id: string }) {
 
     return (
         <>
-            <div className="relative" ref={dropdownRef}>
+            {isIcon ? (
                 <button
                     disabled={isDeleting}
-                    onClick={() => setIsOpen(!isOpen)}
+                    onClick={handleDeleteClick}
                     className={cn(
-                        "h-9 w-9 rounded-lg border-2 border-border bg-background",
-                        "flex items-center justify-center",
-                        "hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                        "h-8 w-8 rounded-lg border-2 border-transparent hover:border-destructive/20 hover:bg-destructive/10",
+                        "flex items-center justify-center transition-all group",
                         "disabled:opacity-50 disabled:cursor-not-allowed"
                     )}
-                    aria-label="More actions"
+                    title="Delete contact"
                 >
-                    <FiMoreVertical className="w-4 h-4" />
+                    <FiTrash2 className="w-3.5 h-3.5 text-muted-foreground group-hover:text-destructive transition-colors" />
                 </button>
+            ) : (
+                <div className="relative" ref={dropdownRef}>
+                    <button
+                        disabled={isDeleting}
+                        onClick={() => setIsOpen(!isOpen)}
+                        className={cn(
+                            "h-9 w-9 rounded-lg border-2 border-border bg-background",
+                            "flex items-center justify-center",
+                            "hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                            "disabled:opacity-50 disabled:cursor-not-allowed"
+                        )}
+                        aria-label="More actions"
+                    >
+                        <FiMoreVertical className="w-4 h-4" />
+                    </button>
 
-                {isOpen && (
-                    <div className="absolute top-full right-0 mt-2 w-48 z-50">
-                        <div className="rounded-lg border-2 border-border bg-background shadow-lg overflow-hidden">
-                            <button
-                                onClick={handleDeleteClick}
-                                className={cn(
-                                    "w-full px-4 py-2.5 text-left text-sm font-medium",
-                                    "hover:bg-destructive/10 flex items-center gap-2",
-                                    "text-destructive"
-                                )}
-                            >
-                                <FiTrash2 className="w-4 h-4" />
-                                <span>Delete</span>
-                            </button>
+                    {isOpen && (
+                        <div className="absolute top-full right-0 mt-2 w-48 z-50">
+                            <div className="rounded-lg border-2 border-border bg-background shadow-lg overflow-hidden">
+                                <button
+                                    onClick={handleDeleteClick}
+                                    className={cn(
+                                        "w-full px-4 py-2.5 text-left text-sm font-medium",
+                                        "hover:bg-destructive/10 flex items-center gap-2",
+                                        "text-destructive"
+                                    )}
+                                >
+                                    <FiTrash2 className="w-4 h-4" />
+                                    <span>Delete</span>
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                )}
-            </div>
+                    )}
+                </div>
+            )}
 
             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                 <AlertDialogContent>

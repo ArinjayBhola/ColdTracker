@@ -18,7 +18,8 @@ import { useState } from "react";
 import { toggleFollowUpSentAction, updateFollowUpDateAction } from "@/actions/follow-ups";
 import { useToast } from "@/hooks/use-toast";
 import { DatePicker } from "@/components/ui/date-picker";
-import { FiEdit2 } from "react-icons/fi";
+import { FiEdit2, FiTrash2 } from "react-icons/fi";
+import { EditOutreachDialog } from "@/components/edit-outreach-dialog";
 
 type OutreachDetailClientProps = {
   initialData: Awaited<ReturnType<typeof getOutreachById>>;
@@ -170,6 +171,8 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
           </div>
           <div className="flex items-center gap-2 md:gap-4 flex-wrap">
             <AddContactDialog outreachId={item.id} />
+            <div className="h-8 w-px bg-border mx-1 hidden md:block" />
+            <EditOutreachDialog initialData={item} />
             <div className="h-8 w-px bg-border mx-1 hidden md:block" />
             <StatusBadge status={item.status} />
             <OutreachActions id={item.id} currentStatus={item.status} />
@@ -453,7 +456,10 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
                     </div>
                   </div>
                   {contact.id !== item.id && (
-                    <FiLink className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <DeleteArchiveActions id={contact.id} isIcon />
+                      <FiLink className="w-4 h-4 text-muted-foreground mr-1" />
+                    </div>
                   )}
                 </Link>
               ))}

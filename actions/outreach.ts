@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { outreach } from "@/db/schema";
-import { outreachFormSchema, STATUSES } from "@/lib/validations";
+import { editOutreachSchema, outreachFormSchema, STATUSES } from "@/lib/validations";
 import { auth } from "@/lib/auth";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -370,4 +370,40 @@ export async function addContactToCompanyAction(outreachId: string, formData: Fo
     revalidatePath("/dashboard");
     revalidatePath(`/outreach/${outreachId}`);
     return { success: true };
+}
+
+export async function updateOutreachAction(data: any) {
+    const session = await auth();
+    if (!session?.user?.id) return { error: "Unauthorized" };
+
+    const parsed = editOutreachSchema.safeParse(data);
+    if (!parsed.success) {
+        return { 
+            error: "Validation failed", 
+            details: parsed.error.flatten().fieldErrors as any 
+        };
+    }
+
+    const { id, ...updateData } = parsed.data;
+
+    try {
+        await db.update(outreach)
+            .set({
+                ...updateData,
+                updatedAt: new Date(),
+            })
+            .where(
+                and(
+                    eq(outreach.id, id),
+                    eq(outreach.userId, session.user.id)
+                )
+            );
+
+        revalidatePath("/dashboard");
+        revalidatePath(`/outreach/${id}`);
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to update outreach:", error);
+        return { error: "Database error" };
+    }
 }
