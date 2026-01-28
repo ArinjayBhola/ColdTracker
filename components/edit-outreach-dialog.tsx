@@ -33,18 +33,8 @@ import { FiEdit2, FiRefreshCw } from "react-icons/fi";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 
-type EditOutreachDialogProps = {
-  initialData: {
-    id: string;
-    companyName: string;
-    companyLink?: string | null;
-    roleTargeted: string;
-    personName: string;
-    personRole: "HR" | "CEO" | "CTO" | "RECRUITER" | "OTHER";
-    contactMethod: "EMAIL" | "LINKEDIN";
-    emailAddress?: string | null;
-    linkedinProfileUrl?: string | null;
-  };
+export interface EditOutreachDialogProps {
+  initialData: EditOutreachValues;
 };
 
 export function EditOutreachDialog({ initialData }: EditOutreachDialogProps) {
@@ -54,17 +44,17 @@ export function EditOutreachDialog({ initialData }: EditOutreachDialogProps) {
   const router = useRouter();
 
   const form = useForm<EditOutreachValues>({
-    resolver: zodResolver(editOutreachSchema),
+    resolver: zodResolver(editOutreachSchema) as any,
     defaultValues: {
       id: initialData.id,
       companyName: initialData.companyName,
-      companyLink: initialData.companyLink || "",
+      companyLink: initialData.companyLink ?? undefined,
       roleTargeted: initialData.roleTargeted,
       personName: initialData.personName,
       personRole: initialData.personRole,
       contactMethod: initialData.contactMethod,
-      emailAddress: initialData.emailAddress || "",
-      linkedinProfileUrl: initialData.linkedinProfileUrl || "",
+      emailAddress: initialData.emailAddress ?? undefined,
+      linkedinProfileUrl: initialData.linkedinProfileUrl ?? undefined,
     },
   });
 

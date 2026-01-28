@@ -21,6 +21,8 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { EditOutreachDialog } from "@/components/edit-outreach-dialog";
 
+import { EditOutreachValues } from "@/lib/validations";
+
 type OutreachDetailClientProps = {
   initialData: Awaited<ReturnType<typeof getOutreachById>>;
   initialContacts: Awaited<ReturnType<typeof getCompanyContacts>>;
@@ -172,7 +174,7 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
           <div className="flex items-center gap-2 md:gap-4 flex-wrap">
             <AddContactDialog outreachId={item.id} />
             <div className="h-8 w-px bg-border mx-1 hidden md:block" />
-            <EditOutreachDialog initialData={item} />
+            <EditOutreachDialog initialData={item as unknown as EditOutreachValues} />
             <div className="h-8 w-px bg-border mx-1 hidden md:block" />
             <StatusBadge status={item.status} />
             <OutreachActions id={item.id} currentStatus={item.status} />
