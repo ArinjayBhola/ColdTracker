@@ -4,9 +4,8 @@ import { db } from "@/db";
 import { outreach } from "@/db/schema";
 import { editOutreachSchema, outreachFormSchema, STATUSES } from "@/lib/validations";
 import { auth } from "@/lib/auth";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { addDays } from "date-fns";
 export type ActionState = {
   error?: string;
