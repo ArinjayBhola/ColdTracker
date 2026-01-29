@@ -18,26 +18,26 @@ const CONTACT_FIELDS = {
   personRole: z.enum(PERSON_ROLES),
   contactMethod: z.enum(CONTACT_METHODS),
   emailAddress: z.string().email("Invalid email").optional().or(z.literal("")),
-  linkedinProfileUrl: z.string().url("Invalid URL").optional().or(z.literal("")).transform((val) => {
-    if (!val) return undefined;
+  linkedinProfileUrl: z.preprocess((val) => {
+    if (typeof val !== "string" || !val.trim()) return undefined;
     const str = val.trim();
-    if (str && !str.match(/^https?:\/\//i)) {
+    if (!str.match(/^https?:\/\//i)) {
       return `https://${str}`;
     }
     return str;
-  }),
+  }, z.string().url("Invalid URL").optional().or(z.literal(""))),
 };
 
 export const outreachFormSchema = z.object({
   companyName: z.string().min(1, "Company name is required"),
-  companyLink: z.string().url("Invalid URL").optional().or(z.literal("")).transform((val) => {
-    if (!val) return undefined;
+  companyLink: z.preprocess((val) => {
+    if (typeof val !== "string" || !val.trim()) return undefined;
     const str = val.trim();
-    if (str && !str.match(/^https?:\/\//i)) {
+    if (!str.match(/^https?:\/\//i)) {
       return `https://${str}`;
     }
     return str;
-  }),
+  }, z.string().url("Invalid URL").optional().or(z.literal(""))),
   roleTargeted: z.string().min(1, "Role targeted is required"),
   contacts: z.array(z.object(CONTACT_FIELDS)).min(1, "At least one contact is required"),
   status: z.enum(STATUSES).optional().default("DRAFT"),
@@ -49,27 +49,27 @@ export const outreachFormSchema = z.object({
 export const editOutreachSchema = z.object({
   id: z.string().uuid(),
   companyName: z.string().min(1, "Company name is required"),
-  companyLink: z.string().url("Invalid URL").optional().or(z.literal("")).transform((val) => {
-    if (!val) return undefined;
+  companyLink: z.preprocess((val) => {
+    if (typeof val !== "string" || !val.trim()) return undefined;
     const str = val.trim();
-    if (str && !str.match(/^https?:\/\//i)) {
+    if (!str.match(/^https?:\/\//i)) {
       return `https://${str}`;
     }
     return str;
-  }),
+  }, z.string().url("Invalid URL").optional().or(z.literal(""))),
   roleTargeted: z.string().min(1, "Role targeted is required"),
   personName: z.string().min(1, "Person name is required"),
   personRole: z.enum(PERSON_ROLES),
   contactMethod: z.enum(CONTACT_METHODS),
   emailAddress: z.string().email("Invalid email").optional().or(z.literal("")),
-  linkedinProfileUrl: z.string().url("Invalid URL").optional().or(z.literal("")).transform((val) => {
-    if (!val) return undefined;
+  linkedinProfileUrl: z.preprocess((val) => {
+    if (typeof val !== "string" || !val.trim()) return undefined;
     const str = val.trim();
-    if (str && !str.match(/^https?:\/\//i)) {
+    if (!str.match(/^https?:\/\//i)) {
       return `https://${str}`;
     }
     return str;
-  }),
+  }, z.string().url("Invalid URL").optional().or(z.literal(""))),
 });
 
 export interface EditOutreachValues {
