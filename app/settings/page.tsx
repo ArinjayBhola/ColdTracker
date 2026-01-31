@@ -1,9 +1,13 @@
 import { auth } from "@/lib/auth";
+import { db } from "@/db";
+import { users } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { ChangePasswordForm } from "@/components/settings/change-password-form";
 import { OutreachStats } from "@/components/settings/outreach-stats";
 import { DeleteAccountButton } from "@/components/settings/delete-account-button";
 import { DataManagement } from "@/components/settings/data-management";
+import { NotificationSettings } from "@/components/settings/notification-settings";
 import { getOutreachItems } from "@/actions/outreach";
 import { FiSettings } from "react-icons/fi";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +22,12 @@ export default async function SettingsPage() {
   }
 
   const { user } = session;
+  
+  // Fetch full user data to get notification settings
+  const fullUser = await db.query.users.findFirst({
+    where: eq(users.id, user.id as string),
+  });
+
   const outreachItems = await getOutreachItems();
 
   return (
@@ -72,6 +82,11 @@ export default async function SettingsPage() {
             {/* Right Column: Forms & Danger Zone */}
             <div className="lg:col-span-2 space-y-8">
               <ChangePasswordForm />
+              
+              <NotificationSettings 
+                initialEmail={fullUser?.notificationEmail || null} 
+                initialReceiveNotifications={fullUser?.receiveNotifications ?? true} 
+              />
               
               <DataManagement outreachData={outreachItems} />
               

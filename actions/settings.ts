@@ -2,6 +2,7 @@
 
 import { db } from "@/db";
 import { outreach, users } from "@/db/schema";
+import { sendDailyOutreachReminder } from "@/lib/resend";
 import { hash, compare } from "bcryptjs";
 import { eq, count } from "drizzle-orm";
 import { z } from "zod";
@@ -116,5 +117,63 @@ export async function deleteAccountAction(confirmText: string) {
   } catch (error) {
     console.error("Delete account error:", error);
     return { error: "Failed to delete account data" };
+  }
+}
+
+export async function updateNotificationSettingsAction(formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  const notificationEmail = formData.get("notificationEmail") as string;
+  const receiveNotifications = formData.get("receiveNotifications") === "true";
+
+  try {
+    const updateData: any = {
+      receiveNotifications,
+    };
+
+    if (notificationEmail) {
+      const emailParsed = z.string().email().safeParse(notificationEmail);
+      if (!emailParsed.success) {
+        return { error: "Invalid email address" };
+      }
+      updateData.notificationEmail = notificationEmail;
+    } else {
+      updateData.notificationEmail = null;
+    }
+
+    await db.update(users).set(updateData).where(eq(users.id, session.user.id));
+
+    revalidatePath("/settings");
+    return { success: "Notification settings updated successfully" };
+  } catch (error) {
+    console.error("Update notification settings error:", error);
+    return { error: "Failed to update notification settings" };
+  }
+}
+
+export async function sendTestEmailAction() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, session.user.id),
+  });
+
+  if (!user) return { error: "User not found" };
+
+  const emailTo = user.notificationEmail || user.email;
+  if (!emailTo) return { error: "No email address found" };
+
+  const result = await sendDailyOutreachReminder(emailTo, user.name || "User");
+  
+  if (result.success) {
+    return { success: "Test email sent! Check your inbox." };
+  } else {
+    return { error: "Failed to send email. Check your RESEND_API_KEY." };
   }
 }

@@ -7,7 +7,7 @@ import {
   uuid,
   pgEnum,
   varchar,
-  date,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { type AdapterAccount } from "next-auth/adapters";
 
@@ -42,6 +42,8 @@ export const users = pgTable("user", {
   emailVerified: timestamp("emailVerified", { mode: "date" }),
   image: text("image"),
   password: text("password"), // For Credentials provider
+  notificationEmail: text("notification_email"),
+  receiveNotifications: boolean("receive_notifications").default(true),
 });
 
 export const accounts = pgTable(
