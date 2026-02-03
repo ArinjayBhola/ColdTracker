@@ -56,7 +56,7 @@ export function Sidebar() {
       {/* Mobile Toggle Button */}
       <button 
         onClick={() => setIsMobileOpen(!isMobileOpen)}
-        className="md:hidden fixed top-4 left-4 z-[40] p-2 rounded-xl bg-primary text-primary-foreground shadow-lg active:scale-95 transition-all"
+        className="md:hidden fixed top-4 left-4 z-[100] p-2 rounded-xl bg-primary text-primary-foreground shadow-lg active:scale-95 transition-all hover:scale-105"
       >
         {isMobileOpen ? <FiChevronLeft size={20} /> : <FiLayout size={20} />}
       </button>

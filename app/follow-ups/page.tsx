@@ -45,7 +45,7 @@ export default async function FollowUpsPage() {
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
       <main className="flex-1 overflow-y-auto p-4 md:p-8">
-        <div className="max-w-6xl mx-auto space-y-6 md:space-y-10 pt-12 md:pt-0">
+        <div className="max-w-6xl mx-auto space-y-6 md:space-y-10 pt-16 md:pt-0">
           {/* Header */}
           <div className="space-y-2">
             <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Follow-up Queue</h1>

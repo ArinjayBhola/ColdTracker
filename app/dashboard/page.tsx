@@ -54,7 +54,7 @@ export default async function DashboardPage() {
       <main className="flex-1 overflow-y-auto p-4 md:p-8">
         <div className="max-w-7xl mx-auto space-y-6 md:space-y-10">
             {/* Header */}
-            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between pt-12 md:pt-0">
+            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between pt-16 md:pt-0">
                 <div className="space-y-1">
                     <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Dashboard</h1>
                     <p className="text-muted-foreground text-sm flex items-center gap-2">
@@ -75,7 +75,7 @@ export default async function DashboardPage() {
             </div>
 
             {/* Stats Section */}
-            <div className="grid gap-4 md:grid-gap-6 grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:gap-6 grid-cols-2 lg:grid-cols-4">
                 {statCards.map((stat) => (
                     <Card 
                     key={stat.title} 
@@ -107,12 +107,7 @@ export default async function DashboardPage() {
             </div>
 
             {/* Outreach Table */}
-            <div className="hidden md:block">
-                <OutreachTable items={outreachItems} />
-            </div>
-
-            {/* Mobile View Placeholder or Mobile Table */}
-            <div className="md:hidden">
+            <div>
                 <OutreachTable items={outreachItems} />
             </div>
         </div>

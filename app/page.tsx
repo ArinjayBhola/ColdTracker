@@ -2,7 +2,9 @@
 
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { FiArrowRight, FiTarget, FiZap, FiLayout } from "react-icons/fi";
+import { FiArrowRight, FiTarget, FiZap, FiLayout, FiMenu, FiX } from "react-icons/fi";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 export default function LandingPage() {
   return (
@@ -16,7 +18,9 @@ export default function LandingPage() {
             </div>
             <span className="text-xl font-bold tracking-tight text-foreground/90">ColdTrack</span>
           </div>
-          <div className="flex items-center gap-6">
+          
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-6">
             <Link href="/signin" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mr-2">
               Sign in
             </Link>
@@ -26,6 +30,9 @@ export default function LandingPage() {
               </Button>
             </Link>
           </div>
+
+          {/* Mobile Menu Toggle */}
+          <MobileMenu />
         </div>
       </nav>
 
@@ -150,6 +157,36 @@ export default function LandingPage() {
           <p className="text-xs text-muted-foreground">© 2026 ColdTrack. All rights reserved.</p>
         </div>
       </footer>
+    </div>
+  );
+}
+
+function MobileMenu() {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="md:hidden">
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className="p-2 text-foreground"
+      >
+        {isOpen ? <FiX size={24} /> : <FiMenu size={24} />}
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-16 left-0 w-full bg-background border-b border-border/40 p-6 flex flex-col gap-4 shadow-xl animate-in slide-in-from-top-2">
+          <Link href="/signin" onClick={() => setIsOpen(false)}>
+            <Button variant="outline" className="w-full justify-center h-12 text-base">
+              Sign in
+            </Button>
+          </Link>
+          <Link href="/signup" onClick={() => setIsOpen(false)}>
+            <Button className="w-full justify-center h-12 text-base">
+              Get Started
+            </Button>
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

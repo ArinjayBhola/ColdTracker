@@ -82,7 +82,7 @@ export function FollowUpSections({
   return (
     <div className="space-y-8">
       {/* Filter Buttons */}
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
         <button
           onClick={() => setFilter("ALL")}
           className={cn(
@@ -174,13 +174,13 @@ export function FollowUpSections({
                   {filteredItems.map((item, index) => (
                     <div 
                       key={item.id} 
-                      className="p-6 flex items-center justify-between hover:bg-muted/30 transition-all duration-200 group"
+                      className="p-4 md:p-6 flex flex-col md:flex-row md:items-center justify-between hover:bg-muted/30 transition-all duration-200 group gap-4 md:gap-0"
                     >
-                      <div className="flex items-center gap-6 flex-1">
+                      <div className="flex items-start gap-4 md:gap-6 flex-1">
                         {/* Timeline Indicator */}
-                        <div className="flex flex-col items-center gap-2">
+                        <div className="flex flex-col items-center gap-2 pt-1 md:pt-0">
                           <div className={cn(
-                            "w-10 h-10 rounded-full flex items-center justify-center border-2",
+                            "w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center border-2 shrink-0",
                             section.title === "Overdue" 
                               ? "bg-destructive/10 border-destructive/30 text-destructive"
                               : section.title === "Due Today"
@@ -189,44 +189,46 @@ export function FollowUpSections({
                               ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600"
                               : "bg-muted border-border text-muted-foreground"
                           )}>
-                            {section.title === "Sent" ? <FiCheckCircle className="w-5 h-5" /> : <FiCalendar className="w-5 h-5" />}
+                            {section.title === "Sent" ? <FiCheckCircle className="w-4 h-4 md:w-5 md:h-5" /> : <FiCalendar className="w-4 h-4 md:w-5 md:h-5" />}
                           </div>
                           {index < filteredItems.length - 1 && (
-                            <div className="w-0.5 h-8 bg-border/50" />
+                            <div className="w-0.5 h-full min-h-[20px] bg-border/50" />
                           )}
                         </div>
 
                         {/* Content */}
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <h3 className="text-lg font-bold tracking-tight group-hover:text-primary transition-colors">
+                        <div className="flex-1 space-y-2 min-w-0">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div className="space-y-0.5 md:space-y-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="text-base md:text-lg font-bold tracking-tight group-hover:text-primary transition-colors truncate">
                                   {item.companyName}
                                 </h3>
                                 <span className={cn(
-                                  "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold border",
+                                  "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] md:text-xs font-semibold border shrink-0",
                                   item.contactMethod === "EMAIL"
                                     ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
                                     : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
                                 )}>
                                   {item.contactMethod === "EMAIL" ? (
-                                    <><FiMail className="w-3 h-3" /> Email</>
+                                    <><FiMail className="w-3 h-3" /> <span className="hidden sm:inline">Email</span></>
                                   ) : (
-                                    <><FiLinkedin className="w-3 h-3" /> LinkedIn</>
+                                    <><FiLinkedin className="w-3 h-3" /> <span className="hidden sm:inline">LinkedIn</span></>
                                   )}
                                 </span>
                               </div>
-                              <p className="text-sm text-muted-foreground">
+                              <p className="text-xs md:text-sm text-muted-foreground truncate">
                                 {item.personName} • {item.roleTargeted}
                               </p>
                             </div>
-                            <StatusBadge status={item.status} />
+                            <div className="scale-90 md:scale-100 origin-top-right shrink-0">
+                                <StatusBadge status={item.status} />
+                            </div>
                           </div>
 
                           <div className="flex items-center gap-4 text-xs">
                             <div className={cn(
-                              "flex items-center gap-1.5 font-semibold px-3 py-1.5 rounded-full border backdrop-blur-sm",
+                              "flex items-center gap-1.5 font-semibold px-2.5 py-1 md:px-3 md:py-1.5 rounded-full border backdrop-blur-sm whitespace-nowrap",
                               section.title === "Overdue"
                                 ? "bg-destructive/10 text-destructive border-destructive/30"
                                 : "bg-muted text-muted-foreground border-border"
@@ -240,7 +242,7 @@ export function FollowUpSections({
                       </div>
 
                       {/* Actions */}
-                      <div className="flex items-center gap-3 ml-6">
+                      <div className="flex items-center justify-end gap-2 md:gap-3 pl-12 md:pl-6 w-full md:w-auto">
                         <OutreachActions id={item.id} currentStatus={item.status} />
                         {section.title !== "Sent" && (
                           <Button 

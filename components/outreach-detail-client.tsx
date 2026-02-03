@@ -105,7 +105,7 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
   const isOverdue = new Date(item.followUpDueAt) < new Date();
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 md:space-y-8 pt-12 md:pt-0">
+    <div className="max-w-5xl mx-auto space-y-6 md:space-y-8 pt-16 md:pt-0">
       <OutreachHeader 
         id={item.id}
         companyName={item.companyName}

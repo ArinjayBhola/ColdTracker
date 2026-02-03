@@ -43,7 +43,7 @@ export default function SignInPage() {
         </div>
 
         {/* Sign In Card */}
-        <div className="glass-strong rounded-3xl p-8 shadow-premium space-y-6 animate-slide-in border border-border/40">
+        <div className="glass-strong rounded-3xl p-6 md:p-8 shadow-premium space-y-6 animate-slide-in border border-border/40">
           <form action={formAction} className="space-y-5">
             {state?.error && (
               <div className="text-sm text-destructive bg-destructive/5 p-4 rounded-xl font-medium border border-destructive/10 animate-fade-in">
