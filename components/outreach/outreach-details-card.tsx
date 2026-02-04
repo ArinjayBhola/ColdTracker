@@ -7,10 +7,9 @@ import {
   FiExternalLink,
   FiMail,
   FiLinkedin,
-  FiCopy,
-  FiCheck,
 } from "react-icons/fi";
 import { CopyButton } from "../copy-button";
+import Link from "next/link";
 
 interface OutreachDetailsCardProps {
   roleTargeted: string;
@@ -27,6 +26,8 @@ export function OutreachDetailsCard({
   emailAddress,
   linkedinProfileUrl,
 }: OutreachDetailsCardProps) {
+  const [roleCopied, setRoleCopied] = useState(false);
+  const [websiteCopied, setWebsiteCopied] = useState(false);
   const [emailCopied, setEmailCopied] = useState(false);
   const [linkedinCopied, setLinkedinCopied] = useState(false);
 
@@ -56,7 +57,16 @@ export function OutreachDetailsCard({
               <FiBriefcase className="w-3.5 h-3.5" />
               Target Role
             </label>
-            <p className="font-bold text-lg">{roleTargeted}</p>
+
+            <div className="flex items-center gap-2 font-bold text-lg">
+              <p className="truncate">{roleTargeted}</p>
+              <CopyButton
+                copied={roleCopied}
+                onClick={() =>
+                  copyToClipboard(roleTargeted, setRoleCopied)
+                }
+              />
+            </div>
           </div>
 
           {/* Company Website */}
@@ -67,15 +77,24 @@ export function OutreachDetailsCard({
             </label>
 
             {companyLink ? (
-              <a
-                href={companyLink}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 text-primary hover:text-primary/80 font-bold transition-all group"
-              >
-                Visit Page
-                <FiExternalLink className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-              </a>
+              <div className="flex items-center gap-3">
+                <Link
+                  href={companyLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 text-primary hover:text-primary/80 font-bold transition-all group"
+                >
+                  Visit Page
+                  <FiExternalLink className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                </Link>
+
+                <CopyButton
+                  copied={websiteCopied}
+                  onClick={() =>
+                    copyToClipboard(companyLink, setWebsiteCopied)
+                  }
+                />
+              </div>
             ) : (
               <span className="text-muted-foreground">-</span>
             )}
