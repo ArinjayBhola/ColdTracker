@@ -101,7 +101,7 @@ export const outreach = pgTable("outreach", {
   companyLink: text("company_link"),
   roleTargeted: varchar("role_targeted", { length: 255 }).notNull(),
   personName: varchar("person_name", { length: 255 }).notNull(),
-  personRole: roleInternalEnum("person_role").notNull(),
+  personRole: text("person_role").notNull(),
   contactMethod: contactMethodEnum("contact_method").notNull(),
   emailAddress: varchar("email_address", { length: 255 }),
   linkedinProfileUrl: text("linkedin_profile_url"),

@@ -15,7 +15,7 @@ export const STATUSES = [
 
 const CONTACT_FIELDS = {
   personName: z.string().min(1, "Person name is required"),
-  personRole: z.enum(PERSON_ROLES),
+  personRole: z.string().min(1, "Role is required"),
   contactMethod: z.enum(CONTACT_METHODS),
   emailAddress: z.string().email("Invalid email").optional().or(z.literal("")),
   linkedinProfileUrl: z.preprocess((val) => {
@@ -59,7 +59,7 @@ export const editOutreachSchema = z.object({
   }, z.string().url("Invalid URL").optional().or(z.literal(""))),
   roleTargeted: z.string().min(1, "Role targeted is required"),
   personName: z.string().min(1, "Person name is required"),
-  personRole: z.enum(PERSON_ROLES),
+  personRole: z.string().min(1, "Role is required"),
   contactMethod: z.enum(CONTACT_METHODS),
   emailAddress: z.string().email("Invalid email").optional().or(z.literal("")),
   linkedinProfileUrl: z.preprocess((val) => {
@@ -78,7 +78,7 @@ export interface EditOutreachValues {
   companyLink?: string;
   roleTargeted: string;
   personName: string;
-  personRole: "HR" | "CEO" | "CTO" | "RECRUITER" | "OTHER";
+  personRole: string;
   contactMethod: "EMAIL" | "LINKEDIN";
   emailAddress?: string;
   linkedinProfileUrl?: string;

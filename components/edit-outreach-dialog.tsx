@@ -40,6 +40,10 @@ export interface EditOutreachDialogProps {
 export function EditOutreachDialog({ initialData }: EditOutreachDialogProps) {
   const [open, setOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  const [showCustomRole, setShowCustomRole] = useState(() => {
+    const predefinedRoles = ["HR", "CEO", "CTO", "RECRUITER", "OTHER"];
+    return !predefinedRoles.includes(initialData.personRole);
+  });
   const { toast } = useToast();
   const router = useRouter();
 
@@ -156,20 +160,39 @@ export function EditOutreachDialog({ initialData }: EditOutreachDialogProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="font-bold">Designation</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select role" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="HR">HR</SelectItem>
-                        <SelectItem value="CEO">CEO</SelectItem>
-                        <SelectItem value="CTO">CTO</SelectItem>
-                        <SelectItem value="RECRUITER">Recruiter</SelectItem>
-                        <SelectItem value="OTHER">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="space-y-2">
+                      <Select 
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          setShowCustomRole(value === "OTHER");
+                        }} 
+                        defaultValue={showCustomRole ? "OTHER" : field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select role" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="HR">HR</SelectItem>
+                          <SelectItem value="CEO">CEO</SelectItem>
+                          <SelectItem value="CTO">CTO</SelectItem>
+                          <SelectItem value="RECRUITER">Recruiter</SelectItem>
+                          <SelectItem value="OTHER">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {showCustomRole && (
+                        <FormControl>
+                          <Input 
+                            placeholder="Specify role..." 
+                            value={field.value === "OTHER" ? "" : field.value}
+                            onChange={(e) => field.onChange(e.target.value)}
+                            required
+                            className="animate-in fade-in slide-in-from-top-1"
+                          />
+                        </FormControl>
+                      )}
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}

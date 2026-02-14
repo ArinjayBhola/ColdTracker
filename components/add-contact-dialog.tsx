@@ -25,6 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 export function AddContactDialog({ outreachId }: { outreachId: string }) {
     const [open, setOpen] = useState(false);
     const [isPending, setIsPending] = useState(false);
+    const [showCustomRole, setShowCustomRole] = useState(false);
     const { toast } = useToast();
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -84,18 +85,33 @@ export function AddContactDialog({ outreachId }: { outreachId: string }) {
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Role<span className="text-destructive ml-1">*</span></label>
-                                <Select name="personRole" defaultValue="HR" required>
-                                    <SelectTrigger className="h-11 rounded-xl">
-                                        <SelectValue placeholder="Select Role" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="HR">HR</SelectItem>
-                                        <SelectItem value="CEO">CEO</SelectItem>
-                                        <SelectItem value="CTO">CTO</SelectItem>
-                                        <SelectItem value="RECRUITER">Recruiter</SelectItem>
-                                        <SelectItem value="OTHER">Other</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <div className="space-y-2">
+                                    <Select 
+                                        name={!showCustomRole ? "personRole" : undefined} 
+                                        defaultValue="HR" 
+                                        onValueChange={(val) => setShowCustomRole(val === "OTHER")}
+                                        required
+                                    >
+                                        <SelectTrigger className="h-11 rounded-xl">
+                                            <SelectValue placeholder="Select Role" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="HR">HR</SelectItem>
+                                            <SelectItem value="CEO">CEO</SelectItem>
+                                            <SelectItem value="CTO">CTO</SelectItem>
+                                            <SelectItem value="RECRUITER">Recruiter</SelectItem>
+                                            <SelectItem value="OTHER">Other</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    {showCustomRole && (
+                                        <Input
+                                            name="personRole"
+                                            placeholder="Specify role..."
+                                            required
+                                            className="h-11 rounded-xl animate-in fade-in slide-in-from-top-1"
+                                        />
+                                    )}
+                                </div>
                             </div>
                         </div>
 

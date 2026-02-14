@@ -16,10 +16,10 @@ import {
 } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Sidebar } from "@/components/sidebar";
-import { FiArrowLeft, FiSave, FiBriefcase, FiUser, FiFileText, FiCalendar, FiPlus, FiTrash2 } from "react-icons/fi";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { FiArrowLeft, FiSave, FiBriefcase, FiUser, FiFileText, FiCalendar, FiPlus, FiTrash2, FiRefreshCw } from "react-icons/fi";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -33,7 +33,17 @@ function SubmitButton() {
 
 export default function NewOutreachPage() {
     const [state, formAction] = useActionState(createOutreachAction, { error: undefined, details: undefined, success: false });
-    const [contacts, setContacts] = useState([{ id: Date.now() }]);
+    const [contacts, setContacts] = useState([{ 
+        id: Date.now(), 
+        personName: "",
+        personRole: "HR", 
+        contactMethod: "EMAIL",
+        emailAddress: "",
+        linkedinProfileUrl: ""
+    }]);
+    const [customRoles, setCustomRoles] = useState<Record<number, string>>({});
+    const [sentDate, setSentDate] = useState<Date | undefined>(new Date());
+    const formRef = useRef<HTMLFormElement>(null);
     const router = useRouter();
     const { toast } = useToast();
 
@@ -48,20 +58,60 @@ export default function NewOutreachPage() {
     }, [state.success, state.outreachId, router, toast]);
 
     const addContact = () => {
-        setContacts([...contacts, { id: Date.now() }]);
+        const lastContact = contacts[contacts.length - 1];
+        const newId = Date.now();
+        
+        // Clone all fields from last contact
+        const newContact = {
+            ...lastContact,
+            id: newId,
+        };
+        
+        // If last contact had a custom role, clone that too
+        if (customRoles[lastContact.id] !== undefined) {
+            setCustomRoles(prev => ({
+                ...prev,
+                [newId]: customRoles[lastContact.id]
+            }));
+        }
+        
+        setContacts([...contacts, newContact]);
     };
 
     const removeContact = (id: number) => {
         if (contacts.length > 1) {
             setContacts(contacts.filter(c => c.id !== id));
+            // Cleanup custom role state
+            if (customRoles[id] !== undefined) {
+                const newCustomRoles = { ...customRoles };
+                delete newCustomRoles[id];
+                setCustomRoles(newCustomRoles);
+            }
         }
+    };
+
+    const handleClearAll = () => {
+        // Reset form native elements (Company details)
+        if (formRef.current) {
+            formRef.current.reset();
+        }
+        // Reset contacts to initial state
+        setContacts([{ 
+            id: Date.now(), 
+            personName: "",
+            personRole: "", 
+            contactMethod: "",
+            emailAddress: "",
+            linkedinProfileUrl: ""
+        }]);
+        setCustomRoles({});
     };
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
       <main className="flex-1 overflow-y-auto p-4 md:p-8">
-        <form action={formAction}>
+        <form action={formAction} ref={formRef}>
           <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -72,6 +122,14 @@ export default function NewOutreachPage() {
                 </p>
               </div>
               <div className="flex items-center gap-3">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={handleClearAll}
+                  className="gap-2 self-start md:self-center text-muted-foreground hover:text-foreground"
+                >
+                  Clear All
+                </Button>
                 <Button variant="ghost" asChild className="gap-2 self-start md:self-center">
                   <Link href="/dashboard">
                     <FiArrowLeft className="h-4 w-4" />
@@ -153,6 +211,10 @@ export default function NewOutreachPage() {
                                 <Input
                                   name={`contacts.${index}.personName`}
                                   placeholder="e.g., Name"
+                                  value={contact.personName}
+                                  onChange={(e) => {
+                                    setContacts(prev => prev.map(c => c.id === contact.id ? { ...c, personName: e.target.value } : c));
+                                  }}
                                   required
                                   className="h-9 text-sm"
                                 />
@@ -160,22 +222,58 @@ export default function NewOutreachPage() {
                               </div>
                               <div className="space-y-1">
                                 <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Role<span className="text-destructive ml-1">*</span></label>
-                                <Select name={`contacts.${index}.personRole`} required>
-                                  <SelectTrigger className="h-9 rounded-lg text-sm">
-                                    <SelectValue placeholder="Select" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="HR">HR / Talent</SelectItem>
-                                    <SelectItem value="RECRUITER">Recruiter</SelectItem>
-                                    <SelectItem value="CEO">CEO / Founder</SelectItem>
-                                    <SelectItem value="CTO">Engineering Lead</SelectItem>
-                                    <SelectItem value="OTHER">Other</SelectItem>
-                                  </SelectContent>
-                                </Select>
+                                <div className="space-y-2">
+                                  <Select 
+                                    name={customRoles[contact.id] === undefined ? `contacts.${index}.personRole` : undefined} 
+                                    value={contact.personRole}
+                                    onValueChange={(value) => {
+                                      // Update contact role in state
+                                      setContacts(prev => prev.map(c => c.id === contact.id ? { ...c, personRole: value } : c));
+                                      
+                                      if (value !== "OTHER") {
+                                        const newCustomRoles = { ...customRoles };
+                                        delete newCustomRoles[contact.id];
+                                        setCustomRoles(newCustomRoles);
+                                      } else if (customRoles[contact.id] === undefined) {
+                                        setCustomRoles({ ...customRoles, [contact.id]: "" });
+                                      }
+                                    }}
+                                    required
+                                  >
+                                    <SelectTrigger className="h-9 rounded-lg text-sm">
+                                      <SelectValue placeholder="Select" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="HR">HR / Talent</SelectItem>
+                                      <SelectItem value="RECRUITER">Recruiter</SelectItem>
+                                      <SelectItem value="CEO">CEO / Founder</SelectItem>
+                                      <SelectItem value="CTO">Engineering Lead</SelectItem>
+                                      <SelectItem value="OTHER">Other</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+
+                                  {customRoles[contact.id] !== undefined && (
+                                    <Input
+                                      name={`contacts.${index}.personRole`}
+                                      placeholder="Specify role..."
+                                      value={customRoles[contact.id]}
+                                      onChange={(e) => setCustomRoles({ ...customRoles, [contact.id]: e.target.value })}
+                                      required
+                                      className="h-9 text-sm animate-in fade-in slide-in-from-top-1"
+                                    />
+                                  )}
+                                </div>
                               </div>
                               <div className="space-y-1">
                                 <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Method<span className="text-destructive ml-1">*</span></label>
-                                <Select name={`contacts.${index}.contactMethod`} required>
+                                <Select 
+                                  name={`contacts.${index}.contactMethod`} 
+                                  value={contact.contactMethod}
+                                  onValueChange={(value) => {
+                                    setContacts(prev => prev.map(c => c.id === contact.id ? { ...c, contactMethod: value } : c));
+                                  }}
+                                  required
+                                >
                                   <SelectTrigger className="h-9 rounded-lg text-sm">
                                     <SelectValue placeholder="Select" />
                                   </SelectTrigger>
@@ -191,6 +289,10 @@ export default function NewOutreachPage() {
                                   name={`contacts.${index}.emailAddress`}
                                   placeholder="example@company.com"
                                   type="email"
+                                  value={contact.emailAddress}
+                                  onChange={(e) => {
+                                    setContacts(prev => prev.map(c => c.id === contact.id ? { ...c, emailAddress: e.target.value } : c));
+                                  }}
                                   className="h-9 text-sm"
                                 />
                                 {state.details?.[`contacts.${index}.emailAddress`] && <p className="text-destructive text-[9px] ml-1">{state.details[`contacts.${index}.emailAddress`][0]}</p>}
@@ -201,6 +303,10 @@ export default function NewOutreachPage() {
                                   name={`contacts.${index}.linkedinProfileUrl`}
                                   placeholder="linkedin.com/in/..."
                                   type="text"
+                                  value={contact.linkedinProfileUrl}
+                                  onChange={(e) => {
+                                    setContacts(prev => prev.map(c => c.id === contact.id ? { ...c, linkedinProfileUrl: e.target.value } : c));
+                                  }}
                                   className="h-9 text-sm"
                                 />
                                 {state.details?.[`contacts.${index}.linkedinProfileUrl`] && <p className="text-destructive text-[9px] ml-1">{state.details[`contacts.${index}.linkedinProfileUrl`][0]}</p>}
@@ -240,7 +346,8 @@ export default function NewOutreachPage() {
                           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1" htmlFor="messageSentAt">Sent Date</label>
                           <DatePicker
                             name="messageSentAt"
-                            value={new Date()}
+                            value={sentDate}
+                            onChange={setSentDate}
                             placeholder="Pick sent date"
                           />
                           {state.details?.messageSentAt && <p className="text-destructive text-[10px] ml-1">{state.details.messageSentAt[0]}</p>}
