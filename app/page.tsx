@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { FiArrowRight, FiTarget, FiZap, FiLayout, FiMenu, FiX } from "react-icons/fi";
 import { useState } from "react";
-import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 export default function LandingPage() {
   return (
@@ -12,12 +12,18 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className="fixed top-0 w-full z-50 glass border-b border-border/40 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 group cursor-pointer">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform">
-              <span className="text-primary-foreground font-bold italic tracking-tighter">CT</span>
+          <Link href="/" className="flex items-center gap-1 group cursor-pointer">
+            <div className="relative w-16 h-16 flex items-center justify-center overflow-hidden">
+              <Image 
+                src="/logo.png" 
+                alt="ColdTrack Logo" 
+                fill
+                className="object-contain scale-[1.3] dark:invert dark:brightness-200 transition-all"
+                priority
+              />
             </div>
-            <span className="text-xl font-bold tracking-tight text-foreground/90">ColdTrack</span>
-          </div>
+            <span className="text-2xl font-bold tracking-tighter text-foreground/90 -ml-1">ColdTrack</span>
+          </Link>
           
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-6">
@@ -140,11 +146,16 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="py-12 border-t border-border/40">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="flex items-center gap-2 grayscale brightness-0">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold italic tracking-tighter text-xs">CT</span>
+          <div className="flex items-center gap-1 grayscale brightness-0 opacity-80 hover:grayscale-0 hover:opacity-100 transition-all cursor-pointer">
+            <div className="relative w-14 h-14 overflow-hidden">
+              <Image 
+                src="/logo.png" 
+                alt="ColdTrack Logo" 
+                fill
+                className="object-contain dark:invert dark:brightness-200"
+              />
             </div>
-            <span className="text-lg font-bold tracking-tight">ColdTrack</span>
+            <span className="text-lg font-bold tracking-tight -ml-1">ColdTrack</span>
           </div>
           
           <div className="flex gap-8 text-sm font-medium text-muted-foreground">

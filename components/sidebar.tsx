@@ -8,6 +8,7 @@ import { Button } from "./ui/button";
 import { signOut } from "next-auth/react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useState, useEffect } from "react";
+import Image from "next/image";
 
 const links = [
   { href: "/dashboard", label: "Dashboard", icon: FiLayout },
@@ -87,18 +88,22 @@ export function Sidebar() {
           "mb-10 flex items-center justify-between px-3",
           isCollapsed && "flex-col gap-4"
         )}>
-          <div className="flex items-center gap-3 group cursor-pointer">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform shrink-0">
-            <Link href="/dashboard">
-              <span className="text-lg font-bold text-primary-foreground italic tracking-tighter">CT</span>
+          <div className="flex items-center gap-1 group cursor-pointer">
+            <Link href="/dashboard" className="relative w-16 h-16 flex items-center justify-center transition-all shrink-0">
+              <Image 
+                src="/logo.png" 
+                alt="ColdTrack Logo" 
+                fill
+                className="object-contain scale-[1.3] dark:invert dark:brightness-200 transition-all"
+                priority
+              />
             </Link>
-            </div>
             {(!isCollapsed || isMobileOpen) && (
-              <div className={cn(isCollapsed && !isMobileOpen && "hidden")}>
+              <div className="-ml-1">
                 <Link href="/dashboard">
-                <h1 className="text-xl font-bold tracking-tight text-foreground/90 leading-none mb-1">
-                  ColdTrack
-                </h1>
+                  <h1 className="text-xl font-bold tracking-tight text-foreground/90 leading-none mb-1">
+                    ColdTrack
+                  </h1>
                 </Link>
                 <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground/60">Outreach Manager</p>
               </div>
