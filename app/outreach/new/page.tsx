@@ -36,8 +36,8 @@ export default function NewOutreachPage() {
     const [contacts, setContacts] = useState([{ 
         id: Date.now(), 
         personName: "",
-        personRole: "HR", 
-        contactMethod: "EMAIL",
+        personRole: "", 
+        contactMethod: "",
         emailAddress: "",
         linkedinProfileUrl: ""
     }]);
