@@ -1,45 +1,11 @@
-import { getFollowUpItems } from "@/actions/follow-ups";
+import { getPaginatedFollowUpItemsAction } from "@/actions/follow-ups";
 import { Sidebar } from "@/components/sidebar";
 import { FiCheckCircle } from "react-icons/fi";
-import { FollowUpSections } from "@/components/follow-up-sections";
+import { InfiniteOutreachList } from "@/components/infinite-outreach-list";
 
 export default async function FollowUpsPage() {
-  const { today, overdue, upcoming, sent } = await getFollowUpItems();
-
-  const sections = [
-    {
-      title: "Overdue",
-      items: overdue,
-      iconType: "alert" as const,
-      color: "text-destructive",
-      dotColor: "bg-destructive",
-      emptyMessage: "No overdue follow-ups. Great job!",
-    },
-    {
-      title: "Due Today",
-      items: today,
-      iconType: "clock" as const,
-      color: "text-primary",
-      dotColor: "bg-primary",
-      emptyMessage: "No follow-ups due today. You're all caught up!",
-    },
-    {
-      title: "Upcoming",
-      items: upcoming.slice(0, 10),
-      iconType: "calendar" as const,
-      color: "text-muted-foreground",
-      dotColor: "bg-muted-foreground/30",
-      emptyMessage: "No upcoming follow-ups scheduled.",
-    },
-    {
-      title: "Sent",
-      items: sent,
-      iconType: "check" as const,
-      color: "text-emerald-500",
-      dotColor: "bg-emerald-500",
-      emptyMessage: "No follow-ups marked as sent yet.",
-    },
-  ];
+  const initialCategory = "OVERDUE";
+  const { items, hasMore } = await getPaginatedFollowUpItemsAction(initialCategory, 1);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -55,8 +21,12 @@ export default async function FollowUpsPage() {
             </p>
           </div>
 
-          {/* Sections */}
-          <FollowUpSections sections={sections} />
+          {/* Paginated List with Tabs */}
+          <InfiniteOutreachList 
+            initialItems={items as any} 
+            initialHasMore={hasMore} 
+            initialCategory={initialCategory} 
+          />
         </div>
       </main>
     </div>

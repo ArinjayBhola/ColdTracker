@@ -57,8 +57,13 @@ export function DeleteArchiveActions({ id, isIcon = false }: { id: string; isIco
                 description: "The job opportunity has been permanently removed.",
             });
             setShowDeleteDialog(false);
-            router.push("/dashboard");
-            router.refresh();
+            
+            // Only redirect if we are on the detail page for this specific item
+            if (window.location.pathname.includes(`/outreach/${id}`)) {
+                router.push("/dashboard");
+            } else {
+                router.refresh();
+            }
         } else {
             toast({
                 variant: "destructive",
