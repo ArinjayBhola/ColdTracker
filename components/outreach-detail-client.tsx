@@ -21,6 +21,7 @@ type OutreachDetailClientProps = {
 };
 
 export function OutreachDetailClient({ initialData, initialContacts, id }: OutreachDetailClientProps) {
+  const [activeContactIndex, setActiveContactIndex] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isUpdatingFollowUp, setIsUpdatingFollowUp] = useState(false);
   const [isEditingDate, setIsEditingDate] = useState(false);
@@ -94,6 +95,51 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
     setIsUpdatingFollowUp(false);
   };
 
+  const handleSaveDetails = async (data: Record<string, string>) => {
+    if (!item) return;
+    const { updateOutreachInlineAction } = await import("@/actions/outreach");
+    const res = await updateOutreachInlineAction(item.id, activeContactIndex, data);
+    
+    if (res.success) {
+      toast({
+        title: "Details updated",
+        description: "The outreach information has been saved.",
+      });
+      await refetchItem();
+    } else {
+      toast({
+        title: "Error",
+        description: res.error || "Failed to update details",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteContact = async (index: number) => {
+    if (!item) return;
+    const { deleteContactAction } = await import("@/actions/outreach");
+    const res = await deleteContactAction(item.id, index);
+    
+    if (res.success) {
+      toast({
+        title: "Contact deleted",
+        description: "The contact has been removed from this outreach.",
+      });
+      
+      if (index <= activeContactIndex && activeContactIndex > 0) {
+        setActiveContactIndex(prev => Math.max(0, prev - 1));
+      }
+      
+      await refetchItem();
+    } else {
+      toast({
+        title: "Error",
+        description: res.error || "Failed to delete contact",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (!item) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -110,10 +156,9 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
         id={item.id}
         companyName={item.companyName}
         roleTargeted={item.roleTargeted}
-        personName={item.personName}
-        personRole={item.personRole}
-        contactMethod={item.contactMethod}
         status={item.status}
+        contacts={item.contacts as any[]}
+        activeContactIndex={activeContactIndex}
         isRefreshing={isRefreshing}
         onRefresh={handleRefresh}
         outreachData={item}
@@ -124,9 +169,11 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
           <OutreachDetailsCard 
             roleTargeted={item.roleTargeted}
             companyLink={item.companyLink}
-            contactMethod={item.contactMethod}
-            emailAddress={item.emailAddress}
-            linkedinProfileUrl={item.linkedinProfileUrl}
+            contactMethod={item.contacts?.[activeContactIndex]?.contactMethod || (item as any).contactMethod}
+            emailAddress={item.contacts?.[activeContactIndex]?.emailAddress || (item as any).emailAddress}
+            linkedinProfileUrl={item.contacts?.[activeContactIndex]?.linkedinProfileUrl || (item as any).linkedinProfileUrl}
+            editable={true}
+            onSave={handleSaveDetails}
           />
 
           <Card className="border-2 shadow-sm">
@@ -179,8 +226,10 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
           />
 
           <OutreachContactsCard 
-            contacts={companyContacts}
-            activeId={item.id}
+            contacts={companyContacts[0]?.contacts || item.contacts || []} 
+            activeIndex={activeContactIndex}
+            onSelect={setActiveContactIndex}
+            onDelete={handleDeleteContact}
           />
         </div>
       </div>

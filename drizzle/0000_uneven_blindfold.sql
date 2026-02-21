@@ -1,0 +1,1 @@
+-- Baseline migration - marking as applied as tables already exist.

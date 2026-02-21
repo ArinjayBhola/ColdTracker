@@ -26,20 +26,33 @@ export function ExportExcel({ data, fileName = "outreach-data" }: ExportExcelPro
       }
 
       // Format data for export
-      const formattedData = data.map((item) => ({
-        Company: item.companyName,
-        "Contact Count": item.contactCount || 1,
-        Role: item.roleTargeted,
-        Website: item.companyLink || "",
-        "Person Name": item.personName,
-        "Person Role": item.personRole,
-        Status: item.status,
-        "Sent Date": item.messageSentAt ? format(new Date(item.messageSentAt), "yyyy-MM-dd") : "",
-        "Follow Up Due": item.followUpDueAt ? format(new Date(item.followUpDueAt), "yyyy-MM-dd") : "",
-        "Contact Method": item.contactMethod,
-        "Email": item.emailAddress || "",
-        "Notes": item.notes || ""
-      }));
+      const formattedData = data.flatMap((item) => {
+        const contacts = Array.isArray(item.contacts) && item.contacts.length > 0
+          ? item.contacts 
+          : [{
+              personName: item.personName,
+              personRole: item.personRole,
+              contactMethod: item.contactMethod,
+              emailAddress: item.emailAddress,
+              messageSentAt: item.messageSentAt,
+              followUpDueAt: item.followUpDueAt
+            }];
+
+        return contacts.map((contact: any) => ({
+          Company: item.companyName,
+          "Contact Count": item.contacts?.length || 1,
+          Role: item.roleTargeted,
+          Website: item.companyLink || "",
+          "Person Name": contact.personName || "",
+          "Person Role": contact.personRole || "",
+          Status: item.status,
+          "Sent Date": contact.messageSentAt ? format(new Date(contact.messageSentAt), "yyyy-MM-dd") : "",
+          "Follow Up Due": contact.followUpDueAt ? format(new Date(contact.followUpDueAt), "yyyy-MM-dd") : "",
+          "Contact Method": contact.contactMethod || "",
+          "Email": contact.emailAddress || "",
+          "Notes": item.notes || ""
+        }));
+      });
 
       const worksheet = XLSX.utils.json_to_sheet(formattedData);
       const workbook = XLSX.utils.book_new();

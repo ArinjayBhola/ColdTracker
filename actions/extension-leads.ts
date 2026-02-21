@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { eq, and, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { addDays } from "date-fns";
+import { PromoteLeadValues } from "@/lib/validations";
 
 export async function getExtensionLeadsAction() {
   const session = await auth();
@@ -36,53 +37,60 @@ export async function deleteExtensionLeadAction(id: string) {
   }
 }
 
-export async function promoteLeadToOutreachAction(id: string, formData: FormData) {
+export async function promoteLeadToOutreachAction(id: string, values: PromoteLeadValues) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
 
-  const personName = formData.get("personName") as string;
-  const companyName = formData.get("companyName") as string;
-  const companyLink = formData.get("companyLink") as string;
-  const personRole = formData.get("personRole") as string;
-  const contactMethod = formData.get("contactMethod") as any;
-  const emailAddress = formData.get("emailAddress") as string;
-  const linkedinProfileUrl = formData.get("linkedinProfileUrl") as string;
-  const roleTargeted = formData.get("roleTargeted") as string;
-  const notes = formData.get("notes") as string;
-
-  // Dates
-  const outreachDateStr = formData.get("outreachDate") as string;
-  const followUpDateStr = formData.get("followUpDate") as string;
-
-  if (!personName || !companyName || !roleTargeted || !personRole || !contactMethod) {
-    return { error: "Required fields missing" };
-  }
+  const { companyName, companyLink, roleTargeted, contacts, notes } = values;
 
   try {
-    const outreachDate = outreachDateStr ? new Date(outreachDateStr) : new Date();
-    const followUpDueAt = followUpDateStr ? new Date(followUpDateStr) : addDays(outreachDate, 5);
-    
     let newOutreachId = "";
 
     await db.transaction(async (tx) => {
-      // 1. Insert into outreach
-      const [newOutreach] = await tx.insert(outreach).values({
-        userId: session.user.id,
-        companyName,
-        companyLink: companyLink || null,
-        roleTargeted,
-        personName,
-        personRole,
-        contactMethod,
-        emailAddress: emailAddress || null,
-        linkedinProfileUrl: linkedinProfileUrl || null,
-        status: "DRAFT",
-        messageSentAt: outreachDate,
-        followUpDueAt: followUpDueAt,
-        notes: notes || "",
-      }).returning({ id: outreach.id });
+      // 1. Check if company already exists for this user
+      const existing = await tx.query.outreach.findFirst({
+        where: and(
+          eq(outreach.userId, session.user.id),
+          eq(outreach.companyName, companyName)
+        ),
+      });
 
-      newOutreachId = newOutreach.id;
+      // Prepare contacts for JSONB storage (ensure dates are strings or handled by DB)
+      const formattedContacts = contacts.map((c: any) => ({
+        ...c,
+        createdAt: new Date().toISOString(),
+      }));
+
+      if (existing) {
+        // Update existing entry
+        const updatedContacts = Array.isArray(existing.contacts) 
+          ? [...(existing.contacts as any[]), ...formattedContacts]
+          : [...formattedContacts];
+
+        await tx.update(outreach)
+          .set({
+            contacts: updatedContacts,
+            updatedAt: new Date(),
+          })
+          .where(eq(outreach.id, existing.id));
+        
+        newOutreachId = existing.id;
+      } else {
+        // Create new entry
+        const [newOutreach] = await tx.insert(outreach).values({
+          userId: session.user.id,
+          companyName,
+          companyLink: companyLink || null,
+          roleTargeted,
+          contacts: formattedContacts,
+          status: "DRAFT",
+          messageSentAt: contacts[0]?.messageSentAt || new Date(),
+          followUpDueAt: contacts[0]?.followUpDueAt || addDays(new Date(), 5),
+          notes: notes || "",
+        }).returning({ id: outreach.id });
+
+        newOutreachId = newOutreach.id;
+      }
 
       // 2. Delete from extensionLeads
       await tx.delete(extensionLeads).where(

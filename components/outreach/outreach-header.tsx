@@ -4,38 +4,39 @@ import { Button } from "@/components/ui/button";
 import { FiMail, FiLinkedin, FiUser, FiBriefcase } from "react-icons/fi";
 import { cn } from "@/lib/utils";
 import { AddContactDialog } from "@/components/add-contact-dialog";
-import { EditOutreachDialog } from "@/components/edit-outreach-dialog";
 import { StatusBadge } from "@/components/status-badge";
 import { OutreachActions } from "@/components/outreach-actions";
 import { DeleteArchiveActions } from "@/components/delete-archive-actions";
-import { EditOutreachValues } from "@/lib/validations";
 import { DetailHeader } from "@/components/details/detail-header";
 
 interface OutreachHeaderProps {
+  id: string;
   companyName: string;
   roleTargeted: string;
-  personName: string;
-  personRole: string;
-  contactMethod: string;
   status: string;
-  id: string;
+  contacts: any[];
+  activeContactIndex: number;
   isRefreshing: boolean;
   onRefresh: () => void;
   outreachData: any;
 }
 
 export function OutreachHeader({
+  id,
   companyName,
   roleTargeted,
-  personName,
-  personRole,
-  contactMethod,
   status,
-  id,
+  contacts,
+  activeContactIndex,
   isRefreshing,
   onRefresh,
   outreachData,
 }: OutreachHeaderProps) {
+  const activeContact = contacts[activeContactIndex] || contacts[0] || {};
+  const contactMethod = activeContact.contactMethod || "EMAIL";
+  const personName = activeContact.personName || "No Contact";
+  const personRole = activeContact.personRole || "N/A";
+
   return (
     <DetailHeader
       title={companyName}
@@ -58,8 +59,15 @@ export function OutreachHeader({
       }
       infoBar={
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border border-border/50">
-          <FiUser className="w-4 h-4" />
-          <span className="font-bold text-foreground text-sm">{personName}</span>
+          <FiUser className="w-4 h-4 text-primary" />
+          <span className="font-bold text-foreground text-sm">
+            {personName}
+            {contacts.length > 1 && (
+              <span className="text-muted-foreground font-medium ml-1">
+                ({activeContactIndex + 1} of {contacts.length})
+              </span>
+            )}
+          </span>
           <span className="text-muted-foreground/30">•</span>
           <span className="text-sm font-semibold">{personRole}</span>
         </div>
@@ -67,8 +75,6 @@ export function OutreachHeader({
       actions={
         <>
           <AddContactDialog outreachId={id} />
-          <div className="h-8 w-px bg-border mx-1 hidden md:block" />
-          <EditOutreachDialog initialData={outreachData as unknown as EditOutreachValues} />
           <div className="h-8 w-px bg-border mx-1 hidden md:block" />
           <StatusBadge status={status} />
           <OutreachActions id={id} currentStatus={status} />

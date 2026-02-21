@@ -148,17 +148,25 @@ export async function getPaginatedFollowUpItemsAction(
       break;
   }
 
-  const queryWhere = and(...(andConditions as [SQL, ...SQL[]])) as SQL;
-
-  const items = await db.query.outreach.findMany({
-    where: queryWhere,
-    orderBy: [asc(outreach.followUpDueAt)],
+  const results = await db.query.outreach.findMany({
+    where: and(...(andConditions as [SQL, ...SQL[]])),
+    orderBy: [asc(outreach.followUpDueAt)], 
     limit: limit + 1,
     offset: offset,
   });
 
-  const hasMore = items.length > limit;
-  const slicedItems = hasMore ? items.slice(0, limit) : (items as any[]);
+  const hasMore = results.length > limit;
+  const items = results.slice(0, limit).map(item => ({
+    id: item.id,
+    companyName: item.companyName,
+    personName: (item.contacts as any[])[0]?.personName || item.personName,
+    roleTargeted: item.roleTargeted,
+    status: item.status,
+    followUpDueAt: item.followUpDueAt,
+    contactMethod: (item.contacts as any[])[0]?.contactMethod || item.contactMethod,
+    followUpSentAt: item.followUpSentAt,
+    contacts: item.contacts,
+  }));
 
-  return { items: slicedItems, hasMore };
+  return { items, hasMore };
 }

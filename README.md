@@ -4,11 +4,13 @@
 
 ## ✨ Key Features
 
+- **🚀 Browser Extension (Lead Capture)**: Instantly capture LinkedIn profiles and company data directly into your dashboard.
+- **📋 Extension Leads Management**: Review and refine captured leads before promoting them to active outreach.
 - **🚀 Outreach Lifecycle Tracking**: Manage every stage of your outreach from `DRAFT` to `OFFER`.
 - **📅 Smart Follow-up Reminders**: Automatically track due dates for follow-ups to ensure you never miss a connection.
 - **🏢 Company & Role Management**: Keep detailed records of companies, roles, and key contacts (Recruiters, HR, etc.).
 - **🔐 Secure Authentication**: Support for both traditional email/password and social login.
-- **📊 Data Intelligence**: (Coming Soon) Visualize your response rates and outreach efficiency.
+- **📊 Data Intelligence**: Visualize your response rates and outreach efficiency.
 - **📥 Import/Export**: Seamlessly handle your data with Excel/XLSX support.
 - **🎨 Premium UI/UX**: Built with Tailwind CSS 4 and Radix UI primitives for a sleek, responsive, and accessible experience.
 
@@ -69,6 +71,20 @@
    ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+## 🧩 Browser Extension
+
+The ColdTrack Lead Capture extension allows you to save LinkedIn profiles directly from your browser.
+
+1. **Installation**:
+   - Open Chrome and go to `chrome://extensions/`.
+   - Enable **Developer mode**.
+   - Click **Load unpacked** and select the `/extension` folder in this repository.
+2. **Usage**:
+   - Navigate to a LinkedIn profile.
+   - Click the extension icon to capture the profile.
+   - The lead will appear in your **Extension Leads** dashboard for further review.
+
 
 ## 📂 Project Structure
 

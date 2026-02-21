@@ -9,9 +9,11 @@ import { DetailContentCard, DetailItem } from "@/components/details/detail-conte
 interface OutreachDetailsCardProps {
   roleTargeted: string;
   companyLink?: string | null;
-  contactMethod: string;
+  contactMethod?: string | null;
   emailAddress?: string | null;
   linkedinProfileUrl?: string | null;
+  editable?: boolean;
+  onSave?: (data: Record<string, string>) => Promise<void>;
 }
 
 export function OutreachDetailsCard({
@@ -20,6 +22,8 @@ export function OutreachDetailsCard({
   contactMethod,
   emailAddress,
   linkedinProfileUrl,
+  editable,
+  onSave,
 }: OutreachDetailsCardProps) {
   const detailItems: DetailItem[] = [
     {
@@ -28,6 +32,8 @@ export function OutreachDetailsCard({
       value: roleTargeted,
       icon: <FiBriefcase className="w-3.5 h-3.5" />,
       copyValue: roleTargeted,
+      inputType: "text",
+      required: true,
     },
     {
       id: "companyLink",
@@ -37,34 +43,40 @@ export function OutreachDetailsCard({
       isLink: !!companyLink,
       href: companyLink || undefined,
       copyValue: companyLink || undefined,
+      inputType: "text",
     },
     {
       id: "contactMethod",
       label: "Contact Method",
-      value: contactMethod,
-      icon: contactMethod === "EMAIL" ? <FiMail className="w-3.5 h-3.5" /> : <FiLinkedin className="w-3.5 h-3.5" />,
+      value: contactMethod || "-",
+      icon: contactMethod === "LINKEDIN" ? <FiLinkedin className="w-3.5 h-3.5" /> : <FiMail className="w-3.5 h-3.5" />,
+      copyValue: contactMethod || undefined,
+      inputType: "select",
+      options: [
+        { label: "Email", value: "EMAIL" },
+        { label: "LinkedIn", value: "LINKEDIN" },
+      ],
+      required: true,
     },
     {
-      id: "emailAddress",
+      id: "email",
       label: "Email",
       value: emailAddress || "-",
       icon: <FiMail className="w-3.5 h-3.5" />,
       copyValue: emailAddress || undefined,
+      inputType: "text",
+    },
+    {
+      id: "linkedin",
+      label: "LinkedIn Profile",
+      value: linkedinProfileUrl ? "View LinkedIn Profile" : "-",
+      icon: <FiLinkedin className="w-3.5 h-3.5" />,
+      isLink: !!linkedinProfileUrl,
+      href: linkedinProfileUrl || undefined,
+      copyValue: linkedinProfileUrl || undefined,
+      inputType: "text",
     },
   ];
 
-  if (linkedinProfileUrl) {
-    detailItems.push({
-      id: "linkedinProfileUrl",
-      label: "LinkedIn Profile",
-      value: "View LinkedIn Profile",
-      icon: <FiLinkedin className="w-3.5 h-3.5" />,
-      isLink: true,
-      href: linkedinProfileUrl,
-      copyValue: linkedinProfileUrl,
-      fullWidth: true,
-    });
-  }
-
-  return <DetailContentCard items={detailItems} />;
+  return <DetailContentCard items={detailItems} editable={editable} onSave={onSave} />;
 }

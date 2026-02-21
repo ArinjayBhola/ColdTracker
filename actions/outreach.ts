@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { outreach } from "@/db/schema";
-import { editOutreachSchema, outreachFormSchema, STATUSES } from "@/lib/validations";
+import { outreachFormSchema, STATUSES } from "@/lib/validations";
 import { auth } from "@/lib/auth";
 import { eq, desc, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -40,9 +40,11 @@ export async function createOutreachAction(prevState: ActionState, formData: For
     roleTargeted: formData.get("roleTargeted"),
     status: formData.get("status"),
     notes: formData.get("notes"),
-    messageSentAt: formData.get("messageSentAt"),
-    followUpDueAt: formData.get("followUpDueAt"),
-    contacts,
+    contacts: contacts.map((c, idx) => ({
+      ...c,
+      messageSentAt: formData.get(`contacts.${idx}.messageSentAt`) || formData.get("messageSentAt"),
+      followUpDueAt: formData.get(`contacts.${idx}.followUpDueAt`) || formData.get("followUpDueAt"),
+    })),
   };
 
   const parsed = outreachFormSchema.safeParse(rawData);
@@ -65,49 +67,64 @@ export async function createOutreachAction(prevState: ActionState, formData: For
   } = parsed.data;
 
   const now = new Date();
-  const sentAt = parsed.data.messageSentAt instanceof Date ? parsed.data.messageSentAt : now;
-  const followUpDueAt = parsed.data.followUpDueAt instanceof Date ? parsed.data.followUpDueAt : addDays(sentAt, 5);
-
-  // Validation: follow-up should be ahead of sent date
-  if (followUpDueAt <= sentAt) {
-    return { error: "Follow-up date must be after the sent date" };
-  }
-
-  let firstOutreachId: string | undefined;
+  const firstContact = validatedContacts[0];
+  const sentAt = firstContact?.messageSentAt || now;
+  const followUpDueAt = firstContact?.followUpDueAt || addDays(sentAt, 5);
 
   try {
-    // Insert each contact as a separate outreach entry
-    await db.transaction(async (tx) => {
-      for (const contact of validatedContacts) {
-        const result = await tx.insert(outreach).values({
-          userId: session.user.id,
-          companyName,
-          roleTargeted,
-          personName: contact.personName,
-          personRole: contact.personRole,
-          contactMethod: contact.contactMethod,
-          companyLink: companyLink || null,
-          emailAddress: contact.emailAddress || null,
-          linkedinProfileUrl: contact.linkedinProfileUrl || null,
-          status: status || "SENT", 
-          messageSentAt: sentAt,
-          followUpDueAt,
-          notes,
-        }).returning({ id: outreach.id });
-        
-        // Capture the first outreach ID for redirect
-        if (!firstOutreachId && result[0]) {
-          firstOutreachId = result[0].id;
-        }
-      }
+    // Check if company already exists for this user
+    const existing = await db.query.outreach.findFirst({
+      where: and(
+        eq(outreach.userId, session.user.id),
+        eq(outreach.companyName, companyName)
+      )
     });
+
+    if (existing) {
+      // Append new contacts to existing ones
+      const updatedContacts = [...existing.contacts, ...validatedContacts];
+      await db.update(outreach)
+        .set({
+          contacts: updatedContacts,
+          roleTargeted, // Update role targeted if changed?
+          companyLink: companyLink || existing.companyLink,
+          notes: notes || existing.notes,
+          status: status || existing.status,
+          updatedAt: new Date(),
+        })
+        .where(eq(outreach.id, existing.id));
+      
+      revalidatePath("/dashboard");
+      return { success: true, outreachId: existing.id };
+    } else {
+      // Create new outreach entry
+      const result = await db.insert(outreach).values({
+        userId: session.user.id,
+        companyName,
+        roleTargeted,
+        companyLink: companyLink || null,
+        contacts: validatedContacts,
+        status: status || "SENT", 
+        notes,
+        createdAt: now,
+        updatedAt: now,
+        // These are legacy columns, we keep them for now but they won't be used by the new UI
+        personName: validatedContacts[0].personName,
+        personRole: validatedContacts[0].personRole,
+        contactMethod: validatedContacts[0].contactMethod,
+        emailAddress: validatedContacts[0].emailAddress || null,
+        linkedinProfileUrl: validatedContacts[0].linkedinProfileUrl || null,
+        messageSentAt: sentAt,
+        followUpDueAt,
+      }).returning({ id: outreach.id });
+
+      revalidatePath("/dashboard");
+      return { success: true, outreachId: result[0]?.id };
+    }
   } catch (error) {
     console.error("Failed to create outreach:", error);
     return { error: "Database error" };
   }
-
-  revalidatePath("/dashboard");
-  return { success: true, outreachId: firstOutreachId };
 }
 
 export async function getOutreachItems() {
@@ -145,84 +162,23 @@ export async function getGroupedOutreachByCompany() {
 
   const items = await db.query.outreach.findMany({
     where: eq(outreach.userId, session.user.id),
-    orderBy: [desc(outreach.messageSentAt)],
+    orderBy: [desc(outreach.updatedAt)],
   });
 
-  // Group items by company name
-  const groupedMap = new Map<string, {
-    companyName: string;
-    companyLink: string | null;
-    roleTargeted: string;
-    contactCount: number;
-    contacts: typeof items;
-    mostRecentContact: typeof items[0];
-    statuses: string[];
-    earliestMessageSentAt: Date;
-    latestFollowUpDueAt: Date;
-    latestFollowUpSentAt: Date | null;
-  }>();
-
-  for (const item of items) {
-    const existing = groupedMap.get(item.companyName);
-
-    if (!existing) {
-      groupedMap.set(item.companyName, {
-        companyName: item.companyName,
-        companyLink: item.companyLink,
-        roleTargeted: item.roleTargeted,
-        contactCount: 1,
-        contacts: [item],
-        mostRecentContact: item,
-        statuses: [item.status],
-        earliestMessageSentAt: item.messageSentAt,
-        latestFollowUpDueAt: item.followUpDueAt,
-        latestFollowUpSentAt: item.followUpSentAt,
-      });
-    } else {
-      existing.contactCount++;
-      existing.contacts.push(item);
-      
-      // Add status if it's not already in the list
-      if (!existing.statuses.includes(item.status)) {
-        existing.statuses.push(item.status);
-      }
-      
-      // Update most recent contact if this one is newer
-      if (item.messageSentAt > existing.mostRecentContact.messageSentAt) {
-        existing.mostRecentContact = item;
-      }
-      
-      // Track earliest message sent
-      if (item.messageSentAt < existing.earliestMessageSentAt) {
-        existing.earliestMessageSentAt = item.messageSentAt;
-      }
-      
-      // Track latest follow-up due date
-      if (item.followUpDueAt > existing.latestFollowUpDueAt) {
-        existing.latestFollowUpDueAt = item.followUpDueAt;
-      }
-
-      // Track latest follow-up sent date
-      if (item.followUpSentAt && (!existing.latestFollowUpSentAt || item.followUpSentAt > existing.latestFollowUpSentAt)) {
-        existing.latestFollowUpSentAt = item.followUpSentAt;
-      }
-    }
-  }
-
-  // Convert map to array and return
-  return Array.from(groupedMap.values()).map(group => ({
-    id: group.mostRecentContact.id, // Use most recent contact's ID for linking
-    companyName: group.companyName,
-    companyLink: group.companyLink,
-    roleTargeted: group.roleTargeted,
-    personName: group.mostRecentContact.personName,
-    personRole: group.mostRecentContact.personRole,
-    status: group.mostRecentContact.status,
-    messageSentAt: group.earliestMessageSentAt, // Show when first contact was made
-    followUpDueAt: group.latestFollowUpDueAt, // Show latest follow-up date
-    followUpSentAt: group.latestFollowUpSentAt,
-    contactMethod: group.mostRecentContact.contactMethod,
-    contactCount: group.contactCount,
+  return items.map(item => ({
+    id: item.id,
+    companyName: item.companyName,
+    companyLink: item.companyLink,
+    roleTargeted: item.roleTargeted,
+    personName: item.contacts[0]?.personName || item.personName, // Fallback to legacy
+    personRole: item.contacts[0]?.personRole || item.personRole,
+    status: item.status,
+    messageSentAt: item.messageSentAt, 
+    followUpDueAt: item.followUpDueAt,
+    followUpSentAt: item.followUpSentAt,
+    contactMethod: item.contacts[0]?.contactMethod || item.contactMethod,
+    contactCount: item.contacts.length,
+    contacts: item.contacts,
   }));
 }
 
@@ -323,7 +279,7 @@ export async function addContactToCompanyAction(outreachId: string, formData: Fo
     if (!session?.user?.id) return { error: "Unauthorized" };
 
     const personName = formData.get("personName") as string;
-    const personRole = formData.get("personRole") as any;
+    const personRole = formData.get("personRole") as string;
     const contactMethod = formData.get("contactMethod") as any;
     const rawEmail = formData.get("emailAddress") as string;
     const rawLinkedin = formData.get("linkedinProfileUrl") as string;
@@ -336,31 +292,33 @@ export async function addContactToCompanyAction(outreachId: string, formData: Fo
     }
 
     // Get the base outreach info
-    const baseOutreach = await db.query.outreach.findFirst({
+    const existing = await db.query.outreach.findFirst({
         where: and(
             eq(outreach.id, outreachId),
             eq(outreach.userId, session.user.id)
         )
     });
 
-    if (!baseOutreach) return { error: "Outreach not found" };
+    if (!existing) return { error: "Outreach not found" };
 
     try {
-        await db.insert(outreach).values({
-            userId: session.user.id,
-            companyName: baseOutreach.companyName,
-            companyLink: baseOutreach.companyLink,
-            roleTargeted: baseOutreach.roleTargeted,
+        const newContact = {
             personName,
             personRole,
             contactMethod,
-            emailAddress: emailAddress || null,
-            linkedinProfileUrl: linkedinProfileUrl || null,
-            status: "DRAFT", // Default to draft for new contacts added this way
+            emailAddress,
+            linkedinProfileUrl,
             messageSentAt: new Date(),
             followUpDueAt: addDays(new Date(), 5),
-            notes: "",
-        });
+        };
+
+        await db.update(outreach)
+            .set({
+                contacts: [...existing.contacts, newContact],
+                updatedAt: new Date(),
+            })
+            .where(eq(outreach.id, outreachId));
+
     } catch (error) {
         console.error("Failed to add contact:", error);
         return { error: "Database error" };
@@ -370,39 +328,101 @@ export async function addContactToCompanyAction(outreachId: string, formData: Fo
     revalidatePath(`/outreach/${outreachId}`);
     return { success: true };
 }
-
-export async function updateOutreachAction(data: any) {
+export async function updateOutreachInlineAction(outreachId: string, contactIndex: number, data: Record<string, string>) {
     const session = await auth();
     if (!session?.user?.id) return { error: "Unauthorized" };
 
-    const parsed = editOutreachSchema.safeParse(data);
-    if (!parsed.success) {
-        return { 
-            error: "Validation failed", 
-            details: parsed.error.flatten().fieldErrors as any 
-        };
-    }
-
-    const { id, ...updateData } = parsed.data;
-
     try {
+        const existing = await db.query.outreach.findFirst({
+            where: and(
+                eq(outreach.id, outreachId),
+                eq(outreach.userId, session.user.id)
+            )
+        });
+
+        if (!existing) return { error: "Outreach not found" };
+
+        const updatedContacts = [...existing.contacts];
+        if (updatedContacts[contactIndex]) {
+            updatedContacts[contactIndex] = {
+                ...updatedContacts[contactIndex],
+                contactMethod: (data.contactMethod as any) || updatedContacts[contactIndex].contactMethod,
+                emailAddress: data.email || (data.email === "" ? null : updatedContacts[contactIndex].emailAddress),
+                linkedinProfileUrl: data.linkedin || (data.linkedin === "" ? null : updatedContacts[contactIndex].linkedinProfileUrl),
+            };
+        }
+
         await db.update(outreach)
             .set({
-                ...updateData,
+                roleTargeted: data.roleTargeted || existing.roleTargeted,
+                companyLink: data.companyLink || (data.companyLink === "" ? null : existing.companyLink),
+                contacts: updatedContacts,
                 updatedAt: new Date(),
+                // Update legacy columns if it's the first contact
+                ...(contactIndex === 0 ? {
+                    roleTargeted: data.roleTargeted || existing.roleTargeted,
+                    contactMethod: (data.contactMethod as any) || existing.contactMethod,
+                    emailAddress: data.email || (data.email === "" ? null : existing.emailAddress),
+                    linkedinProfileUrl: data.linkedin || (data.linkedin === "" ? null : existing.linkedinProfileUrl),
+                } : {})
             })
-            .where(
-                and(
-                    eq(outreach.id, id),
-                    eq(outreach.userId, session.user.id)
-                )
-            );
+            .where(eq(outreach.id, outreachId));
 
         revalidatePath("/dashboard");
-        revalidatePath(`/outreach/${id}`);
+        revalidatePath(`/outreach/${outreachId}`);
         return { success: true };
     } catch (error) {
-        console.error("Failed to update outreach:", error);
+        console.error("Failed to update outreach inline:", error);
+        return { error: "Database error" };
+    }
+}
+
+export async function deleteContactAction(outreachId: string, contactIndex: number) {
+    const session = await auth();
+    if (!session?.user?.id) return { error: "Unauthorized" };
+
+    try {
+        const existing = await db.query.outreach.findFirst({
+            where: and(
+                eq(outreach.id, outreachId),
+                eq(outreach.userId, session.user.id)
+            )
+        });
+
+        if (!existing) return { error: "Outreach not found" };
+
+        const updatedContacts = [...existing.contacts];
+        if (updatedContacts.length <= 1) {
+            return { error: "Cannot delete the last contact. Add another contact first or delete the entire company outreach." };
+        }
+
+        if (contactIndex < 0 || contactIndex >= updatedContacts.length) {
+            return { error: "Invalid contact selection" };
+        }
+
+        updatedContacts.splice(contactIndex, 1);
+
+        await db.update(outreach)
+            .set({
+                contacts: updatedContacts,
+                updatedAt: new Date(),
+                // Update legacy columns if we deleted the first contact, 
+                // they should now point to the new first contact
+                ...(contactIndex === 0 ? {
+                    personName: updatedContacts[0].personName,
+                    personRole: updatedContacts[0].personRole,
+                    contactMethod: updatedContacts[0].contactMethod,
+                    emailAddress: updatedContacts[0].emailAddress || null,
+                    linkedinProfileUrl: updatedContacts[0].linkedinProfileUrl || null,
+                } : {})
+            })
+            .where(eq(outreach.id, outreachId));
+
+        revalidatePath("/dashboard");
+        revalidatePath(`/outreach/${outreachId}`);
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to delete contact:", error);
         return { error: "Database error" };
     }
 }

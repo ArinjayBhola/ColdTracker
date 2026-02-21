@@ -8,6 +8,7 @@ import {
   pgEnum,
   varchar,
   boolean,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { type AdapterAccount } from "next-auth/adapters";
 
@@ -100,9 +101,9 @@ export const outreach = pgTable("outreach", {
   companyName: varchar("company_name", { length: 255 }).notNull(),
   companyLink: text("company_link"),
   roleTargeted: varchar("role_targeted", { length: 255 }).notNull(),
-  personName: varchar("person_name", { length: 255 }).notNull(),
-  personRole: text("person_role").notNull(),
-  contactMethod: contactMethodEnum("contact_method").notNull(),
+  personName: varchar("person_name", { length: 255 }),
+  personRole: text("person_role"),
+  contactMethod: contactMethodEnum("contact_method"),
   emailAddress: varchar("email_address", { length: 255 }),
   linkedinProfileUrl: text("linkedin_profile_url"),
   messageType: messageTypeEnum("message_type").default("COLD").notNull(),
@@ -111,6 +112,7 @@ export const outreach = pgTable("outreach", {
   followUpSentAt: timestamp("follow_up_sent_at", { mode: "date" }),
   status: statusEnum("status").default("DRAFT").notNull(),
   notes: text("notes"),
+  contacts: jsonb("contacts").$type<any[]>().default([]).notNull(),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
 });

@@ -26,7 +26,8 @@ type OutreachItem = {
   followUpDueAt: Date;
   followUpSentAt?: Date | null;
   contactMethod: string;
-  contactCount?: number;
+  contactCount: number;
+  contacts: any[];
 };
 
 export function OutreachTable({ items }: { items: OutreachItem[] }) {

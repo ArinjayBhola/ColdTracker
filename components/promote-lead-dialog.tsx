@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,8 +33,9 @@ import { format } from "date-fns";
 import { PromoteLeadValues, promoteLeadSchema } from "@/lib/validations";
 import { promoteLeadToOutreachAction, updateExtensionLeadAction } from "@/actions/extension-leads";
 import { useState } from "react";
-import { FiArrowRight, FiUser, FiBriefcase, FiMail, FiLinkedin, FiGlobe, FiRefreshCw } from "react-icons/fi";
+import { FiArrowRight, FiUser, FiBriefcase, FiMail, FiLinkedin, FiGlobe, FiRefreshCw, FiXCircle, FiLink } from "react-icons/fi";
 import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
 
 interface Lead {
   id: string;
@@ -50,78 +51,89 @@ interface Lead {
   notes?: string | null;
 }
 
-export function PromoteLeadDialog({ lead, onSuccess, onSaveSuccess }: { lead: Lead; onSuccess?: () => void; onSaveSuccess?: () => void; }) {
-  const [open, setOpen] = useState(false);
+interface PromoteLeadDialogProps {
+  lead: Lead;
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  onSuccess?: () => void;
+  onSaveSuccess?: () => void;
+}
+
+export function PromoteLeadDialog({ lead, open, setOpen, onSuccess, onSaveSuccess }: PromoteLeadDialogProps) {
+  const { toast } = useToast();
+  const router = useRouter();
   const [isPending, setIsPending] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [showCustomRole, setShowCustomRole] = useState(() => {
-    const predefinedRoles = ["HR", "CEO", "CTO", "RECRUITER", "OTHER"];
-    return lead.personRole && !predefinedRoles.includes(lead.personRole);
-  });
-  const { toast } = useToast();
 
   const form = useForm<PromoteLeadValues>({
     resolver: zodResolver(promoteLeadSchema) as any,
     defaultValues: {
       id: lead.id,
-      personName: lead.personName,
       companyName: lead.companyName || "",
       companyLink: lead.companyUrl || "",
       roleTargeted: lead.position || "",
-      personRole: lead.personRole || "RECRUITER",
-      contactMethod: "LINKEDIN",
-      emailAddress: lead.emailAddress || "",
-      linkedinProfileUrl: lead.profileUrl,
-      outreachDate: lead.outreachDate 
-        ? new Date(lead.outreachDate).toISOString().split('T')[0] 
-        : new Date().toISOString().split('T')[0],
-      followUpDate: lead.followUpDate 
-        ? new Date(lead.followUpDate).toISOString().split('T')[0] 
-        : "",
+      contacts: [{
+        personName: lead.personName,
+        personRole: (lead.personRole as any) || "RECRUITER",
+        contactMethod: "LINKEDIN",
+        emailAddress: lead.emailAddress || "",
+        linkedinProfileUrl: lead.profileUrl,
+        messageSentAt: lead.outreachDate ? new Date(lead.outreachDate) : new Date(),
+        followUpDueAt: lead.followUpDate ? new Date(lead.followUpDate) : undefined,
+      }],
       notes: lead.notes || "",
     },
   });
 
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "contacts",
+  });
+
   async function onSubmit(values: PromoteLeadValues) {
     setIsPending(true);
-    const formData = new FormData();
-    Object.entries(values).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        formData.append(key, value.toString());
+    
+    // Note: Since promoteLeadToOutreachAction was using FormData and individual fields, 
+    // it's better to update it to accept the JSON structure directly.
+    // However, I've already updated it in extension-leads.ts (Step 318).
+    // Actually, I should check my own update to extension-leads.ts.
+    // It takes (id, formData). I should probably update it to take (id, values).
+    
+    try {
+      const res = await promoteLeadToOutreachAction(lead.id, values);
+
+      if (res.success) {
+        toast({
+          title: "Promoted Successfully!",
+          description: "This lead has been moved to your outreach tracker.",
+        });
+        setOpen(false);
+        router.push(`/dashboard/outreach/${res.outreachId}`);
+      } else {
+        toast({
+          title: "Error",
+          description: res.error || "Failed to promote lead",
+          variant: "destructive",
+        });
       }
-    });
-
-    const res = await promoteLeadToOutreachAction(lead.id, formData);
-    setIsPending(false);
-
-    if (res.success) {
-      toast({
-        title: "Added to Outreach",
-        description: "The lead has been moved to your outreach list.",
-      });
-      setOpen(false);
-      if (onSuccess) onSuccess();
-    } else {
-      toast({
-        title: "Error",
-        description: res.error || "Failed to promote lead",
-        variant: "destructive",
-      });
+    } finally {
+      setIsPending(false);
     }
   }
 
   async function onSaveOnly(values: PromoteLeadValues) {
     setIsSaving(true);
+    const primary = values.contacts[0];
     const res = await updateExtensionLeadAction(lead.id, {
-        personName: values.personName,
+        personName: primary.personName,
         companyName: values.companyName,
-        companyUrl: values.companyLink,
+        companyUrl: values.companyLink || "",
         position: values.roleTargeted,
-        personRole: values.personRole,
-        emailAddress: values.emailAddress === "" ? null : values.emailAddress,
-        profileUrl: values.linkedinProfileUrl,
-        outreachDate: new Date(values.outreachDate),
-        followUpDate: values.followUpDate ? new Date(values.followUpDate) : null,
+        personRole: primary.personRole as any,
+        emailAddress: primary.emailAddress === "" ? null : primary.emailAddress,
+        profileUrl: primary.linkedinProfileUrl || "",
+        outreachDate: primary.messageSentAt ? new Date(primary.messageSentAt) : undefined,
+        followUpDate: primary.followUpDueAt ? new Date(primary.followUpDueAt) : null,
         notes: values.notes,
     });
     setIsSaving(false);
@@ -131,7 +143,6 @@ export function PromoteLeadDialog({ lead, onSuccess, onSaveSuccess }: { lead: Le
         title: "Lead Saved",
         description: "Your changes have been saved to the lead.",
       });
-      setOpen(false);
       if (onSaveSuccess) onSaveSuccess();
     } else {
       toast({
@@ -165,22 +176,6 @@ export function PromoteLeadDialog({ lead, onSuccess, onSaveSuccess }: { lead: Le
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="personName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Person Name</FormLabel>
-                      <FormControl>
-                        <div className="relative group">
-                          <Input placeholder="John Doe" className="h-11 pl-10 rounded-xl" {...field} />
-                          <FiUser className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
                   name="companyName"
                   render={({ field }) => (
                     <FormItem>
@@ -195,9 +190,6 @@ export function PromoteLeadDialog({ lead, onSuccess, onSaveSuccess }: { lead: Le
                     </FormItem>
                   )}
                 />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="roleTargeted"
@@ -214,168 +206,181 @@ export function PromoteLeadDialog({ lead, onSuccess, onSaveSuccess }: { lead: Le
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="personRole"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Person's Role</FormLabel>
-                      <div className="space-y-2">
-                        <Select
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            setShowCustomRole(value === "OTHER");
-                          }}
-                          defaultValue={showCustomRole ? "OTHER" : field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="h-11 rounded-xl">
-                              <SelectValue placeholder="Select Role" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="HR">HR</SelectItem>
-                            <SelectItem value="CEO">CEO</SelectItem>
-                            <SelectItem value="CTO">CTO</SelectItem>
-                            <SelectItem value="RECRUITER">Recruiter</SelectItem>
-                            <SelectItem value="OTHER">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        {showCustomRole && (
-                          <FormControl>
-                            <Input
-                              placeholder="Specify role..."
-                              value={field.value === "OTHER" ? "" : field.value}
-                              onChange={(e) => field.onChange(e.target.value)}
-                              required
-                              className="h-11 rounded-xl animate-in fade-in slide-in-from-top-1"
-                            />
-                          </FormControl>
-                        )}
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
 
               <FormField
                 control={form.control}
-                name="contactMethod"
+                name="companyLink"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Contact Method</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="h-11 rounded-xl">
-                          <SelectValue placeholder="Select Method" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="EMAIL">Email</SelectItem>
-                        <SelectItem value="LINKEDIN">LinkedIn</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="space-y-4 pt-2">
-                <FormField
-                  control={form.control}
-                  name="emailAddress"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Email (Optional)</FormLabel>
-                      <FormControl>
-                        <div className="relative group">
-                          <Input type="email" placeholder="john@example.com" className="h-11 pl-10 rounded-xl" {...field} />
-                          <FiMail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="linkedinProfileUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">LinkedIn URL</FormLabel>
-                      <FormControl>
-                        <div className="relative group">
-                          <Input placeholder="https://linkedin.com/in/..." className="h-11 pl-10 rounded-xl" {...field} />
-                          <FiLinkedin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="companyLink"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Company URL (Optional)</FormLabel>
-                      <FormControl>
-                        <div className="relative group">
-                          <Input placeholder="https://..." className="h-11 pl-10 rounded-xl" {...field} />
-                          <FiGlobe className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 border-t pt-4">
-                <FormField
-                  control={form.control}
-                  name="outreachDate"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col pt-1">
-                      <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Outreach Date</FormLabel>
-                      <DatePicker 
-                        value={field.value ? new Date(field.value) : undefined}
-                        onChange={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="followUpDate"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col pt-1">
-                      <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Follow-up Date</FormLabel>
-                      <DatePicker 
-                        value={field.value ? new Date(field.value) : undefined}
-                        onChange={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Notes (Optional)</FormLabel>
+                    <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Company Website</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Add any initial thoughts..." className="rounded-xl min-h-[100px]" {...field} />
+                      <div className="relative group">
+                        <Input placeholder="https://google.com" className="h-11 pl-10 rounded-xl" {...field} />
+                        <FiLink className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+            <section className="space-y-4 pt-4 border-t border-border/30">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold">Contacts</h3>
+                <Button type="button" variant="outline" size="sm" onClick={() => append({ personName: "", personRole: "HR", contactMethod: "LINKEDIN", emailAddress: "", linkedinProfileUrl: "", messageSentAt: new Date(), followUpDueAt: undefined } as any)} className="gap-1 font-bold">
+                   <FiArrowRight className="w-4 h-4" /> Add Person
+                </Button>
+              </div>
+
+              <div className="space-y-6">
+                {fields.map((fieldItem, index) => (
+                  <div key={fieldItem.id} className="relative p-6 rounded-2xl border-2 border-border/50 bg-muted/5 space-y-6">
+                    {fields.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => remove(index)}
+                        className="absolute top-2 right-2 h-7 w-7 rounded-full text-muted-foreground hover:text-destructive"
+                      >
+                        <FiXCircle className="w-4 h-4" />
+                      </Button>
+                    )}
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name={`contacts.${index}.personName`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Name</FormLabel>
+                            <FormControl>
+                              <div className="relative group">
+                                <Input placeholder="John Doe" className="h-11 pl-10 rounded-xl" {...field} />
+                                <FiUser className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`contacts.${index}.personRole`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Role</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger className="h-11 rounded-xl">
+                                  <SelectValue placeholder="Select Role" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="HR">HR</SelectItem>
+                                <SelectItem value="CEO">CEO</SelectItem>
+                                <SelectItem value="CTO">CTO</SelectItem>
+                                <SelectItem value="RECRUITER">Recruiter</SelectItem>
+                                <SelectItem value="OTHER">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name={`contacts.${index}.contactMethod`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Method</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger className="h-11 rounded-xl">
+                                  <SelectValue placeholder="Select Method" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="EMAIL">Email</SelectItem>
+                                <SelectItem value="LINKEDIN">LinkedIn</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`contacts.${index}.emailAddress`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Email</FormLabel>
+                            <FormControl>
+                              <div className="relative group">
+                                <Input placeholder="john@example.com" className="h-11 pl-10 rounded-xl" {...field} />
+                                <FiMail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name={`contacts.${index}.linkedinProfileUrl`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">LinkedIn Profile</FormLabel>
+                          <FormControl>
+                            <div className="relative group">
+                              <Input placeholder="https://linkedin.com/in/..." className="h-11 pl-10 rounded-xl" {...field} />
+                              <FiLinkedin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border/50">
+                      <FormField
+                        control={form.control}
+                        name={`contacts.${index}.messageSentAt`}
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Outreach Date</FormLabel>
+                            <DatePicker 
+                              value={field.value ? new Date(field.value) : undefined}
+                              onChange={field.onChange}
+                            />
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`contacts.${index}.followUpDueAt`}
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Follow-up Due</FormLabel>
+                            <DatePicker 
+                              value={field.value ? new Date(field.value) : undefined}
+                              onChange={field.onChange}
+                            />
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
             </div>
 
             <DialogFooter className="mt-8 flex flex-col-reverse sm:flex-row gap-2 sm:gap-0">
