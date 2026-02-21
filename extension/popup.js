@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
     const profileUrlInput = document.getElementById('profileUrl');
+    const personNameInput = document.getElementById('personName');
     const positionInput = document.getElementById('position');
     const companyNameInput = document.getElementById('companyName');
     const companyUrlInput = document.getElementById('companyUrl');
@@ -7,10 +8,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     const closeBtn = document.getElementById('closeBtn');
     const statusDiv = document.getElementById('status');
 
-    // Handle close button
     closeBtn.addEventListener('click', () => {
         window.parent.postMessage({ action: "close-sidebar" }, "*");
     });
+    
+    // Listen for name scraped by content script
+    window.addEventListener('message', (event) => {
+        if (event.data.action === "scraped-name" && event.data.name) {
+            personNameInput.value = event.data.name;
+        }
+    });
+
+    // Request the name just to be sure
+    window.parent.postMessage({ action: "request-name" }, "*");
     
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     
@@ -26,18 +36,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Function to get session token
     async function getSessionToken() {
         try {
-            // Check all possible NextAuth/Auth.js cookie names
             const names = [
                 'authjs.session-token',
                 'next-auth.session-token',
                 '__Secure-authjs.session-token',
                 '__Secure-next-auth.session-token'
             ];
-            
-            const url = 'http://localhost:3000';
+            const enviornment = process.env.NODE_ENV;
+            const url = enviornment === 'development' ? 'http://localhost:3000' : 'https://cold-tracker-mu.vercel.app';
             
             for (const name of names) {
                 const cookie = await chrome.cookies.get({
@@ -50,8 +58,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
             
-            // Fallback: try to get all cookies for the domain to see what's there
-            const allCookies = await chrome.cookies.getAll({ domain: 'localhost' });
+            const allCookies = await chrome.cookies.getAll({ domain: url });
             console.log('All localhost cookies:', allCookies.map(c => c.name));
             const sessionCookie = allCookies.find(c => c.name.includes('session-token'));
             return sessionCookie ? sessionCookie.value : null;
@@ -65,6 +72,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     saveBtn.addEventListener('click', async () => {
         const data = {
             profileUrl: profileUrlInput.value,
+            personName: personNameInput.value,
             position: positionInput.value,
             companyName: companyNameInput.value,
             companyUrl: companyUrlInput.value
@@ -77,14 +85,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const token = await getSessionToken();
         
         if (!token) {
-            statusDiv.textContent = 'Error: Not logged in. Please log in at http://localhost:3000 and try again.';
+            statusDiv.textContent = 'Error: Not logged in. Please log in at https://cold-tracker-mu.vercel.app and try again.';
             statusDiv.className = 'error';
             saveBtn.disabled = false;
             return;
         }
 
         try {
-            const response = await fetch('http://localhost:3000/api/extension', {
+            const response = await fetch('https://cold-tracker-mu.vercel.app/api/extension', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -107,7 +115,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (error) {
             console.error('Save error details:', error);
-            statusDiv.textContent = `Connection Error: ${error.message}. Is ColdTrack running at localhost:3000?`;
+            statusDiv.textContent = `Connection Error: ${error.message}. Is ColdTrack running at cold-tracker-mu.vercel.app?`;
             statusDiv.className = 'error';
             saveBtn.disabled = false;
         }

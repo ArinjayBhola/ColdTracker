@@ -66,7 +66,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { profileUrl, companyName, companyUrl, position } = body;
+    const { profileUrl, companyName, companyUrl, position, personName: scrapedName } = body;
 
     if (!profileUrl) {
       return new NextResponse("Profile URL is required", { 
@@ -75,21 +75,24 @@ export async function POST(req: Request) {
       });
     }
 
-    // Extract name from LinkedIn URL
-    let personName = "Unknown";
-    try {
-      const url = new URL(profileUrl);
-      const pathParts = url.pathname.split("/").filter((part) => part.length > 0);
-      if (pathParts[0] === "in" && pathParts[1]) {
-        const slug = pathParts[1];
-        personName = slug
-          .split("-")
-          .filter((part) => !/^\d+$/.test(part))
-          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(" ");
+    // Extract name: Prefer scrapedName from extension, fallback to URL parsing
+    let personName = scrapedName && scrapedName.trim() !== '' ? scrapedName : "Unknown";
+    
+    if (personName === "Unknown") {
+      try {
+        const url = new URL(profileUrl);
+        const pathParts = url.pathname.split("/").filter((part) => part.length > 0);
+        if (pathParts[0] === "in" && pathParts[1]) {
+          const slug = pathParts[1];
+          personName = slug
+            .split("-")
+            .filter((part) => !/^\d+$/.test(part))
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(" ");
+        }
+      } catch (e) {
+        console.error("Error extracting name from URL:", e);
       }
-    } catch (e) {
-      console.error("Error extracting name from URL:", e);
     }
 
     const [newLead] = await db

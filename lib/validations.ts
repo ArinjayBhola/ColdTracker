@@ -101,4 +101,6 @@ export const promoteLeadSchema = z.object({
   notes: z.string().optional(),
 });
 
+export type OutreachFormValues = z.infer<typeof outreachFormSchema>;
+export type EditOutreachValues = z.infer<typeof editOutreachSchema>;
 export type PromoteLeadValues = z.infer<typeof promoteLeadSchema>;

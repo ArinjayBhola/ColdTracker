@@ -10,7 +10,8 @@
     "cookies"
   ],
   "host_permissions": [
-    "http://localhost:3000/*"
+    "https://www.linkedin.com/in/*",
+    "https://cold-tracker-mu.vercel.app/*"
   ],
   "action": {},
   "background": {

@@ -6,10 +6,36 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
+// Extract name from LinkedIn profile
+function extractLinkedInName() {
+  try {
+    // LinkedIn often uses these classes for the main profile name
+    const heading = document.querySelector('.text-heading-xlarge') || 
+                    document.querySelector('h1');
+    if (heading) {
+      return heading.innerText.trim();
+    }
+  } catch (error) {
+    console.error("Error extracting name:", error);
+  }
+  return '';
+}
+
+function sendNameToIframe() {
+  if (iframe && iframe.contentWindow) {
+    const scrapedName = extractLinkedInName();
+    iframe.contentWindow.postMessage({ 
+      action: "scraped-name", 
+      name: scrapedName 
+    }, chrome.runtime.getURL('/'));
+  }
+}
+
 function toggleSidebar() {
   if (iframe) {
     if (iframe.style.display === "none") {
       iframe.style.display = "block";
+      sendNameToIframe(); // Send name again when re-opened
     } else {
       iframe.style.display = "none";
     }
@@ -29,6 +55,12 @@ function toggleSidebar() {
       display: block;
       transition: all 0.3s ease;
     `;
+    
+    iframe.onload = () => {
+      // Send the name once the iframe has loaded
+      sendNameToIframe();
+    };
+    
     document.body.appendChild(iframe);
   }
 }
@@ -39,5 +71,7 @@ window.addEventListener('message', (event) => {
     if (iframe) {
       iframe.style.display = "none";
     }
+  } else if (event.data.action === "request-name") {
+    sendNameToIframe();
   }
 });
