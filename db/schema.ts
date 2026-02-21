@@ -114,3 +114,17 @@ export const outreach = pgTable("outreach", {
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
 });
+
+// --- Extension Schema ---
+export const extensionLeads = pgTable("extension_leads", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("userId")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  profileUrl: text("profile_url").notNull(),
+  personName: varchar("person_name", { length: 255 }).notNull(),
+  companyName: varchar("company_name", { length: 255 }),
+  companyUrl: text("company_url"),
+  position: varchar("position", { length: 255 }).default("Job inquiry"),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+});

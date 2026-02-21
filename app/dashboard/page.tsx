@@ -2,16 +2,18 @@ import { getGroupedOutreachByCompany, getStats } from "@/actions/outreach";
 import { Sidebar } from "@/components/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FiPlus, FiSend, FiMessageCircle, FiVideo, FiAward, FiTrendingUp } from "react-icons/fi";
+import { FiPlus, FiSend, FiMessageCircle, FiVideo, FiAward, FiTrendingUp, FiLinkedin } from "react-icons/fi";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { ExportExcel } from "@/components/export-excel";
 import { OutreachTable } from "@/components/outreach-table";
 import { DashboardRefreshButton } from "@/components/dashboard-refresh-button";
+import { getExtensionLeadsAction } from "@/actions/extension-leads";
 
 export default async function DashboardPage() {
   const outreachItems = await getGroupedOutreachByCompany();
   const stats = await getStats();
+  const leads = await getExtensionLeadsAction();
 
   const statCards = [
     {
@@ -46,6 +48,14 @@ export default async function DashboardPage() {
       bgColor: "bg-emerald-500/10",
       borderColor: "border-emerald-500/20",
     },
+    {
+      title: "Ext. Leads",
+      value: leads.length,
+      icon: FiLinkedin,
+      iconColor: "text-blue-600 dark:text-blue-400",
+      bgColor: "bg-blue-500/10",
+      borderColor: "border-blue-500/20",
+    },
   ];
 
   return (
@@ -75,37 +85,52 @@ export default async function DashboardPage() {
             </div>
 
             {/* Stats Section */}
-            <div className="grid gap-4 md:gap-6 grid-cols-2 lg:grid-cols-4">
-                {statCards.map((stat) => (
-                    <Card 
-                    key={stat.title} 
+                        <div className="grid gap-4 md:gap-6 grid-cols-2 lg:grid-cols-5">
+              {statCards.map((stat) => (
+                <div key={stat.title}>
+                  <Card
                     className={cn(
-                        "border-none ring-1 transition-all hover:shadow-md",
-                        stat.borderColor.replace('border-', 'ring-'),
-                        stat.bgColor
+                      "h-[150px] md:h-[170px] border-none ring-1 transition-all hover:shadow-md flex flex-col justify-between",
+                      stat.borderColor.replace("border-", "ring-"),
+                      stat.bgColor
                     )}
-                    >
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4 md:pb-3">
-                        <CardTitle className="text-[10px] md:text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                  >
+                    <CardHeader className="flex flex-row items-center justify-between p-4 md:pb-3">
+                      <CardTitle className="text-[10px] md:text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                         {stat.title}
-                        </CardTitle>
-                        <div className={cn("hidden md:flex p-2.5 rounded-xl bg-background/80", stat.iconColor)}>
-                        <stat.icon className="h-5 w-5" />
-                        </div>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
-                        <div className="text-2xl md:text-4xl font-bold tracking-tight">{stat.value}</div>
-                        {stats.sent > 0 && stat.title !== "Total Sent" && (
-                        <p className="text-[10px] md:text-xs text-muted-foreground mt-1 md:mt-2 flex items-center gap-1">
-                            <FiTrendingUp className="w-3 h-3" />
-                            {((stat.value / stats.sent) * 100).toFixed(1)}%
-                        </p>
-                        )}
-                    </CardContent>
-                    </Card>
-                ))}
-            </div>
+                      </CardTitle>
 
+                      <div
+                        className={cn(
+                          "hidden md:flex p-2.5 rounded-xl bg-background/80",
+                          stat.iconColor
+                        )}
+                      >
+                        <stat.icon className="h-5 w-5" />
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="px-4 pb-4 md:px-6 md:pb-6 flex flex-col justify-end flex-1">
+                      <div className="text-2xl md:text-4xl font-bold tracking-tight">
+                        {stat.value}
+                      </div>
+
+                      {/* Always reserve space for percentage row */}
+                      <div className="h-5 mt-1 md:mt-2">
+                        {stats.sent > 0 &&
+                          stat.title !== "Total Sent" &&
+                          stat.title !== "Ext. Leads" && (
+                            <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1">
+                              <FiTrendingUp className="w-3 h-3" />
+                              {((stat.value / stats.sent) * 100).toFixed(1)}%
+                            </p>
+                          )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              ))}
+            </div>
             {/* Outreach Table */}
             <div>
                 <OutreachTable items={outreachItems} />

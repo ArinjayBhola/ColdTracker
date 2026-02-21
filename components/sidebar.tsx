@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { FiLayout, FiPlusCircle, FiBarChart2, FiLogOut, FiCheckSquare, FiChevronLeft, FiChevronRight, FiSettings } from "react-icons/fi";
+import { FiLayout, FiPlusCircle, FiBarChart2, FiLogOut, FiCheckSquare, FiChevronLeft, FiChevronRight, FiSettings, FiLinkedin } from "react-icons/fi";
 import { Button } from "./ui/button";
 import { signOut } from "next-auth/react";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -12,6 +12,7 @@ import Image from "next/image";
 
 const links = [
   { href: "/dashboard", label: "Dashboard", icon: FiLayout },
+  { href: "/dashboard/extension-leads", label: "Extension Leads", icon: FiLinkedin },
   { href: "/follow-ups", label: "Follow-ups", icon: FiCheckSquare },
   { href: "/outreach/new", label: "Add Outreach", icon: FiPlusCircle },
   { href: "/stats", label: "Stats", icon: FiBarChart2 },
@@ -116,7 +117,10 @@ export function Sidebar() {
         <nav className="flex-1 space-y-2">
           {links.map((link) => {
             const Icon = link.icon;
-            const isActive = pathname === link.href || pathname?.startsWith(link.href + "/");
+            // Precise matching for the root dashboard to avoid matching sub-routes
+            const isActive = link.href === "/dashboard" 
+              ? pathname === "/dashboard" 
+              : pathname === link.href || pathname?.startsWith(link.href + "/");
             const showLabel = !isCollapsed || isMobileOpen;
             return (
               <Link
