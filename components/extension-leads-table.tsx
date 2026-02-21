@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { FiTrash2, FiLinkedin, FiClock, FiMoreVertical } from "react-icons/fi";
+import { FiTrash2, FiLinkedin, FiClock, FiMoreVertical, FiAlertTriangle } from "react-icons/fi";
 import { format } from "date-fns";
 import { deleteExtensionLeadAction } from "@/actions/extension-leads";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +12,17 @@ import Link from "next/link";
 import { TableShell, TableContent } from "@/components/ui/data-table/table-shell";
 import { TableHeader } from "@/components/ui/data-table/table-header";
 import { TablePagination } from "@/components/ui/data-table/table-pagination";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Lead {
   id: string;
@@ -161,23 +172,16 @@ export function ExtensionLeadsTable({ initialLeads }: { initialLeads: Lead[] }) 
 
 function ExtensionLeadActions({ id, onDeleted }: { id: string; onDeleted: () => void }) {
     const [isOpen, setIsOpen] = useState(false);
-    const dropdownRef = useRef<HTMLDivElement>(null);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const { toast } = useToast();
 
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
-            }
-        };
-        if (isOpen) document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [isOpen]);
-
-    const handleDelete = async () => {
-        if (!confirm("Are you sure you want to delete this lead?")) return;
-        
+    const handleDelete = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        setIsDeleting(true);
         const result = await deleteExtensionLeadAction(id);
+        setIsDeleting(false);
+        setShowDeleteDialog(false);
         if (result.success) {
             toast({ title: "Lead deleted", description: "Removed from captured leads." });
             onDeleted();
@@ -187,29 +191,56 @@ function ExtensionLeadActions({ id, onDeleted }: { id: string; onDeleted: () => 
     };
 
     return (
-        <div className="relative" ref={dropdownRef}>
-            <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsOpen(!isOpen)}
-                className="h-9 w-9 rounded-xl border-2 border-transparent hover:border-border hover:bg-muted/50"
-            >
-                <FiMoreVertical className="w-4 h-4" />
-            </Button>
+        <div className="relative">
+            <Popover open={isOpen} onOpenChange={setIsOpen}>
+                <PopoverTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 rounded-xl border-2 border-transparent hover:border-border hover:bg-muted/50 data-[state=open]:bg-muted/50 data-[state=open]:border-border"
+                    >
+                        <FiMoreVertical className="w-4 h-4" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-40 p-1 rounded-xl shadow-xl">
+                    <button
+                        onClick={() => {
+                            setIsOpen(false);
+                            setShowDeleteDialog(true);
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm font-bold text-destructive hover:bg-destructive/10 flex items-center gap-2 transition-colors rounded-lg"
+                    >
+                        <FiTrash2 className="w-4 h-4" />
+                        Delete
+                    </button>
+                </PopoverContent>
+            </Popover>
 
-            {isOpen && (
-                <div className="absolute top-full right-0 mt-2 w-40 z-50 animate-in fade-in zoom-in-95 duration-100">
-                    <div className="rounded-xl border-2 border-border bg-background shadow-xl overflow-hidden py-1">
-                        <button
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
+                                <FiAlertTriangle className="w-6 h-6 text-destructive" />
+                            </div>
+                            <AlertDialogTitle className="text-xl">Delete Lead?</AlertDialogTitle>
+                        </div>
+                        <AlertDialogDescription className="text-base">
+                            This action cannot be undone. This will permanently delete this lead and all associated data.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
                             onClick={handleDelete}
-                            className="w-full px-4 py-2 text-left text-sm font-bold text-destructive hover:bg-destructive/10 flex items-center gap-2 transition-colors"
+                            disabled={isDeleting}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
-                            <FiTrash2 className="w-4 h-4" />
-                            Delete
-                        </button>
-                    </div>
-                </div>
-            )}
+                            {isDeleting ? "Deleting..." : "Delete"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

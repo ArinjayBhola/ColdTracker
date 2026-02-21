@@ -36,6 +36,7 @@ interface ExtensionLeadDetailClientProps {
 export function ExtensionLeadDetailClient({ initialData, id }: ExtensionLeadDetailClientProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -59,8 +60,11 @@ export function ExtensionLeadDetailClient({ initialData, id }: ExtensionLeadDeta
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDeleting(true);
     const result = await deleteExtensionLeadAction(id);
+    setIsDeleting(false);
     setShowDeleteDialog(false);
     if (result.success) {
       toast({ title: "Lead deleted", description: "Removed from captured leads." });
@@ -239,12 +243,13 @@ export function ExtensionLeadDetailClient({ initialData, id }: ExtensionLeadDeta
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                     onClick={handleDelete}
+                    disabled={isDeleting}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
-                    Delete
+                    {isDeleting ? "Deleting..." : "Delete"}
                 </AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
