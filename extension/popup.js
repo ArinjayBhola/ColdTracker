@@ -44,8 +44,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 '__Secure-authjs.session-token',
                 '__Secure-next-auth.session-token'
             ];
-            const enviornment = process.env.NODE_ENV;
-            const url = enviornment === 'development' ? 'http://localhost:3000' : 'https://cold-tracker-mu.vercel.app';
+            const isDev = false;
+            const url = isDev ? 'http://localhost:3000' : 'https://cold-tracker-mu.vercel.app';
             
             for (const name of names) {
                 const cookie = await chrome.cookies.get({
