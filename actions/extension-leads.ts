@@ -13,7 +13,7 @@ export async function getExtensionLeadsAction() {
 
   return await db.query.extensionLeads.findMany({
     where: eq(extensionLeads.userId, session.user.id),
-    orderBy: [extensionLeads.createdAt],
+    orderBy: [desc(extensionLeads.createdAt)],
   });
 }
 

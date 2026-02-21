@@ -191,16 +191,6 @@ export function ExtensionLeadsTable({ initialLeads }: { initialLeads: Lead[] }) 
                                                 View
                                             </Link>
                                         </Button>
-                                        
-                                        <Button 
-                                            variant="default" 
-                                            size="sm" 
-                                            onClick={() => handlePromote(lead)}
-                                            disabled={promotingId === lead.id}
-                                            className="gap-2 h-9 rounded-xl font-bold shadow-lg shadow-primary/20"
-                                        >
-                                            {promotingId === lead.id ? <FiRefreshCw className="w-4 h-4 animate-spin" /> : "Move to Outreach"}
-                                        </Button>
 
                                         <div className="hidden md:block">
                                             <ExtensionLeadActions id={lead.id} onDeleted={() => setLeads(leads.filter(l => l.id !== lead.id))} />
