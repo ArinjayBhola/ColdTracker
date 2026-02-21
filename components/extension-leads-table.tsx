@@ -78,19 +78,24 @@ export function ExtensionLeadsTable({ initialLeads }: { initialLeads: Lead[] }) 
 
         setPromotingId(lead.id);
         
-        const formData = new FormData();
-        formData.append("personName", lead.personName || "");
-        formData.append("companyName", lead.companyName || "");
-        formData.append("companyLink", lead.companyUrl || "");
-        formData.append("roleTargeted", lead.position || "");
-        formData.append("personRole", "OTHER");
-        formData.append("contactMethod", "LINKEDIN");
-        formData.append("emailAddress", "");
-        formData.append("linkedinProfileUrl", lead.profileUrl || "");
-        formData.append("outreachDate", new Date().toISOString().split('T')[0]);
-        formData.append("notes", "");
+        const promoteData = {
+            id: lead.id,
+            companyName: lead.companyName || "",
+            companyLink: lead.companyUrl || "",
+            roleTargeted: lead.position || "",
+            contacts: [{
+                personName: lead.personName || "",
+                personRole: "OTHER",
+                contactMethod: "LINKEDIN" as const,
+                emailAddress: "",
+                linkedinProfileUrl: lead.profileUrl || "",
+                messageSentAt: new Date(),
+                followUpDueAt: undefined,
+            }],
+            notes: "",
+        };
 
-        const res = await promoteLeadToOutreachAction(lead.id, formData);
+        const res = await promoteLeadToOutreachAction(lead.id, promoteData);
         setPromotingId(null);
 
         if (res.success) {

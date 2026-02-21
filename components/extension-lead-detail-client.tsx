@@ -110,29 +110,24 @@ export function ExtensionLeadDetailClient({ initialData, id }: ExtensionLeadDeta
 
     setIsPromoting(true);
     
-    const formData = new FormData();
-    formData.append("personName", item.personName || "");
-    formData.append("companyName", item.companyName || "");
-    formData.append("companyLink", item.companyUrl || "");
-    formData.append("roleTargeted", item.position || "");
-    formData.append("personRole", item.personRole || "OTHER");
-    formData.append("contactMethod", item.contactMethod || "LINKEDIN");
-    formData.append("emailAddress", item.emailAddress || "");
-    formData.append("linkedinProfileUrl", item.profileUrl || "");
-    
-    if (item.outreachDate) {
-      formData.append("outreachDate", new Date(item.outreachDate).toISOString().split('T')[0]);
-    } else {
-      formData.append("outreachDate", new Date().toISOString().split('T')[0]);
-    }
-    
-    if (item.followUpDate) {
-      formData.append("followUpDate", new Date(item.followUpDate).toISOString().split('T')[0]);
-    }
-    
-    formData.append("notes", item.notes || "");
+    const promoteData = {
+      id,
+      companyName: item.companyName || "",
+      companyLink: item.companyUrl || "",
+      roleTargeted: item.position || "",
+      contacts: [{
+        personName: item.personName || "",
+        personRole: item.personRole || "OTHER",
+        contactMethod: item.contactMethod || "LINKEDIN",
+        emailAddress: item.emailAddress || "",
+        linkedinProfileUrl: item.profileUrl || "",
+        messageSentAt: item.outreachDate ? new Date(item.outreachDate) : new Date(),
+        followUpDueAt: item.followUpDate ? new Date(item.followUpDate) : undefined,
+      }],
+      notes: item.notes || "",
+    };
 
-    const res = await promoteLeadToOutreachAction(id, formData);
+    const res = await promoteLeadToOutreachAction(id, promoteData);
     setIsPromoting(false);
 
     if (res.success) {
