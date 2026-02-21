@@ -61,10 +61,12 @@ export async function promoteLeadToOutreachAction(id: string, formData: FormData
   try {
     const outreachDate = outreachDateStr ? new Date(outreachDateStr) : new Date();
     const followUpDueAt = followUpDateStr ? new Date(followUpDateStr) : addDays(outreachDate, 5);
+    
+    let newOutreachId = "";
 
     await db.transaction(async (tx) => {
       // 1. Insert into outreach
-      await tx.insert(outreach).values({
+      const [newOutreach] = await tx.insert(outreach).values({
         userId: session.user.id,
         companyName,
         companyLink: companyLink || null,
@@ -78,7 +80,9 @@ export async function promoteLeadToOutreachAction(id: string, formData: FormData
         messageSentAt: outreachDate,
         followUpDueAt: followUpDueAt,
         notes: notes || "",
-      });
+      }).returning({ id: outreach.id });
+
+      newOutreachId = newOutreach.id;
 
       // 2. Delete from extensionLeads
       await tx.delete(extensionLeads).where(
@@ -91,7 +95,7 @@ export async function promoteLeadToOutreachAction(id: string, formData: FormData
 
     revalidatePath("/dashboard/extension-leads");
     revalidatePath("/dashboard");
-    return { success: true };
+    return { success: true, outreachId: newOutreachId };
   } catch (error) {
     console.error("Failed to promote lead:", error);
     return { error: "Database error" };
@@ -120,6 +124,8 @@ export async function updateExtensionLeadAction(id: string, values: {
   outreachDate?: Date;
   followUpDate?: Date | null;
   notes?: string;
+  profileUrl?: string;
+  contactMethod?: any;
 }) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };

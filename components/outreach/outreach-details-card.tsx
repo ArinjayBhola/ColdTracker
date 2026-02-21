@@ -23,12 +23,14 @@ export function OutreachDetailsCard({
 }: OutreachDetailsCardProps) {
   const detailItems: DetailItem[] = [
     {
+      id: "roleTargeted",
       label: "Target Role",
       value: roleTargeted,
       icon: <FiBriefcase className="w-3.5 h-3.5" />,
       copyValue: roleTargeted,
     },
     {
+      id: "companyLink",
       label: "Website",
       value: companyLink ? "Visit Page" : "-",
       icon: <FiExternalLink className="w-3.5 h-3.5" />,
@@ -37,11 +39,13 @@ export function OutreachDetailsCard({
       copyValue: companyLink || undefined,
     },
     {
+      id: "contactMethod",
       label: "Contact Method",
       value: contactMethod,
       icon: contactMethod === "EMAIL" ? <FiMail className="w-3.5 h-3.5" /> : <FiLinkedin className="w-3.5 h-3.5" />,
     },
     {
+      id: "emailAddress",
       label: "Email",
       value: emailAddress || "-",
       icon: <FiMail className="w-3.5 h-3.5" />,
@@ -51,6 +55,7 @@ export function OutreachDetailsCard({
 
   if (linkedinProfileUrl) {
     detailItems.push({
+      id: "linkedinProfileUrl",
       label: "LinkedIn Profile",
       value: "View LinkedIn Profile",
       icon: <FiLinkedin className="w-3.5 h-3.5" />,

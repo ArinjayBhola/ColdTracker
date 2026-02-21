@@ -1,9 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getExtensionLeadByIdAction, updateExtensionLeadAction, getCompanyExtensionLeads } from "@/actions/extension-leads";
+import { getExtensionLeadByIdAction, updateExtensionLeadAction, getCompanyExtensionLeads, promoteLeadToOutreachAction } from "@/actions/extension-leads";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FiFileText, FiLinkedin, FiBriefcase, FiExternalLink, FiTrash2, FiMail, FiCalendar, FiAlertTriangle } from "react-icons/fi";
+import { FiFileText, FiLinkedin, FiBriefcase, FiExternalLink, FiTrash2, FiMail, FiCalendar, FiAlertTriangle, FiRefreshCw } from "react-icons/fi";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,15 +15,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { NotesEditor } from "@/components/notes-editor";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { DetailHeader } from "@/components/details/detail-header";
 import { DetailContentCard, DetailItem } from "@/components/details/detail-content-card";
-import { EditExtensionLeadDialog } from "./edit-extension-lead-dialog";
-import { PromoteLeadDialog } from "./promote-lead-dialog";
 import { Button } from "./ui/button";
 import { deleteExtensionLeadAction } from "@/actions/extension-leads";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import { ExtensionLeadContactsCard } from "./extension-lead-contacts-card";
 import { AddExtensionLeadContactDialog } from "./add-extension-lead-contact-dialog";
@@ -37,8 +35,12 @@ export function ExtensionLeadDetailClient({ initialData, id }: ExtensionLeadDeta
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isPromoting, setIsPromoting] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const highlightQuery = searchParams.get("highlight");
+  const [highlightMissingFields, setHighlightMissingFields] = useState<string[]>([]);
 
   const { data: item, refetch: refetchItem } = useQuery({
     queryKey: ["extension-lead", id],
@@ -74,6 +76,80 @@ export function ExtensionLeadDetailClient({ initialData, id }: ExtensionLeadDeta
     }
   };
 
+  useEffect(() => {
+    if (highlightQuery === "true" && item) {
+      const missingFields: string[] = [];
+      if (!item.companyName || item.companyName === "-") missingFields.push("companyName");
+      if (!item.position || item.position === "-") missingFields.push("position");
+      
+      if (missingFields.length > 0) {
+        setHighlightMissingFields(missingFields);
+        setTimeout(() => setHighlightMissingFields([]), 3000);
+      }
+    }
+  }, [highlightQuery, item]);
+
+  const handlePromote = async () => {
+    const missingFields: string[] = [];
+    if (!item.personName || item.personName === "-") missingFields.push("personName");
+    if (!item.companyName || item.companyName === "-") missingFields.push("companyName");
+    if (!item.position || item.position === "-") missingFields.push("position");
+    if (!item.personRole || item.personRole === "-") missingFields.push("personRole");
+    if (!item.contactMethod || item.contactMethod === "-") missingFields.push("contactMethod");
+    
+    if (missingFields.length > 0) {
+      setHighlightMissingFields(missingFields);
+      toast({
+        title: "Missing Information",
+        description: "Please fill in the highlighted details before promoting.",
+        variant: "destructive",
+      });
+      setTimeout(() => setHighlightMissingFields([]), 3000);
+      return;
+    }
+
+    setIsPromoting(true);
+    
+    const formData = new FormData();
+    formData.append("personName", item.personName || "");
+    formData.append("companyName", item.companyName || "");
+    formData.append("companyLink", item.companyUrl || "");
+    formData.append("roleTargeted", item.position || "");
+    formData.append("personRole", item.personRole || "OTHER");
+    formData.append("contactMethod", item.contactMethod || "LINKEDIN");
+    formData.append("emailAddress", item.emailAddress || "");
+    formData.append("linkedinProfileUrl", item.profileUrl || "");
+    
+    if (item.outreachDate) {
+      formData.append("outreachDate", new Date(item.outreachDate).toISOString().split('T')[0]);
+    } else {
+      formData.append("outreachDate", new Date().toISOString().split('T')[0]);
+    }
+    
+    if (item.followUpDate) {
+      formData.append("followUpDate", new Date(item.followUpDate).toISOString().split('T')[0]);
+    }
+    
+    formData.append("notes", item.notes || "");
+
+    const res = await promoteLeadToOutreachAction(id, formData);
+    setIsPromoting(false);
+
+    if (res.success) {
+      toast({
+        title: "Added to Outreach",
+        description: "The lead has been securely moved to your outreach tracker.",
+      });
+      router.push(`/outreach/${res.outreachId}`);
+    } else {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all details (Company Name, etc) before promoting.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (!item) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
@@ -84,24 +160,54 @@ export function ExtensionLeadDetailClient({ initialData, id }: ExtensionLeadDeta
 
   const detailItems: DetailItem[] = [
     {
+      id: "personName",
+      label: "Person Name",
+      value: item.personName || "-",
+      icon: <FiFileText className="w-3.5 h-3.5" />,
+      copyValue: item.personName || undefined,
+      required: true,
+    },
+    {
+      id: "companyName",
+      label: "Company Name",
+      value: item.companyName || "-",
+      icon: <FiBriefcase className="w-3.5 h-3.5" />,
+      copyValue: item.companyName || undefined,
+      required: true,
+    },
+    {
+      id: "position",
       label: "Position",
       value: item.position || "Job inquiry",
       icon: <FiBriefcase className="w-3.5 h-3.5" />,
       copyValue: item.position || undefined,
+      required: true,
     },
     {
+      id: "personRole",
       label: "Designation",
-      value: item.personRole || "Contact",
+      value: item.personRole || "Other",
       icon: <FiBriefcase className="w-3.5 h-3.5" />,
-      copyValue: item.personRole || undefined,
+      copyValue: item.personRole || "OTHER",
+      inputType: "select-with-custom",
+      options: [
+        { label: "HR", value: "HR" },
+        { label: "CEO", value: "CEO" },
+        { label: "CTO", value: "CTO" },
+        { label: "Recruiter", value: "RECRUITER" },
+        { label: "Other", value: "OTHER" },
+      ],
+      required: true,
     },
     {
+      id: "emailAddress",
       label: "Email Address",
       value: item.emailAddress || "-",
       icon: <FiMail className="w-3.5 h-3.5" />,
       copyValue: item.emailAddress || undefined,
     },
     {
+      id: "companyUrl",
       label: "Company Website",
       value: item.companyUrl ? "Visit Page" : "-",
       icon: <FiExternalLink className="w-3.5 h-3.5" />,
@@ -110,16 +216,36 @@ export function ExtensionLeadDetailClient({ initialData, id }: ExtensionLeadDeta
       copyValue: item.companyUrl || undefined,
     },
     {
+      id: "outreachDate",
       label: "Outreach Target",
       value: item.outreachDate ? format(new Date(item.outreachDate), "MMM d, yyyy") : "-",
+      copyValue: item.outreachDate ? format(new Date(item.outreachDate), "yyyy-MM-dd") : "",
       icon: <FiCalendar className="w-3.5 h-3.5" />,
+      inputType: "date",
     },
     {
+      id: "followUpDate",
       label: "Follow-up Target",
       value: item.followUpDate ? format(new Date(item.followUpDate), "MMM d, yyyy") : "-",
+      copyValue: item.followUpDate ? format(new Date(item.followUpDate), "yyyy-MM-dd") : "",
       icon: <FiCalendar className="w-3.5 h-3.5" />,
+      inputType: "date",
     },
     {
+      id: "contactMethod",
+      label: "Contact Method",
+      value: item.contactMethod === "EMAIL" ? "Email" : "LinkedIn",
+      copyValue: item.contactMethod || "LINKEDIN",
+      icon: item.contactMethod === "EMAIL" ? <FiMail className="w-3.5 h-3.5" /> : <FiLinkedin className="w-3.5 h-3.5" />,
+      inputType: "select",
+      options: [
+        { label: "LinkedIn", value: "LINKEDIN" },
+        { label: "Email", value: "EMAIL" }
+      ],
+      required: true,
+    },
+    {
+      id: "profileUrl",
       label: "LinkedIn Profile",
       value: "View LinkedIn Profile",
       icon: <FiLinkedin className="w-3.5 h-3.5" />,
@@ -154,12 +280,16 @@ export function ExtensionLeadDetailClient({ initialData, id }: ExtensionLeadDeta
             <>
                 <AddExtensionLeadContactDialog leadId={id} />
                 <div className="h-8 w-px bg-border mx-1 hidden md:block" />
-                <PromoteLeadDialog 
-                    lead={item} 
-                    onSuccess={() => router.push("/dashboard")}
-                />
+                <Button 
+                    variant="default" 
+                    size="sm" 
+                    onClick={handlePromote}
+                    disabled={isPromoting}
+                    className="gap-2 h-9 rounded-xl font-bold shadow-lg shadow-primary/20"
+                >
+                    {isPromoting ? <FiRefreshCw className="w-4 h-4 animate-spin" /> : "Move to Outreach"}
+                </Button>
                 <div className="h-8 w-px bg-border mx-1 hidden md:block" />
-                <EditExtensionLeadDialog initialData={item} />
                 <Button 
                     variant="outline" 
                     size="sm" 
@@ -177,6 +307,29 @@ export function ExtensionLeadDetailClient({ initialData, id }: ExtensionLeadDeta
         <div className="lg:col-span-2 space-y-6 md:space-y-8">
           <DetailContentCard 
             items={detailItems}
+            editable={true}
+            highlightIds={highlightMissingFields}
+            onSave={async (data) => {
+              const res = await updateExtensionLeadAction(id, {
+                personName: data.personName,
+                companyName: data.companyName,
+                position: data.position,
+                personRole: data.personRole,
+                emailAddress: data.emailAddress,
+                companyUrl: data.companyUrl,
+                outreachDate: data.outreachDate ? new Date(data.outreachDate) : undefined,
+                followUpDate: data.followUpDate ? new Date(data.followUpDate) : null,
+                profileUrl: data.profileUrl,
+                contactMethod: data.contactMethod,
+              });
+              if (res.success) {
+                toast({ title: "Details updated", description: "Lead details have been saved." });
+                refetchItem();
+                router.refresh();
+              } else {
+                toast({ variant: "destructive", title: "Update failed", description: res.error || "Failed to save details." });
+              }
+            }}
           />
 
           <Card className="border-2 shadow-sm">

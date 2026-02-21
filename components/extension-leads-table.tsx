@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { FiTrash2, FiLinkedin, FiClock, FiMoreVertical, FiAlertTriangle } from "react-icons/fi";
+import { FiTrash2, FiLinkedin, FiClock, FiMoreVertical, FiAlertTriangle, FiRefreshCw } from "react-icons/fi";
 import { format } from "date-fns";
-import { deleteExtensionLeadAction } from "@/actions/extension-leads";
+import { promoteLeadToOutreachAction, deleteExtensionLeadAction } from "@/actions/extension-leads";
 import { useToast } from "@/hooks/use-toast";
-import { PromoteLeadDialog } from "./promote-lead-dialog";
 import { Button } from "./ui/button";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { TableShell, TableContent } from "@/components/ui/data-table/table-shell";
@@ -41,6 +41,50 @@ export function ExtensionLeadsTable({ initialLeads }: { initialLeads: Lead[] }) 
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
     const { toast } = useToast();
+    const router = useRouter();
+    const [promotingId, setPromotingId] = useState<string | null>(null);
+
+    const handlePromote = async (lead: Lead) => {
+        if (!lead.companyName || lead.companyName === "-" || !lead.position || lead.position === "-") {
+            toast({
+                title: "Missing Information",
+                description: "This lead needs more details. Click 'View' to fill in Company Name and Position before promoting.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        setPromotingId(lead.id);
+        
+        const formData = new FormData();
+        formData.append("personName", lead.personName || "");
+        formData.append("companyName", lead.companyName || "");
+        formData.append("companyLink", lead.companyUrl || "");
+        formData.append("roleTargeted", lead.position || "");
+        formData.append("personRole", "OTHER");
+        formData.append("contactMethod", "LINKEDIN");
+        formData.append("emailAddress", "");
+        formData.append("linkedinProfileUrl", lead.profileUrl || "");
+        formData.append("outreachDate", new Date().toISOString().split('T')[0]);
+        formData.append("notes", "");
+
+        const res = await promoteLeadToOutreachAction(lead.id, formData);
+        setPromotingId(null);
+
+        if (res.success) {
+            toast({
+                title: "Added to Outreach",
+                description: "The lead has been securely moved to your outreach tracker.",
+            });
+            router.push(`/outreach/${res.outreachId}`);
+        } else {
+            toast({
+                title: "Missing Information",
+                description: "This lead needs more details. Click 'View' to fill in missing fields before promoting.",
+                variant: "destructive",
+            });
+        }
+    };
 
     const filteredLeads = leads.filter(lead => 
         (lead.personName?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
@@ -148,7 +192,15 @@ export function ExtensionLeadsTable({ initialLeads }: { initialLeads: Lead[] }) 
                                             </Link>
                                         </Button>
                                         
-                                        <PromoteLeadDialog lead={lead} />
+                                        <Button 
+                                            variant="default" 
+                                            size="sm" 
+                                            onClick={() => handlePromote(lead)}
+                                            disabled={promotingId === lead.id}
+                                            className="gap-2 h-9 rounded-xl font-bold shadow-lg shadow-primary/20"
+                                        >
+                                            {promotingId === lead.id ? <FiRefreshCw className="w-4 h-4 animate-spin" /> : "Move to Outreach"}
+                                        </Button>
 
                                         <div className="hidden md:block">
                                             <ExtensionLeadActions id={lead.id} onDeleted={() => setLeads(leads.filter(l => l.id !== lead.id))} />

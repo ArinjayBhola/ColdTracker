@@ -22,11 +22,11 @@ interface DatePickerProps {
 }
 
 export function DatePicker({ value, onChange, placeholder = "Pick a date", className, name }: DatePickerProps) {
-  const [date, setDate] = React.useState<Date | undefined>(value)
+  const [date, setDate] = React.useState<Date | undefined>(value ? new Date(value) : undefined)
   const [open, setOpen] = React.useState(false)
 
   React.useEffect(() => {
-    setDate(value)
+    setDate(value ? new Date(value) : undefined)
   }, [value])
 
   const handleSelect = (newDate: Date | undefined) => {
@@ -39,7 +39,7 @@ export function DatePicker({ value, onChange, placeholder = "Pick a date", class
 
   return (
     <div className={cn("grid gap-2", className)}>
-      <input type="hidden" name={name} value={date ? date.toISOString() : ""} />
+      <input type="hidden" name={name} value={date && !isNaN(date.getTime()) ? date.toISOString() : ""} />
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
@@ -50,7 +50,7 @@ export function DatePicker({ value, onChange, placeholder = "Pick a date", class
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-            {date ? format(date, "PPP") : <span>{placeholder}</span>}
+            {date && !isNaN(date.getTime()) ? format(date, "PPP") : <span>{placeholder}</span>}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0 rounded-2xl border-border/50 bg-card/95 backdrop-blur-2xl shadow-premium animate-in zoom-in-95 duration-200" align="start">

@@ -31,7 +31,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
 import { format } from "date-fns";
 import { PromoteLeadValues, promoteLeadSchema } from "@/lib/validations";
-import { promoteLeadToOutreachAction } from "@/actions/extension-leads";
+import { promoteLeadToOutreachAction, updateExtensionLeadAction } from "@/actions/extension-leads";
 import { useState } from "react";
 import { FiArrowRight, FiUser, FiBriefcase, FiMail, FiLinkedin, FiGlobe, FiRefreshCw } from "react-icons/fi";
 import { useToast } from "@/hooks/use-toast";
@@ -50,9 +50,10 @@ interface Lead {
   notes?: string | null;
 }
 
-export function PromoteLeadDialog({ lead, onSuccess }: { lead: Lead; onSuccess?: () => void }) {
+export function PromoteLeadDialog({ lead, onSuccess, onSaveSuccess }: { lead: Lead; onSuccess?: () => void; onSaveSuccess?: () => void; }) {
   const [open, setOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [showCustomRole, setShowCustomRole] = useState(() => {
     const predefinedRoles = ["HR", "CEO", "CTO", "RECRUITER", "OTHER"];
     return lead.personRole && !predefinedRoles.includes(lead.personRole);
@@ -104,6 +105,38 @@ export function PromoteLeadDialog({ lead, onSuccess }: { lead: Lead; onSuccess?:
       toast({
         title: "Error",
         description: res.error || "Failed to promote lead",
+        variant: "destructive",
+      });
+    }
+  }
+
+  async function onSaveOnly(values: PromoteLeadValues) {
+    setIsSaving(true);
+    const res = await updateExtensionLeadAction(lead.id, {
+        personName: values.personName,
+        companyName: values.companyName,
+        companyUrl: values.companyLink,
+        position: values.roleTargeted,
+        personRole: values.personRole,
+        emailAddress: values.emailAddress === "" ? null : values.emailAddress,
+        profileUrl: values.linkedinProfileUrl,
+        outreachDate: new Date(values.outreachDate),
+        followUpDate: values.followUpDate ? new Date(values.followUpDate) : null,
+        notes: values.notes,
+    });
+    setIsSaving(false);
+
+    if (res.success) {
+      toast({
+        title: "Lead Saved",
+        description: "Your changes have been saved to the lead.",
+      });
+      setOpen(false);
+      if (onSaveSuccess) onSaveSuccess();
+    } else {
+      toast({
+        title: "Error",
+        description: res.error || "Failed to save lead",
         variant: "destructive",
       });
     }
@@ -345,7 +378,7 @@ export function PromoteLeadDialog({ lead, onSuccess }: { lead: Lead; onSuccess?:
               />
             </div>
 
-            <DialogFooter className="mt-8">
+            <DialogFooter className="mt-8 flex flex-col-reverse sm:flex-row gap-2 sm:gap-0">
               <Button
                 type="button"
                 variant="ghost"
@@ -354,17 +387,32 @@ export function PromoteLeadDialog({ lead, onSuccess }: { lead: Lead; onSuccess?:
               >
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                disabled={isPending}
-                className="h-11 px-8 rounded-xl font-bold shadow-lg shadow-primary/20"
-              >
-                {isPending ? (
-                  <FiRefreshCw className="w-4 h-4 animate-spin" />
-                ) : (
-                  "Add to Outreach"
-                )}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isPending || isSaving}
+                  onClick={form.handleSubmit(onSaveOnly)}
+                  className="h-11 px-6 rounded-xl font-bold group hover:bg-primary/5 border-2"
+                >
+                  {isSaving ? (
+                    <FiRefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    "Save Only"
+                  )}
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isPending || isSaving}
+                  className="h-11 px-8 rounded-xl font-bold shadow-lg shadow-primary/20"
+                >
+                  {isPending ? (
+                    <FiRefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    "Add to Outreach"
+                  )}
+                </Button>
+              </div>
             </DialogFooter>
           </form>
         </Form>

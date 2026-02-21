@@ -23,7 +23,7 @@ export function Toaster() {
           <Toast key={id} {...props}>
             <div className="flex gap-3 items-start">
               <div className="mt-0.5">
-                {variant === "destructive" && <AlertCircle className="h-5 w-5 text-destructive-foreground" />}
+                {variant === "destructive" && <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />}
                 {variant === "success" && <CheckCircle2 className="h-5 w-5 text-success-foreground" />}
                 {variant === "warning" && <AlertCircle className="h-5 w-5 text-warning-foreground" />}
                 {variant === "default" && <Info className="h-5 w-5 text-primary" />}

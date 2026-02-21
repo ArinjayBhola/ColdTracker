@@ -112,9 +112,13 @@ export function EditExtensionLeadDialog({ initialData }: { initialData: any }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2 font-bold h-9">
-          <FiEdit2 className="w-4 h-4" />
-          Edit
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-8 w-8 rounded-full hover:bg-muted"
+        >
+          <FiEdit2 className="w-4 h-4 text-muted-foreground hover:text-foreground transition-colors" />
+          <span className="sr-only">Edit Lead</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">

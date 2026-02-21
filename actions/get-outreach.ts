@@ -4,7 +4,6 @@ import { db } from "@/db";
 import { outreach } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { eq, and } from "drizzle-orm";
-import { notFound } from "next/navigation";
 
 export async function getOutreachById(id: string) {
   const session = await auth();
