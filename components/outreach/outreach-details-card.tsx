@@ -1,15 +1,10 @@
-"use client";
-
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   FiBriefcase,
   FiExternalLink,
   FiMail,
   FiLinkedin,
 } from "react-icons/fi";
-import { CopyButton } from "../copy-button";
-import Link from "next/link";
+import { DetailContentCard, DetailItem } from "@/components/details/detail-content-card";
 
 interface OutreachDetailsCardProps {
   roleTargeted: string;
@@ -26,147 +21,45 @@ export function OutreachDetailsCard({
   emailAddress,
   linkedinProfileUrl,
 }: OutreachDetailsCardProps) {
-  const [roleCopied, setRoleCopied] = useState(false);
-  const [websiteCopied, setWebsiteCopied] = useState(false);
-  const [emailCopied, setEmailCopied] = useState(false);
-  const [linkedinCopied, setLinkedinCopied] = useState(false);
+  const detailItems: DetailItem[] = [
+    {
+      label: "Target Role",
+      value: roleTargeted,
+      icon: <FiBriefcase className="w-3.5 h-3.5" />,
+      copyValue: roleTargeted,
+    },
+    {
+      label: "Website",
+      value: companyLink ? "Visit Page" : "-",
+      icon: <FiExternalLink className="w-3.5 h-3.5" />,
+      isLink: !!companyLink,
+      href: companyLink || undefined,
+      copyValue: companyLink || undefined,
+    },
+    {
+      label: "Contact Method",
+      value: contactMethod,
+      icon: contactMethod === "EMAIL" ? <FiMail className="w-3.5 h-3.5" /> : <FiLinkedin className="w-3.5 h-3.5" />,
+    },
+    {
+      label: "Email",
+      value: emailAddress || "-",
+      icon: <FiMail className="w-3.5 h-3.5" />,
+      copyValue: emailAddress || undefined,
+    },
+  ];
 
-  const copyToClipboard = async (
-    value: string,
-    setCopied: (v: boolean) => void
-  ) => {
-    await navigator.clipboard.writeText(value);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
+  if (linkedinProfileUrl) {
+    detailItems.push({
+      label: "LinkedIn Profile",
+      value: "View LinkedIn Profile",
+      icon: <FiLinkedin className="w-3.5 h-3.5" />,
+      isLink: true,
+      href: linkedinProfileUrl,
+      copyValue: linkedinProfileUrl,
+      fullWidth: true,
+    });
+  }
 
-  return (
-    <Card className="border-2 shadow-sm">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-xl font-extrabold">
-          <div className="w-1.5 h-6 rounded-full bg-primary" />
-          Details
-        </CardTitle>
-      </CardHeader>
-
-      <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Target Role */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-              <FiBriefcase className="w-3.5 h-3.5" />
-              Target Role
-            </label>
-
-            <div className="flex items-center gap-2 font-bold text-lg">
-              <p className="truncate">{roleTargeted}</p>
-              <CopyButton
-                copied={roleCopied}
-                onClick={() =>
-                  copyToClipboard(roleTargeted, setRoleCopied)
-                }
-              />
-            </div>
-          </div>
-
-          {/* Company Website */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-              <FiExternalLink className="w-3.5 h-3.5" />
-              Website
-            </label>
-
-            {companyLink ? (
-              <div className="flex items-center gap-3">
-                <Link
-                  href={companyLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 text-primary hover:text-primary/80 font-bold transition-all group"
-                >
-                  Visit Page
-                  <FiExternalLink className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                </Link>
-
-                <CopyButton
-                  copied={websiteCopied}
-                  onClick={() =>
-                    copyToClipboard(companyLink, setWebsiteCopied)
-                  }
-                />
-              </div>
-            ) : (
-              <span className="text-muted-foreground">-</span>
-            )}
-          </div>
-
-          {/* Contact Method */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-              {contactMethod === "EMAIL" ? (
-                <FiMail className="w-3.5 h-3.5" />
-              ) : (
-                <FiLinkedin className="w-3.5 h-3.5" />
-              )}
-              Contact Method
-            </label>
-            <div className="font-bold">{contactMethod}</div>
-          </div>
-
-          {/* Email */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-              <FiMail className="w-3.5 h-3.5" />
-              Email
-            </label>
-
-            <div className="flex items-center gap-2 font-bold">
-              <p className="truncate">{emailAddress || "-"}</p>
-
-              {emailAddress && (
-                <CopyButton
-                  copied={emailCopied}
-                  onClick={() =>
-                    copyToClipboard(emailAddress, setEmailCopied)
-                  }
-                />
-              )}
-            </div>
-          </div>
-
-          {/* LinkedIn */}
-          {linkedinProfileUrl && (
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                <FiLinkedin className="w-3.5 h-3.5" />
-                LinkedIn Profile
-              </label>
-
-              <div className="flex items-center gap-3 font-bold">
-                <a
-                  href={linkedinProfileUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
-                >
-                  View LinkedIn Profile
-                  <FiExternalLink className="w-4 h-4" />
-                </a>
-
-                <CopyButton
-                  copied={linkedinCopied}
-                  onClick={() =>
-                    copyToClipboard(
-                      linkedinProfileUrl,
-                      setLinkedinCopied
-                    )
-                  }
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
+  return <DetailContentCard items={detailItems} />;
 }

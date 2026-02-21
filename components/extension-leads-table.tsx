@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PromoteLeadDialog } from "./promote-lead-dialog";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 import { TableShell, TableContent } from "@/components/ui/data-table/table-shell";
 import { TableHeader } from "@/components/ui/data-table/table-header";
 import { TablePagination } from "@/components/ui/data-table/table-pagination";
@@ -131,9 +132,9 @@ export function ExtensionLeadsTable({ initialLeads }: { initialLeads: Lead[] }) 
                                 <td className="p-6 align-middle text-right">
                                     <div className="flex items-center justify-end gap-2">
                                         <Button variant="outline" size="sm" asChild className="h-9 px-4 text-xs font-bold rounded-xl flex items-center gap-2 border-2 hover:bg-muted/50 transition-all">
-                                            <a href={lead.profileUrl} target="_blank" rel="noopener noreferrer">
+                                            <Link href={`/dashboard/extension-leads/${lead.id}`}>
                                                 View
-                                            </a>
+                                            </Link>
                                         </Button>
                                         
                                         <PromoteLeadDialog lead={lead} />

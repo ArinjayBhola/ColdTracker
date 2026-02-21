@@ -16,18 +16,6 @@ export default async function ExtensionLeadsPage() {
       iconColor: "text-blue-600 dark:text-blue-400",
       bgColor: "bg-blue-500/10",
       borderColor: "border-blue-500/20",
-    },
-    {
-      title: "Recent Active",
-      value: leads.filter(l => {
-        const weekAgo = new Date();
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        return new Date(l.createdAt) > weekAgo;
-      }).length,
-      icon: FiClock,
-      iconColor: "text-amber-600 dark:text-amber-400",
-      bgColor: "bg-amber-500/10",
-      borderColor: "border-amber-500/20",
     }
   ];
 

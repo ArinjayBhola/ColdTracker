@@ -1,38 +1,28 @@
 "use client";
 
-import { updateOutreachNotes } from "@/actions/outreach";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { FiEdit2, FiSave, FiX } from "react-icons/fi";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useToast } from "@/hooks/use-toast";
 
-export function NotesEditor({ id, initialNotes }: { id: string; initialNotes: string | null }) {
+interface NotesEditorProps {
+  id: string;
+  initialNotes: string | null;
+  onSave: (id: string, notes: string) => Promise<{ success?: boolean; error?: string }>;
+}
+
+export function NotesEditor({ id, initialNotes, onSave }: NotesEditorProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [notes, setNotes] = useState(initialNotes || "");
     const [isSaving, setIsSaving] = useState(false);
-    const router = useRouter();
-    const { toast } = useToast();
 
     const handleSave = async () => {
         setIsSaving(true);
-        const result = await updateOutreachNotes(id, notes);
+        const result = await onSave(id, notes);
         
         setIsSaving(false);
         if (result.success) {
             setIsEditing(false);
-            toast({
-                title: "Notes saved",
-                description: "Your updates have been stored successfully.",
-            });
-            router.refresh();
-        } else {
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: result.error || "Failed to save notes.",
-            });
         }
     };
 

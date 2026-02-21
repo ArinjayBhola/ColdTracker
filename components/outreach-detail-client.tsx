@@ -137,7 +137,28 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <NotesEditor id={item.id} initialNotes={item.notes} />
+              <NotesEditor 
+                id={item.id} 
+                initialNotes={item.notes} 
+                onSave={async (id, notes) => {
+                  const { updateOutreachNotes } = await import("@/actions/outreach");
+                  const res = await updateOutreachNotes(id, notes);
+                  if (res.success) {
+                    toast({
+                      title: "Notes saved",
+                      description: "Your updates have been stored successfully.",
+                    });
+                    refetchItem();
+                  } else {
+                    toast({
+                      variant: "destructive",
+                      title: "Error",
+                      description: res.error || "Failed to save notes.",
+                    });
+                  }
+                  return res;
+                }}
+              />
             </CardContent>
           </Card>
         </div>

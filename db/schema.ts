@@ -126,5 +126,10 @@ export const extensionLeads = pgTable("extension_leads", {
   companyName: varchar("company_name", { length: 255 }),
   companyUrl: text("company_url"),
   position: varchar("position", { length: 255 }).default("Job inquiry"),
+  personRole: roleInternalEnum("person_role"),
+  emailAddress: varchar("email_address", { length: 255 }),
+  outreachDate: timestamp("outreach_date", { mode: "date" }).defaultNow().notNull(),
+  followUpDate: timestamp("follow_up_date", { mode: "date" }),
+  notes: text("notes"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
 });
