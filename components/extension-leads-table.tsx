@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { FiTrash2, FiLinkedin, FiClock, FiMoreVertical, FiAlertTriangle, FiRefreshCw } from "react-icons/fi";
 import { format } from "date-fns";
-import { promoteLeadToOutreachAction, deleteExtensionLeadAction } from "@/actions/extension-leads";
+import { promoteLeadToOutreachAction, deleteExtensionLeadAction, getExtensionLeadsAction } from "@/actions/extension-leads";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "./ui/button";
 import { useRouter } from "next/navigation";
@@ -13,6 +13,7 @@ import { TableShell, TableContent } from "@/components/ui/data-table/table-shell
 import { TableHeader } from "@/components/ui/data-table/table-header";
 import { TablePagination } from "@/components/ui/data-table/table-pagination";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,10 +40,31 @@ export function ExtensionLeadsTable({ initialLeads }: { initialLeads: Lead[] }) 
     const [leads, setLeads] = useState(initialLeads);
     const [searchQuery, setSearchQuery] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const itemsPerPage = 10;
     const { toast } = useToast();
     const router = useRouter();
     const [promotingId, setPromotingId] = useState<string | null>(null);
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        try {
+            const updatedLeads = await getExtensionLeadsAction();
+            setLeads(updatedLeads as Lead[]);
+            toast({
+                title: "Data Refreshed",
+                description: "The latest leads have been loaded.",
+            });
+        } catch (error) {
+            toast({
+                title: "Refresh Failed",
+                description: "Failed to fetch latest data. Please try again.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
 
     const handlePromote = async (lead: Lead) => {
         if (!lead.companyName || lead.companyName === "-" || !lead.position || lead.position === "-") {
@@ -112,6 +134,15 @@ export function ExtensionLeadsTable({ initialLeads }: { initialLeads: Lead[] }) 
                 <p className="text-muted-foreground max-w-sm mt-2">
                     Leads you capture using the browser extension will appear here.
                 </p>
+                <Button 
+                    onClick={handleRefresh} 
+                    disabled={isRefreshing}
+                    variant="outline" 
+                    className="mt-4 gap-2 border-2"
+                >
+                    {isRefreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <FiRefreshCw className="w-4 h-4" />}
+                    Check for New Leads
+                </Button>
             </div>
         );
     }
@@ -124,7 +155,22 @@ export function ExtensionLeadsTable({ initialLeads }: { initialLeads: Lead[] }) 
                 searchQuery={searchQuery}
                 onSearchChange={handleSearchChange}
                 placeholder="Search leads by name, company, or role..."
-            />
+            >
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                    className="h-10 px-4 text-xs font-bold rounded-lg flex items-center gap-2 border-2 hover:bg-muted/50 transition-all ml-auto sm:ml-0"
+                >
+                    {isRefreshing ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                        <FiRefreshCw className="w-4 h-4" />
+                    )}
+                    {isRefreshing ? "Refreshing..." : "Refresh"}
+                </Button>
+            </TableHeader>
 
             <TableContent>
                 <thead className="border-b border-border/50 bg-muted/30">
