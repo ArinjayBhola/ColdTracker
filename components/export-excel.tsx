@@ -29,14 +29,7 @@ export function ExportExcel({ data, fileName = "outreach-data" }: ExportExcelPro
       const formattedData = data.flatMap((item) => {
         const contacts = Array.isArray(item.contacts) && item.contacts.length > 0
           ? item.contacts 
-          : [{
-              personName: item.personName,
-              personRole: item.personRole,
-              contactMethod: item.contactMethod,
-              emailAddress: item.emailAddress,
-              messageSentAt: item.messageSentAt,
-              followUpDueAt: item.followUpDueAt
-            }];
+          : [];
 
         return contacts.map((contact: any) => ({
           Company: item.companyName,

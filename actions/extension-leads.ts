@@ -84,8 +84,6 @@ export async function promoteLeadToOutreachAction(id: string, values: PromoteLea
           roleTargeted,
           contacts: formattedContacts,
           status: "DRAFT",
-          messageSentAt: contacts[0]?.messageSentAt || new Date(),
-          followUpDueAt: contacts[0]?.followUpDueAt || addDays(new Date(), 5),
           notes: notes || "",
         }).returning({ id: outreach.id });
 
