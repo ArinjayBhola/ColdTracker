@@ -58,7 +58,7 @@ export async function GET(request: Request) {
       const pendingFollowUps = await db.query.outreach.findMany({
         where: and(
           eq(outreach.userId, user.id),
-          lt(outreach.followUpDueAt, endOfTodayUTC),
+          lt(sql`(${outreach.contacts}->0->>'followUpDueAt')::timestamp`, endOfTodayUTC),
           sql`${outreach.followUpSentAt} IS NULL`,
           not(sql`${outreach.status} IN ('REPLIED', 'REJECTED', 'OFFER', 'CLOSED')`)
         ),
