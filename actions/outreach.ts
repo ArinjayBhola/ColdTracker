@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { outreach } from "@/db/schema";
 import { outreachFormSchema, STATUSES } from "@/lib/validations";
 import { auth } from "@/lib/auth";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, asc, and, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { addDays } from "date-fns";
 export type ActionState = {
@@ -108,14 +108,6 @@ export async function createOutreachAction(prevState: ActionState, formData: For
         notes,
         createdAt: now,
         updatedAt: now,
-        // These are legacy columns, we keep them for now but they won't be used by the new UI
-        personName: validatedContacts[0].personName,
-        personRole: validatedContacts[0].personRole,
-        contactMethod: validatedContacts[0].contactMethod,
-        emailAddress: validatedContacts[0].emailAddress || null,
-        linkedinProfileUrl: validatedContacts[0].linkedinProfileUrl || null,
-        messageSentAt: sentAt,
-        followUpDueAt,
       }).returning({ id: outreach.id });
 
       revalidatePath("/dashboard");
@@ -131,11 +123,10 @@ export async function getOutreachItems() {
   const session = await auth();
   if (!session?.user?.id) return [];
 
-  // Sort by followUpDueAt ascending (closest first) by default for dashboard?
-  // User asked for "Sort by follow-up due date by default"
+  // Sort by messageSentAt from the first contact in JSONB (latest first)
   return await db.query.outreach.findMany({
     where: eq(outreach.userId, session.user.id),
-    orderBy: [desc(outreach.followUpDueAt)], 
+    orderBy: [desc(sql`${outreach.contacts}->0->>'messageSentAt'`)], 
   });
 }
 
@@ -162,7 +153,7 @@ export async function getGroupedOutreachByCompany() {
 
   const items = await db.query.outreach.findMany({
     where: eq(outreach.userId, session.user.id),
-    orderBy: [desc(outreach.updatedAt)],
+    orderBy: [desc(sql`${outreach.contacts}->0->>'messageSentAt'`)],
   });
 
   return items.map(item => ({
@@ -170,13 +161,13 @@ export async function getGroupedOutreachByCompany() {
     companyName: item.companyName,
     companyLink: item.companyLink,
     roleTargeted: item.roleTargeted,
-    personName: item.contacts[0]?.personName || item.personName, // Fallback to legacy
-    personRole: item.contacts[0]?.personRole || item.personRole,
+    personName: item.contacts[0]?.personName || "No Contact",
+    personRole: item.contacts[0]?.personRole || "N/A",
     status: item.status,
-    messageSentAt: item.messageSentAt, 
-    followUpDueAt: item.followUpDueAt,
+    messageSentAt: item.contacts[0]?.messageSentAt, 
+    followUpDueAt: item.contacts[0]?.followUpDueAt,
     followUpSentAt: item.followUpSentAt,
-    contactMethod: item.contacts[0]?.contactMethod || item.contactMethod,
+    contactMethod: item.contacts[0]?.contactMethod || "EMAIL",
     contactCount: item.contacts.length,
     contacts: item.contacts,
   }));
@@ -358,13 +349,6 @@ export async function updateOutreachInlineAction(outreachId: string, contactInde
                 companyLink: data.companyLink || (data.companyLink === "" ? null : existing.companyLink),
                 contacts: updatedContacts,
                 updatedAt: new Date(),
-                // Update legacy columns if it's the first contact
-                ...(contactIndex === 0 ? {
-                    roleTargeted: data.roleTargeted || existing.roleTargeted,
-                    contactMethod: (data.contactMethod as any) || existing.contactMethod,
-                    emailAddress: data.email || (data.email === "" ? null : existing.emailAddress),
-                    linkedinProfileUrl: data.linkedin || (data.linkedin === "" ? null : existing.linkedinProfileUrl),
-                } : {})
             })
             .where(eq(outreach.id, outreachId));
 
@@ -406,15 +390,6 @@ export async function deleteContactAction(outreachId: string, contactIndex: numb
             .set({
                 contacts: updatedContacts,
                 updatedAt: new Date(),
-                // Update legacy columns if we deleted the first contact, 
-                // they should now point to the new first contact
-                ...(contactIndex === 0 ? {
-                    personName: updatedContacts[0].personName,
-                    personRole: updatedContacts[0].personRole,
-                    contactMethod: updatedContacts[0].contactMethod,
-                    emailAddress: updatedContacts[0].emailAddress || null,
-                    linkedinProfileUrl: updatedContacts[0].linkedinProfileUrl || null,
-                } : {})
             })
             .where(eq(outreach.id, outreachId));
 

@@ -3,8 +3,8 @@
 import { db } from "@/db";
 import { outreach } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { eq, and, asc, not, isNull, isNotNull, lt, gt, between, ilike, or, SQL } from "drizzle-orm";
-import { startOfDay, endOfDay, parseISO } from "date-fns";
+import { eq, and, asc, desc, not, sql } from "drizzle-orm";
+import { startOfDay, endOfDay } from "date-fns";
 
 export async function getFollowUpItems() {
   const session = await auth();
@@ -25,26 +25,29 @@ export async function getFollowUpItems() {
         not(eq(outreach.status, "OFFER")),
         not(eq(outreach.status, "CLOSED"))
     ),
-    orderBy: [asc(outreach.followUpDueAt)],
+    orderBy: [desc(outreach.updatedAt)],
   });
 
   const activeItems = allItems.filter(i => !i.followUpSentAt);
-  const sent = allItems.filter(i => !!i.followUpSentAt);
+  const sent = allItems.filter(i => !!i.followUpSentAt).map(i => ({
+      ...i,
+      followUpDueAt: (i.contacts as any[])[0]?.followUpDueAt || i.updatedAt
+  }));
 
   const today = activeItems.filter(i => {
-      const d = new Date(i.followUpDueAt);
+      const d = new Date((i.contacts as any[])[0]?.followUpDueAt);
       return d >= startOfToday && d <= endOfToday;
-  });
+  }).map(i => ({ ...i, followUpDueAt: (i.contacts as any[])[0]?.followUpDueAt }));
 
   const overdue = allItems.filter(i => {
-      const d = new Date(i.followUpDueAt);
-      return d < startOfToday;
-  });
+      const d = new Date((i.contacts as any[])[0]?.followUpDueAt);
+      return d < startOfToday && !i.followUpSentAt;
+  }).map(i => ({ ...i, followUpDueAt: (i.contacts as any[])[0]?.followUpDueAt }));
 
   const upcoming = activeItems.filter(i => {
-      const d = new Date(i.followUpDueAt);
+      const d = new Date((i.contacts as any[])[0]?.followUpDueAt);
       return d > endOfToday;
-  });
+  }).map(i => ({ ...i, followUpDueAt: (i.contacts as any[])[0]?.followUpDueAt }));
 
   return { today, overdue, upcoming, sent };
 }
@@ -77,17 +80,26 @@ export async function updateFollowUpDateAction(id: string, newDate: Date) {
   if (!session?.user?.id) return { error: "Unauthorized" };
 
   try {
+    const existing = await db.query.outreach.findFirst({
+        where: and(eq(outreach.id, id), eq(outreach.userId, session.user.id))
+    });
+
+    if (!existing) return { error: "Not found" };
+
+    const updatedContacts = [...existing.contacts];
+    if (updatedContacts[0]) {
+        updatedContacts[0] = {
+            ...updatedContacts[0],
+            followUpDueAt: newDate
+        };
+    }
+
     await db.update(outreach)
       .set({
-        followUpDueAt: newDate,
+        contacts: updatedContacts,
         updatedAt: new Date()
       })
-      .where(
-        and(
-          eq(outreach.id, id),
-          eq(outreach.userId, session.user.id)
-        )
-      );
+      .where(eq(outreach.id, id));
     return { success: true };
   } catch (error) {
     console.error("Failed to update follow-up date:", error);
@@ -109,61 +121,52 @@ export async function getPaginatedFollowUpItemsAction(
   const startOfToday = startOfDay(now);
   const endOfToday = endOfDay(now);
 
-  const andConditions = [eq(outreach.userId, userId)];
-
-  // Category Logic
-  switch (category) {
-    case "OVERDUE":
-      andConditions.push(
-        lt(outreach.followUpDueAt, startOfToday),
-        isNull(outreach.followUpSentAt),
-        not(eq(outreach.status, "REPLIED")),
-        not(eq(outreach.status, "REJECTED")),
-        not(eq(outreach.status, "OFFER")),
-        not(eq(outreach.status, "CLOSED"))
-      );
-      break;
-    case "TODAY":
-      andConditions.push(
-        between(outreach.followUpDueAt, startOfToday, endOfToday),
-        isNull(outreach.followUpSentAt),
-        not(eq(outreach.status, "REPLIED")),
-        not(eq(outreach.status, "REJECTED")),
-        not(eq(outreach.status, "OFFER")),
-        not(eq(outreach.status, "CLOSED"))
-      );
-      break;
-    case "UPCOMING":
-      andConditions.push(
-        gt(outreach.followUpDueAt, endOfToday),
-        isNull(outreach.followUpSentAt),
-        not(eq(outreach.status, "REPLIED")),
-        not(eq(outreach.status, "REJECTED")),
-        not(eq(outreach.status, "OFFER")),
-        not(eq(outreach.status, "CLOSED"))
-      );
-      break;
-    case "SENT":
-      andConditions.push(isNotNull(outreach.followUpSentAt));
-      break;
-  }
-
-  const results = await db.query.outreach.findMany({
-    where: and(...(andConditions as [SQL, ...SQL[]])),
-    orderBy: [asc(outreach.followUpDueAt)], 
-    limit: limit + 1,
-    offset: offset,
+  const allItems = await db.query.outreach.findMany({
+    where: and(eq(outreach.userId, userId)),
+    orderBy: [desc(sql`${outreach.contacts}->0->>'messageSentAt'`)],
   });
 
-  const hasMore = results.length > limit;
-  const items = results.slice(0, limit).map(item => ({
+  let filteredRaw = allItems.filter(item => {
+    const firstContact = (item.contacts as any[])[0];
+    const dueAt = firstContact ? new Date(firstContact.followUpDueAt) : null;
+    
+    if (category === "SENT") {
+        return !!item.followUpSentAt;
+    }
+
+    const isMatch = !item.followUpSentAt && 
+           !["REPLIED", "REJECTED", "OFFER", "CLOSED"].includes(item.status);
+
+    if (!isMatch) return false;
+
+    if (!dueAt) return false;
+
+    switch (category) {
+        case "OVERDUE": return dueAt < startOfToday;
+        case "TODAY": return dueAt >= startOfToday && dueAt <= endOfToday;
+        case "UPCOMING": return dueAt > endOfToday;
+        default: return false;
+    }
+  });
+
+  // Sort by due date for these categories
+  if (category !== "SENT") {
+      filteredRaw.sort((a, b) => {
+          const tA = new Date((a.contacts as any[])[0]?.followUpDueAt).getTime();
+          const tB = new Date((b.contacts as any[])[0]?.followUpDueAt).getTime();
+          return tA - tB;
+      });
+  }
+
+  const hasMore = filteredRaw.length > offset + limit;
+  const items = filteredRaw.slice(offset, offset + limit).map(item => ({
     id: item.id,
     companyName: item.companyName,
-    personName: (item.contacts as any[])[0]?.personName || item.personName,
+    personName: (item.contacts as any[])[0]?.personName || "No Contact",
     roleTargeted: item.roleTargeted,
     status: item.status,
-    followUpDueAt: item.followUpDueAt,
-    contactMethod: (item.contacts as any[])[0]?.contactMethod || item.contactMethod,
+    followUpDueAt: (item.contacts as any[])[0]?.followUpDueAt,
+    contactMethod: (item.contacts as any[])[0]?.contactMethod || "EMAIL",
     followUpSentAt: item.followUpSentAt,
     contacts: item.contacts,
   }));

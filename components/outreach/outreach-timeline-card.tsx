@@ -50,7 +50,9 @@ export function OutreachTimelineCard({
             </div>
             <div className="flex-1">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Sent Date</p>
-              <p className="font-bold text-sm mt-0.5">{format(new Date(messageSentAt), "MMMM d, yyyy")}</p>
+              <p className="font-bold text-sm mt-0.5">
+                {messageSentAt ? format(new Date(messageSentAt), "MMMM d, yyyy") : "Date not set"}
+              </p>
             </div>
           </div>
 
@@ -119,7 +121,7 @@ export function OutreachTimelineCard({
                         "font-bold text-sm mt-0.5",
                         isOverdue && !followUpSentAt && "text-destructive"
                       )}>
-                        {format(new Date(followUpDueAt), "MMMM d, yyyy")}
+                        {followUpDueAt ? format(new Date(followUpDueAt), "MMMM d, yyyy") : "Date not set"}
                       </p>
                       {isOverdue && !followUpSentAt && (
                         <p className="text-[10px] text-destructive font-extrabold mt-1 tracking-wider uppercase">Action Overdue</p>

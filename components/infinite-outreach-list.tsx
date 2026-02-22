@@ -290,7 +290,7 @@ export function InfiniteOutreachList({
                                         {item.companyName}
                                     </h3>
                                     <p className="text-xs md:text-sm text-muted-foreground truncate">
-                                        {item.contacts[0]?.personName || item.personName} {item.contacts.length > 1 ? `(+${item.contacts.length - 1} more)` : ""} • {item.roleTargeted}
+                                        {item.personName} {item.contacts.length > 1 ? `(+${item.contacts.length - 1} more)` : ""} • {item.roleTargeted}
                                     </p>
                                 </div>
                                 <div className="scale-90 md:scale-100 origin-top-right shrink-0">

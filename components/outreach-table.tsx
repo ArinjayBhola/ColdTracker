@@ -22,8 +22,8 @@ type OutreachItem = {
   personName: string;
   personRole: string;
   status: string;
-  messageSentAt: Date;
-  followUpDueAt: Date;
+  messageSentAt: Date | string;
+  followUpDueAt: Date | string;
   followUpSentAt?: Date | null;
   contactMethod: string;
   contactCount: number;
@@ -228,9 +228,9 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
                         {!["REPLIED", "REJECTED", "OFFER", "CLOSED"].includes(item.status) && !item.followUpSentAt && (
                           <div className={cn(
                             "w-2.5 h-2.5 rounded-full flex-shrink-0 animate-pulse",
-                            new Date(item.followUpDueAt) < new Date()
+                            item.followUpDueAt && new Date(item.followUpDueAt) < new Date()
                               ? "bg-destructive shadow-[0_0_8px_rgba(239,68,68,0.5)]"
-                              : new Date(item.followUpDueAt).toDateString() === new Date().toDateString()
+                              : item.followUpDueAt && new Date(item.followUpDueAt).toDateString() === new Date().toDateString()
                               ? "bg-primary shadow-[0_0_8px_rgba(var(--primary),0.5)]"
                               : "hidden"
                           )} />
@@ -273,18 +273,18 @@ export function OutreachTable({ items }: { items: OutreachItem[] }) {
                 </td>
                 <td className="hidden lg:table-cell p-6 align-middle">
                   <span className="font-mono text-xs text-muted-foreground font-medium whitespace-nowrap">
-                    {format(item.messageSentAt, "MMM d, yyyy")}
+                    {item.messageSentAt ? format(new Date(item.messageSentAt), "MMM d, yyyy") : "-"}
                   </span>
                 </td>
                 <td className="hidden sm:table-cell p-6 align-middle">
                   {item.status !== "REPLIED" && item.status !== "CLOSED" && item.status !== "REJECTED" ? (
                     <span className={cn(
                       "text-[10px] md:text-xs font-semibold px-2 md:px-3 py-1 md:py-1.5 rounded-full border whitespace-nowrap inline-block",
-                      new Date(item.followUpDueAt) < new Date() 
+                      item.followUpDueAt && new Date(item.followUpDueAt) < new Date() 
                         ? "bg-destructive/10 text-destructive border-destructive/30" 
                         : "bg-background text-muted-foreground border-border"
                     )}>
-                      {format(item.followUpDueAt, "MMM d")}
+                      {item.followUpDueAt ? format(new Date(item.followUpDueAt), "MMM d") : "-"}
                     </span>
                   ) : (
                     <span className="text-muted-foreground">-</span>

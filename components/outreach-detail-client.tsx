@@ -148,7 +148,11 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
     );
   }
 
-  const isOverdue = new Date(item.followUpDueAt) < new Date();
+  const activeContact = item.contacts?.[activeContactIndex] || item.contacts?.[0] || {};
+  const messageSentAt = activeContact.messageSentAt;
+  const followUpDueAt = activeContact.followUpDueAt;
+  
+  const isOverdue = followUpDueAt && new Date(followUpDueAt) < new Date();
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 md:space-y-8 pt-16 md:pt-0">
@@ -212,10 +216,10 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
 
         <div className="space-y-6">
           <OutreachTimelineCard 
-            messageSentAt={item.messageSentAt}
-            followUpDueAt={item.followUpDueAt}
+            messageSentAt={messageSentAt}
+            followUpDueAt={followUpDueAt}
             followUpSentAt={item.followUpSentAt}
-            isOverdue={isOverdue}
+            isOverdue={!!isOverdue}
             isEditingDate={isEditingDate}
             setIsEditingDate={setIsEditingDate}
             newDueDate={newDueDate}

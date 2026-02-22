@@ -20,9 +20,9 @@ type FollowUpItem = {
   personName: string;
   roleTargeted: string;
   status: string;
-  followUpDueAt: Date;
+  followUpDueAt: Date | string;
   contactMethod: string;
-  followUpSentAt?: Date | null;
+  followUpSentAt?: Date | string | null;
 };
 
 type FollowUpSectionProps = {
@@ -235,7 +235,7 @@ export function FollowUpSections({
                             )}>
                               <FiClock className="w-3.5 h-3.5" />
                               {section.title === "Overdue" && "Overdue: "}
-                              {format(item.followUpDueAt, "MMM d, yyyy")}
+                              {item.followUpDueAt ? format(new Date(item.followUpDueAt), "MMM d, yyyy") : "-"}
                             </div>
                           </div>
                         </div>
