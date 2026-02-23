@@ -4,6 +4,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const positionInput = document.getElementById('position');
     const companyNameInput = document.getElementById('companyName');
     const companyUrlInput = document.getElementById('companyUrl');
+    const emailAddressInput = document.getElementById('emailAddress');
+    const contactMethodInput = document.getElementById('contactMethod');
     const saveBtn = document.getElementById('saveBtn');
     const closeBtn = document.getElementById('closeBtn');
     const statusDiv = document.getElementById('status');
@@ -75,7 +77,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             personName: personNameInput.value,
             position: positionInput.value,
             companyName: companyNameInput.value,
-            companyUrl: companyUrlInput.value
+            companyUrl: companyUrlInput.value,
+            emailAddress: emailAddressInput.value,
+            contactMethod: contactMethodInput.value
         };
 
         statusDiv.textContent = 'Saving...';

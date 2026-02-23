@@ -55,11 +55,16 @@ export async function promoteLeadToOutreachAction(id: string, values: PromoteLea
         ),
       });
 
-      // Prepare contacts for JSONB storage (ensure dates are strings or handled by DB)
-      const formattedContacts = contacts.map((c: any) => ({
-        ...c,
-        createdAt: new Date().toISOString(),
-      }));
+      // Prepare contacts for JSONB storage (ensure dates are handled by DB)
+      const formattedContacts = contacts.map((c: any) => {
+        const sentAt = c.messageSentAt || new Date();
+        return {
+          ...c,
+          messageSentAt: sentAt,
+          followUpDueAt: c.followUpDueAt || addDays(sentAt, 5),
+          createdAt: new Date().toISOString(),
+        };
+      });
 
       if (existing) {
         // Update existing entry
@@ -178,6 +183,7 @@ export async function addContactToExtensionLeadAction(leadId: string, formData: 
     const personRole = formData.get("personRole") as any;
     const emailAddressStr = formData.get("emailAddress") as string;
     const linkedinProfileUrl = formData.get("linkedinProfileUrl") as string;
+    const contactMethod = formData.get("contactMethod") as any;
 
     const emailAddress = emailAddressStr === "" ? null : emailAddressStr;
 
@@ -205,6 +211,7 @@ export async function addContactToExtensionLeadAction(leadId: string, formData: 
             personName,
             personRole,
             emailAddress: emailAddress || null,
+            contactMethod: contactMethod || "LINKEDIN",
             outreachDate: baseLead.outreachDate,
             followUpDate: baseLead.followUpDate,
             notes: "",

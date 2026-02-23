@@ -184,6 +184,19 @@
     <label>Company URL (Optional)</label>
     <input type="text" id="companyUrl" placeholder="https://google.com">
   </div>
+  
+  <div class="field">
+    <label>Email Address (Optional)</label>
+    <input type="email" id="emailAddress" placeholder="e.g. john@company.com">
+  </div>
+
+  <div class="field">
+    <label>Contact Method</label>
+    <select id="contactMethod" style="width: 100%; box-sizing: border-box; padding: 10px 12px; border: 2px solid #eee; border-radius: 10px; font-size: 14px; outline: none; background: white; cursor: pointer;">
+      <option value="LINKEDIN">LinkedIn</option>
+      <option value="EMAIL">Email</option>
+    </select>
+  </div>
 
   <button id="saveBtn">Save to ColdTrack</button>
   <div id="status"></div>

@@ -116,7 +116,7 @@ export function AddExtensionLeadContactDialog({ leadId }: { leadId: string }) {
                         </div>
 
                         <div className="space-y-4 pt-2">
-                             <div className="space-y-1.5">
+                            <div className="space-y-1.5">
                                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Email Address (Optional)</label>
                                 <div className="relative group">
                                     <Input 
@@ -127,6 +127,18 @@ export function AddExtensionLeadContactDialog({ leadId }: { leadId: string }) {
                                     />
                                     <FiMail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                 </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Contact Method</label>
+                                <Select name="contactMethod" defaultValue="LINKEDIN">
+                                    <SelectTrigger className="h-11 rounded-xl">
+                                        <SelectValue placeholder="Select Method" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="LINKEDIN">LinkedIn</SelectItem>
+                                        <SelectItem value="EMAIL">Email</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">LinkedIn URL (Optional)</label>

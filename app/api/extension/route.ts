@@ -66,7 +66,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { profileUrl, companyName, companyUrl, position, personName: scrapedName } = body;
+    const { profileUrl, companyName, companyUrl, position, personName: scrapedName, emailAddress, contactMethod } = body;
 
     if (!profileUrl) {
       return new NextResponse("Profile URL is required", { 
@@ -104,6 +104,8 @@ export async function POST(req: Request) {
         companyName: companyName || null,
         companyUrl: companyUrl || null,
         position: position || "Job inquiry",
+        emailAddress: emailAddress || null,
+        contactMethod: contactMethod || "LINKEDIN",
       })
       .returning();
 

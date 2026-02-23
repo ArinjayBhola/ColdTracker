@@ -67,9 +67,17 @@ export async function createOutreachAction(prevState: ActionState, formData: For
   } = parsed.data;
 
   const now = new Date();
-  const firstContact = validatedContacts[0];
-  const sentAt = firstContact?.messageSentAt || now;
-  const followUpDueAt = firstContact?.followUpDueAt || addDays(sentAt, 5);
+  
+  // Apply defaults to each contact if dates are missing
+  const processedContacts = validatedContacts.map(contact => {
+    const contactSentAt = contact.messageSentAt || now;
+    const contactFollowUpDueAt = contact.followUpDueAt || addDays(contactSentAt, 5);
+    return {
+      ...contact,
+      messageSentAt: contactSentAt,
+      followUpDueAt: contactFollowUpDueAt
+    };
+  });
 
   try {
     // Check if company already exists for this user
@@ -82,7 +90,7 @@ export async function createOutreachAction(prevState: ActionState, formData: For
 
     if (existing) {
       // Append new contacts to existing ones
-      const updatedContacts = [...existing.contacts, ...validatedContacts];
+      const updatedContacts = [...existing.contacts, ...processedContacts];
       await db.update(outreach)
         .set({
           contacts: updatedContacts,
@@ -103,7 +111,7 @@ export async function createOutreachAction(prevState: ActionState, formData: For
         companyName,
         roleTargeted,
         companyLink: companyLink || null,
-        contacts: validatedContacts,
+        contacts: processedContacts,
         status: status || "SENT", 
         notes,
         createdAt: now,
