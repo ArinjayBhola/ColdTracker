@@ -88,7 +88,7 @@ export async function promoteLeadToOutreachAction(id: string, values: PromoteLea
           companyLink: companyLink || null,
           roleTargeted,
           contacts: formattedContacts,
-          status: "DRAFT",
+          status: "SENT",
           notes: notes || "",
         }).returning({ id: outreach.id });
 

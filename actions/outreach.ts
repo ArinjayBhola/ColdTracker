@@ -131,10 +131,10 @@ export async function getOutreachItems() {
   const session = await auth();
   if (!session?.user?.id) return [];
 
-  // Sort by messageSentAt from the first contact in JSONB (latest first)
+  // Sort by createdAt (latest first)
   return await db.query.outreach.findMany({
     where: eq(outreach.userId, session.user.id),
-    orderBy: [desc(sql`${outreach.contacts}->0->>'messageSentAt'`)], 
+    orderBy: [desc(outreach.createdAt)], 
   });
 }
 
@@ -161,7 +161,7 @@ export async function getGroupedOutreachByCompany() {
 
   const items = await db.query.outreach.findMany({
     where: eq(outreach.userId, session.user.id),
-    orderBy: [desc(sql`${outreach.contacts}->0->>'messageSentAt'`)],
+    orderBy: [desc(outreach.createdAt)],
   });
 
   return items.map(item => ({
