@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const profileUrlInput = document.getElementById('profileUrl');
     const personNameInput = document.getElementById('personName');
     const positionInput = document.getElementById('position');
+    const personRoleInput = document.getElementById('personRole');
     const companyNameInput = document.getElementById('companyName');
     const companyUrlInput = document.getElementById('companyUrl');
     const emailAddressInput = document.getElementById('emailAddress');
@@ -14,15 +15,47 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.parent.postMessage({ action: "close-sidebar" }, "*");
     });
     
-    // Listen for name scraped by content script
+    // Listen for details scraped by content script
     window.addEventListener('message', (event) => {
-        if (event.data.action === "scraped-name" && event.data.name) {
-            personNameInput.value = event.data.name;
+        if (event.data.action === "scraped-details" && event.data.details) {
+            const { name, headline, company } = event.data.details;
+            
+            if (name) personNameInput.value = name;
+            if (company && !companyNameInput.value) companyNameInput.value = company;
+            
+            if (headline) {
+                personRoleInput.value = headline;
+                
+                // Try to parse company if not already found
+                if (!companyNameInput.value || companyNameInput.value === 'e.g. Google') {
+                    // Try to parse company if " at ", " with ", " @ ", " | ", or " - " exists
+                    const separators = [' at ', ' with ', ' @ ', ' | ', ' - '];
+                    const roleKeywords = ['founder', 'president', 'engineer', 'manager', 'director', 'officer', 'lead', 'vp', 'ceo', 'cto'];
+                    
+                    for (const sep of separators) {
+                        if (headline.toLowerCase().includes(sep)) {
+                            const parts = headline.split(new RegExp(sep, 'i'));
+                            // Usually the part after the separator is the company
+                            const possibleCompany = parts[parts.length - 1].split('|')[0].split(',')[0].trim();
+                            
+                            // Check if the extracted "company" is actually just another part of the role
+                            const isLikelyRole = roleKeywords.some(keyword => possibleCompany.toLowerCase().includes(keyword));
+                            
+                            if (possibleCompany && possibleCompany.length > 2 && !isLikelyRole) {
+                                companyNameInput.value = possibleCompany;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
         }
     });
 
-    // Request the name just to be sure
-    window.parent.postMessage({ action: "request-name" }, "*");
+    // Request the details just to be sure, with a small delay to ensure listener is ready
+    setTimeout(() => {
+        window.parent.postMessage({ action: "request-details" }, "*");
+    }, 100);
     
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     
@@ -76,6 +109,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             profileUrl: profileUrlInput.value,
             personName: personNameInput.value,
             position: positionInput.value,
+            personRole: personRoleInput.value,
             companyName: companyNameInput.value,
             companyUrl: companyUrlInput.value,
             emailAddress: emailAddressInput.value,
