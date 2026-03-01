@@ -102,6 +102,8 @@ export const outreach = pgTable("outreach", {
   companyLink: text("company_link"),
   roleTargeted: varchar("role_targeted", { length: 255 }).notNull(),
   followUpSentAt: timestamp("follow_up_sent_at", { mode: "date" }),
+  followUp2DueAt: timestamp("follow_up_2_due_at", { mode: "date" }),
+  followUp2SentAt: timestamp("follow_up_2_sent_at", { mode: "date" }),
   status: statusEnum("status").default("DRAFT").notNull(),
   notes: text("notes"),
   contacts: jsonb("contacts").$type<any[]>().default([]).notNull(),

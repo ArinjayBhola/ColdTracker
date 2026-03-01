@@ -59,6 +59,8 @@ export function DatePicker({ value, onChange, placeholder = "Pick a date", class
             selected={date}
             onSelect={handleSelect}
             initialFocus
+            startMonth={new Date(new Date().getFullYear() - 100, 0)}
+            endMonth={new Date(new Date().getFullYear() + 10, 11)}
           />
           <div className="flex items-center justify-between p-3 border-t border-border/20 bg-muted/30 rounded-b-2xl">
             <Button 

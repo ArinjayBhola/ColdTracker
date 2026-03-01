@@ -4,7 +4,7 @@ import { FiCheckCircle } from "react-icons/fi";
 import { InfiniteOutreachList } from "@/components/infinite-outreach-list";
 
 export default async function FollowUpsPage() {
-  const initialCategory = "OVERDUE";
+  const initialCategory = "ALL_ACTIVE";
   const { items, hasMore } = await getPaginatedFollowUpItemsAction(initialCategory, 1);
 
   return (

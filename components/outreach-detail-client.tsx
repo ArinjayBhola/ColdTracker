@@ -53,19 +53,56 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
     if (!item) return;
     
     setIsUpdatingFollowUp(true);
-    const isSent = !!item.followUpSentAt;
-    const res = await toggleFollowUpSentAction(item.id, !isSent);
+    // If both are sent, we are reverting 2nd. If only 1st is sent, we are reverting 1st or marking 2nd.
+    // The server action now handles toggle better.
+    const currentlySent = !!item.followUp2SentAt || (!!item.followUpSentAt && !item.followUp2SentAt);
+    
+    // In details page, we usually Toggle the "next" logical action.
+    // But the user requested "Mark as Unsent" fix.
+    // Let's make it smarter: if 1st is sent, button is "Mark Sent (Stage 2)" or "Mark Unsent (Stage 1)".
+    
+    // For simplicity, let's keep the toggle logic but make it aware of the stages.
+    // If all sent, isSent is true (we want to unsent).
+    // If none sent, isSent is false (we want to sent).
+    const isSent = !!item.followUp2SentAt; 
+    
+    // Actually, let's just use the logic from InfiniteOutreachList which worked well.
+    // But here we have an "Unsent" button too.
+    
+    // The server action `toggleFollowUpSentAction(id, isSent)`:
+    // If isSent=true: 
+    //    if !followUpSentAt -> set followUpSentAt
+    //    else if !followUp2SentAt -> set followUp2SentAt
+    // If isSent=false:
+    //    if followUp2SentAt -> nullify followUp2SentAt
+    //    else if followUpSentAt -> nullify followUpSentAt
+    
+    // If the button clicked is "Mark as Sent", we pass true.
+    // If the button clicked is "Mark as Unsent", we pass false.
+    
+    // How do we know which one was clicked? 
+    // Let's change handleToggleFollowUp to accept a boolean.
+  };
+
+  const [isEditingSentDate, setIsEditingSentDate] = useState<number | null>(null); // null, 1 or 2
+  const [newSentDate, setNewSentDate] = useState<Date | undefined>(undefined);
+
+  const onToggleAction = async (isMarkingSent: boolean, date?: Date) => {
+    if (!item) return;
+    setIsUpdatingFollowUp(true);
+    const res = await toggleFollowUpSentAction(item.id, isMarkingSent, date);
     
     if (res.success) {
       toast({
-        title: !isSent ? "Follow-up marked as sent" : "Follow-up marked as unsent",
-        description: !isSent ? "The follow-up status has been updated." : "The follow-up status has been reverted.",
+        title: isMarkingSent ? "Follow-up status updated" : "Follow-up marked as unsent",
+        description: "The status has been updated.",
       });
       await refetchItem();
+      setIsEditingSentDate(null);
     } else {
       toast({
         title: "Error",
-        description: res.error || "Failed to update follow-up status",
+        description: res.error || "Failed to update status",
         variant: "destructive",
       });
     }
@@ -219,6 +256,8 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
             messageSentAt={messageSentAt}
             followUpDueAt={followUpDueAt}
             followUpSentAt={item.followUpSentAt}
+            followUp2DueAt={item.followUp2DueAt}
+            followUp2SentAt={item.followUp2SentAt}
             isOverdue={!!isOverdue}
             isEditingDate={isEditingDate}
             setIsEditingDate={setIsEditingDate}
@@ -226,7 +265,11 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
             setNewDueDate={setNewDueDate}
             isUpdatingFollowUp={isUpdatingFollowUp}
             onUpdateDate={handleUpdateDate}
-            onToggleFollowUp={handleToggleFollowUp}
+            onToggleFollowUp={onToggleAction}
+            isEditingSentDate={isEditingSentDate}
+            setIsEditingSentDate={setIsEditingSentDate}
+            newSentDate={newSentDate}
+            setNewSentDate={setNewSentDate}
           />
 
           <OutreachContactsCard 

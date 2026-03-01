@@ -24,10 +24,11 @@ type OutreachItem = {
   followUpDueAt: Date;
   contactMethod: string;
   followUpSentAt?: Date | null;
+  followUp2SentAt?: Date | null;
   contacts: any[];
 };
 
-type Category = "OVERDUE" | "TODAY" | "UPCOMING" | "SENT";
+type Category = "OVERDUE" | "TODAY" | "UPCOMING" | "SENT" | "ALL_ACTIVE";
 
 export function InfiniteOutreachList({ 
   initialItems, 
@@ -39,6 +40,7 @@ export function InfiniteOutreachList({
   initialCategory: Category
 }) {
   const [category, setCategory] = useState<Category>(initialCategory);
+  const [stageFilter, setStageFilter] = useState<"ALL" | "1" | "2">("ALL");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -64,17 +66,17 @@ export function InfiniteOutreachList({
     isFetchingNextPage,
     isLoading
   } = useInfiniteQuery({
-    queryKey: ["follow-ups", category], // Only category in key now
+    queryKey: ["follow-ups", category, stageFilter], 
     queryFn: async ({ pageParam = 1 }) => {
-      const res = await getPaginatedFollowUpItemsAction(category, pageParam as number, 15);
+      const res = await getPaginatedFollowUpItemsAction(category, pageParam as number, 15, stageFilter);
       return res;
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage, allPages) => {
       return lastPage.hasMore ? allPages.length + 1 : undefined;
     },
-    // Only use initialData if we are on the initial category
-    initialData: (category === initialCategory) ? {
+    // Only use initialData if we are on the initial category and no filter
+    initialData: (category === initialCategory && stageFilter === "ALL") ? {
       pages: [{ items: initialItems, hasMore: initialHasMore }],
       pageParams: [1]
     } as any : undefined,
@@ -119,6 +121,7 @@ export function InfiniteOutreachList({
     setSearchTerm("");
     setMethodFilter("ALL");
     setStatusFilter("ALL");
+    setStageFilter("ALL");
   };
 
   const tabs: { id: Category; label: string }[] = [
@@ -126,6 +129,7 @@ export function InfiniteOutreachList({
     { id: "TODAY", label: "Due Today" },
     { id: "UPCOMING", label: "Upcoming" },
     { id: "SENT", label: "Sent" },
+    { id: "ALL_ACTIVE", label: "Active Follow-ups" },
   ];
 
   const allRawItems = data?.pages.flatMap(page => page.items) || [];
@@ -147,7 +151,7 @@ export function InfiniteOutreachList({
     return matchesSearch && matchesMethod && matchesStatus;
   });
 
-  const hasActiveFilters = !!(searchTerm || methodFilter !== "ALL" || statusFilter !== "ALL");
+  const hasActiveFilters = !!(searchTerm || methodFilter !== "ALL" || statusFilter !== "ALL" || stageFilter !== "ALL");
 
   return (
     <div className="space-y-6">
@@ -220,6 +224,24 @@ export function InfiniteOutreachList({
           </SelectContent>
         </Select>
 
+        <Select 
+          value={stageFilter} 
+          onValueChange={(v: any) => setStageFilter(v)}
+          disabled={category === "SENT"}
+        >
+          <SelectTrigger className="h-11 border-2">
+            <div className="flex items-center gap-2">
+              <FiClock className="w-4 h-4 text-muted-foreground" />
+              <SelectValue placeholder="Stage" />
+            </div>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All Stages</SelectItem>
+            <SelectItem value="1">1st Follow-up</SelectItem>
+            <SelectItem value="2">2nd Follow-up</SelectItem>
+          </SelectContent>
+        </Select>
+
         <div className="flex gap-2">
           {hasActiveFilters && (
             <Button 
@@ -279,7 +301,14 @@ export function InfiniteOutreachList({
                                     ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600"
                                     : "bg-muted border-border text-muted-foreground"
                             )}>
-                                {category === "SENT" ? <FiCheckCircle className="w-4 h-4 md:w-5 md:h-5" /> : <FiCalendar className="w-4 h-4 md:w-5 md:h-5" />}
+                                {category === "SENT" ? <FiCheckCircle className="w-4 h-4 md:w-5 md:h-5" /> : (
+                                    <div className="relative">
+                                        <FiCalendar className="w-4 h-4 md:w-5 md:h-5" />
+                                        <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-[10px] w-4 h-4 rounded-full flex items-center justify-center border border-background">
+                                            {item.followUpSentAt ? "2" : "1"}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -288,6 +317,9 @@ export function InfiniteOutreachList({
                                 <div className="space-y-0.5 md:space-y-1 min-w-0">
                                     <h3 className="text-base md:text-lg font-bold tracking-tight group-hover:text-primary transition-colors truncate">
                                         {item.companyName}
+                                        <span className="ml-2 text-[10px] uppercase tracking-wider bg-muted px-1.5 py-0.5 rounded text-muted-foreground font-medium">
+                                            {item.followUpSentAt ? "Follow-up 2" : "Follow-up 1"}
+                                        </span>
                                     </h3>
                                     <p className="text-xs md:text-sm text-muted-foreground truncate">
                                         {item.personName} {item.contacts.length > 1 ? `(+${item.contacts.length - 1} more)` : ""} • {item.roleTargeted}
