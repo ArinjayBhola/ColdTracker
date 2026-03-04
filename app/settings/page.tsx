@@ -9,6 +9,8 @@ import { DeleteAccountButton } from "@/components/settings/delete-account-button
 import { DataManagement } from "@/components/settings/data-management";
 import { NotificationSettings } from "@/components/settings/notification-settings";
 import { getOutreachItems } from "@/actions/outreach";
+import { EmailAccountSettings } from "@/components/settings/email-account-settings";
+import { AppearanceSettings } from "@/components/settings/appearance-settings";
 import { FiSettings } from "react-icons/fi";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -22,7 +24,7 @@ export default async function SettingsPage() {
   }
 
   const { user } = session;
-  
+
   // Fetch full user data to get notification settings
   const fullUser = await db.query.users.findFirst({
     where: eq(users.id, user.id as string),
@@ -38,7 +40,10 @@ export default async function SettingsPage() {
           <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-16 md:pt-0">
             <div className="space-y-2">
               <div className="flex items-center gap-3 text-primary">
-                <FiSettings className="animate-spin-slow" size={20} />
+                <FiSettings
+                  className="animate-spin-slow"
+                  size={20}
+                />
                 <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-70">Configuration</span>
               </div>
               <h1 className="text-2xl font-semibold tracking-tight text-foreground">
@@ -68,28 +73,32 @@ export default async function SettingsPage() {
                   </div>
                   <div className="text-center space-y-1">
                     <CardTitle className="text-xl font-bold tracking-tight">{user.name || "User"}</CardTitle>
-                    <CardDescription className="text-xs font-semibold text-muted-foreground tracking-widest">{user.email}</CardDescription>
+                    <CardDescription className="text-xs font-semibold text-muted-foreground tracking-widest">
+                      {user.email}
+                    </CardDescription>
                   </div>
                 </CardHeader>
               </Card>
 
               {/* Outreach Stats Card */}
               <OutreachStats />
-              
+
               {/* Other functional stuff could go here if needed */}
             </div>
 
             {/* Right Column: Forms & Danger Zone */}
             <div className="lg:col-span-2 space-y-8">
+              <AppearanceSettings />
+              <EmailAccountSettings />
               <ChangePasswordForm />
-              
-              <NotificationSettings 
-                initialEmail={fullUser?.notificationEmail || null} 
-                initialReceiveNotifications={fullUser?.receiveNotifications ?? true} 
+
+              <NotificationSettings
+                initialEmail={fullUser?.notificationEmail || null}
+                initialReceiveNotifications={fullUser?.receiveNotifications ?? true}
               />
-              
+
               <DataManagement outreachData={outreachItems} />
-              
+
               <DeleteAccountButton />
             </div>
           </div>

@@ -1,5 +1,6 @@
 import NextAuth, { type DefaultSession } from "next-auth";
 import Google from "next-auth/providers/google";
+import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 import Credentials from "next-auth/providers/credentials";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@/db/index";
@@ -26,6 +27,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Google({
       allowDangerousEmailAccountLinking: true,
+      authorization: {
+        params: {
+          scope:
+            "openid email profile https://www.googleapis.com/auth/gmail.send",
+          access_type: "offline",
+          prompt: "consent",
+        },
+      },
+    }),
+    MicrosoftEntraID({
+      clientId: process.env.AZURE_AD_CLIENT_ID,
+      clientSecret: process.env.AZURE_AD_CLIENT_SECRET,
+      issuer: "https://login.microsoftonline.com/common/v2.0",
+      allowDangerousEmailAccountLinking: true,
+      authorization: {
+        params: {
+          scope: "openid email profile Mail.Send offline_access",
+        },
+      },
     }),
     Credentials({
       credentials: {
