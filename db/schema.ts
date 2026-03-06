@@ -183,6 +183,30 @@ export const emailEvents = pgTable("email_events", {
   timestamp: timestamp("timestamp", { mode: "date" }).defaultNow().notNull(),
 });
 
+// --- Goals & Streaks Schema ---
+export const goals = pgTable("goals", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  dailyTarget: integer("daily_target").notNull().default(3),
+  weeklyTarget: integer("weekly_target").notNull().default(10),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+});
+
+export const dailyActivity = pgTable("daily_activity", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  date: text("date").notNull(), // YYYY-MM-DD format for easy comparison
+  outreachCount: integer("outreach_count").notNull().default(0),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+}, (table) => ({
+  userDateIdx: uniqueIndex("daily_activity_user_date_idx").on(table.userId, table.date),
+}));
+
 // --- Relations ---
 export const sentEmailsRelations = relations(sentEmails, ({ one, many }) => ({
   outreach: one(outreach, {

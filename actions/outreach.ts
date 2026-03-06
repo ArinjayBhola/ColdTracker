@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { eq, desc, asc, and, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { addDays } from "date-fns";
+import { recordDailyActivity } from "@/actions/goals";
 export type ActionState = {
   error?: string;
   success?: boolean;
@@ -102,6 +103,7 @@ export async function createOutreachAction(prevState: ActionState, formData: For
         })
         .where(eq(outreach.id, existing.id));
       
+      await recordDailyActivity();
       revalidatePath("/dashboard");
       return { success: true, outreachId: existing.id };
     } else {
@@ -112,12 +114,13 @@ export async function createOutreachAction(prevState: ActionState, formData: For
         roleTargeted,
         companyLink: companyLink || null,
         contacts: processedContacts,
-        status: status || "SENT", 
+        status: status || "SENT",
         notes,
         createdAt: now,
         updatedAt: now,
       }).returning({ id: outreach.id });
 
+      await recordDailyActivity();
       revalidatePath("/dashboard");
       return { success: true, outreachId: result[0]?.id };
     }

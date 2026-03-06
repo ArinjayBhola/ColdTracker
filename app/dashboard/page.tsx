@@ -9,11 +9,22 @@ import { ExportExcel } from "@/components/export-excel";
 import { OutreachTable } from "@/components/outreach-table";
 import { DashboardRefreshButton } from "@/components/dashboard-refresh-button";
 import { getExtensionLeadsAction } from "@/actions/extension-leads";
+import { getWeeklyProgress, getDailyProgress, getStreakData, getLast7DaysActivity, recordDailyActivity } from "@/actions/goals";
+import { GoalsStreaksCard } from "@/components/goals-streaks-card";
 
 export default async function DashboardPage() {
   const outreachItems = await getGroupedOutreachByCompany();
   const stats = await getStats();
   const leads = await getExtensionLeadsAction();
+
+  // Sync today's activity and fetch goals data
+  await recordDailyActivity();
+  const [dailyProgress, weeklyProgress, streakData, last7Days] = await Promise.all([
+    getDailyProgress(),
+    getWeeklyProgress(),
+    getStreakData(),
+    getLast7DaysActivity(),
+  ]);
 
   const statCards = [
     {
@@ -131,6 +142,14 @@ export default async function DashboardPage() {
                 </div>
               ))}
             </div>
+            {/* Goals & Streaks */}
+            <GoalsStreaksCard
+              dailyProgress={dailyProgress}
+              weeklyProgress={weeklyProgress}
+              streakData={streakData}
+              last7Days={last7Days}
+            />
+
             {/* Outreach Table */}
             <div>
                 <OutreachTable items={outreachItems} />
