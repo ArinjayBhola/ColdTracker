@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { FiLayout, FiPlusCircle, FiBarChart2, FiLogOut, FiCheckSquare, FiChevronLeft, FiChevronRight, FiSettings, FiLinkedin } from "react-icons/fi";
+import { FiLayout, FiPlusCircle, FiBarChart2, FiLogOut, FiCheckSquare, FiChevronLeft, FiChevronRight, FiSettings, FiLinkedin, FiCalendar } from "react-icons/fi";
 import { Button } from "./ui/button";
 import { signOut } from "next-auth/react";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -14,6 +14,7 @@ const links = [
   { href: "/dashboard", label: "Dashboard", icon: FiLayout },
   { href: "/dashboard/extension-leads", label: "Extension Leads", icon: FiLinkedin },
   { href: "/follow-ups", label: "Follow-ups", icon: FiCheckSquare },
+  { href: "/calendar", label: "Calendar", icon: FiCalendar },
   { href: "/outreach/new", label: "Add Outreach", icon: FiPlusCircle },
   { href: "/stats", label: "Stats", icon: FiBarChart2 },
 ];

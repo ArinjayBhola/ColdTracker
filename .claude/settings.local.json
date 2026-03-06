@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx shadcn@latest:*)",
+      "Bash(ls:*)",
+      "Bash(npx drizzle-kit:*)",
+      "Bash(npx next:*)"
+    ]
+  }
+}

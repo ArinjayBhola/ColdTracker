@@ -1,10 +1,11 @@
 "use server";
 
 import { db } from "@/db";
-import { outreach } from "@/db/schema";
+import { outreach, users } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { eq, and, asc, desc, not, sql } from "drizzle-orm";
 import { startOfDay, endOfDay, addDays } from "date-fns";
+import { syncOutreachToCalendar } from "@/actions/calendar";
 
 export async function getFollowUpItems() {
   const session = await auth();
@@ -105,6 +106,17 @@ export async function toggleFollowUpSentAction(id: string, isSent: boolean, sent
           eq(outreach.userId, session.user.id)
         )
       );
+
+    // Auto-sync to calendar if enabled
+    if (isSent) {
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, session.user.id),
+      });
+      if (user?.calendarSyncEnabled) {
+        syncOutreachToCalendar(id).catch(() => {});
+      }
+    }
+
     return { success: true };
   } catch (error) {
     console.error("Failed to toggle follow-up sent status:", error);
@@ -143,6 +155,15 @@ export async function updateFollowUpDateAction(id: string, newDate: Date) {
     await db.update(outreach)
       .set(updateData)
       .where(eq(outreach.id, id));
+
+    // Auto-sync updated date to calendar if enabled
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, session.user.id),
+    });
+    if (user?.calendarSyncEnabled) {
+      syncOutreachToCalendar(id).catch(() => {});
+    }
+
     return { success: true };
   } catch (error) {
     console.error("Failed to update follow-up date:", error);
