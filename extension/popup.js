@@ -129,8 +129,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
+        let response;
         try {
-            const response = await fetch('https://cold-tracker-mu.vercel.app/api/extension', {
+            response = await fetch('https://cold-tracker-mu.vercel.app/api/extension', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -146,14 +147,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                     window.parent.postMessage({ action: "close-sidebar" }, "*");
                 }, 1500);
             } else {
-                const errorText = await response.text();
-                statusDiv.textContent = `Error: ${response.status} ${errorText || response.statusText}`;
+                let displayError = "Save failed";
+                try {
+                    const errorText = await response.text();
+                    try {
+                        const errorJson = JSON.parse(errorText);
+                        displayError = errorJson.error || errorText;
+                    } catch (e) {
+                        displayError = errorText || displayError;
+                    }
+                } catch (e) {
+                    displayError = response.statusText || "Unknown Server Error";
+                }
+
+                statusDiv.textContent = `Error: ${displayError}`;
                 statusDiv.className = 'error';
                 saveBtn.disabled = false;
+                console.error("[EXTENSION_POPUP] API Error:", response.status, displayError);
             }
         } catch (error) {
-            console.error('Save error details:', error);
-            statusDiv.textContent = `Connection Error: ${error.message}. Is ColdTrack running at cold-tracker-mu.vercel.app?`;
+            console.error('[EXTENSION_POPUP] Connection error:', error);
+            statusDiv.textContent = `Connection Error: ${error.message}. Check your internet or login at https://cold-tracker-mu.vercel.app`;
             statusDiv.className = 'error';
             saveBtn.disabled = false;
         }

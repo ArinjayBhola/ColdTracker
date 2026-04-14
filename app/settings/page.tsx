@@ -8,7 +8,6 @@ import { OutreachStats } from "@/components/settings/outreach-stats";
 import { DeleteAccountButton } from "@/components/settings/delete-account-button";
 import { DataManagement } from "@/components/settings/data-management";
 import { NotificationSettings } from "@/components/settings/notification-settings";
-import { getOutreachItems } from "@/actions/outreach";
 import { EmailAccountSettings } from "@/components/settings/email-account-settings";
 import { CalendarSettings } from "@/components/settings/calendar-settings";
 import { AppearanceSettings } from "@/components/settings/appearance-settings";
@@ -31,7 +30,6 @@ export default async function SettingsPage() {
     where: eq(users.id, user.id as string),
   });
 
-  const outreachItems = await getOutreachItems();
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -99,7 +97,7 @@ export default async function SettingsPage() {
                 initialReceiveNotifications={fullUser?.receiveNotifications ?? true}
               />
 
-              <DataManagement outreachData={outreachItems} />
+              <DataManagement />
 
               <DeleteAccountButton />
             </div>

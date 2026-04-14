@@ -8,6 +8,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // Extract details from LinkedIn profile
 function extractLinkedInDetails() {
+  console.log("[ColdTrack] Extraction triggered...");
   try {
     const details = {
       name: '',
@@ -15,88 +16,91 @@ function extractLinkedInDetails() {
       company: ''
     };
 
-    // Extract Name
-    const nameHeading = document.querySelector('.text-heading-xlarge') || 
-                        document.querySelector('h1.text-heading-xlarge') ||
-                        document.querySelector('h1');
+    // 1. Extract Name (Multi-selector fallback)
+    const nameSelector = [
+        '.text-heading-xlarge',
+        'h1.text-heading-xlarge',
+        'main h1',
+        '.pv-text-details__left-panel h1',
+        'h1'
+    ].find(s => document.querySelector(s));
     
-    if (nameHeading) {
-      details.name = nameHeading.innerText.split('\n')[0].replace(/\s+/g, ' ').trim();
+    if (nameSelector) {
+      const el = document.querySelector(nameSelector);
+      details.name = el.innerText.split('\n')[0].trim();
+      console.log("[ColdTrack] Name found:", details.name);
     }
 
-    // Extract Headline (Role/Bio)
-    const headlineElement = document.querySelector('.text-body-medium.break-words') ||
-                            document.querySelector('.pv-text-details__left-panel div:nth-child(2)');
-    if (headlineElement) {
-      details.headline = headlineElement.innerText.trim();
+    // 2. Extract Headline (Multi-selector fallback)
+    const headlineSelector = [
+        '.text-body-medium.break-words',
+        '[data-generated-suggestion-target]',
+        '.pv-text-details__left-panel div:nth-child(2)',
+        '.pv-text-details__left-panel .text-body-medium'
+    ].find(s => document.querySelector(s));
+    
+    if (headlineSelector) {
+        const el = document.querySelector(headlineSelector);
+        details.headline = el.innerText.trim();
+        console.log("[ColdTrack] Headline found:", details.headline);
     }
 
-    // Extract Company (Directly from header if possible)
-    const companyLogo = document.querySelector('.pv-text-details__right-panel img[aria-label]');
-    if (companyLogo && companyLogo.getAttribute('aria-label')) {
-      details.company = companyLogo.getAttribute('aria-label').trim();
+    // 3. Extract Company (Multi-selector fallback)
+    const companySelector = [
+        'button[data-field="experience_company_logo"]',
+        '.pv-text-details__right-panel .inline-show-more-text',
+        '.pv-text-details__right-panel-item-text',
+        '[aria-label^="Current company:"]'
+    ].find(s => document.querySelector(s));
+    
+    if (companySelector) {
+      const el = document.querySelector(companySelector);
+      details.company = el.innerText.split('\n')[0].trim();
+      console.log("[ColdTrack] Company found (Header):", details.company);
     }
 
-    // 2. Fallback to text if logo aria-label failed
+    // 4. Deep Scrape fallback for company (Experience section)
     if (!details.company) {
-      let companyElement = document.querySelector('.pv-text-details__right-panel .inline-show-more-text');
-      if (companyElement) {
-        details.company = companyElement.innerText.split('\n')[0].trim();
-      }
-    }
-
-    // 3. Fallback: Experience Section (Most reliable for historical data)
-    if (!details.company) {
-      try {
-        const experienceSection = document.getElementById('experience');
-        if (experienceSection) {
-          // LinkedIn structure: h2#experience -> div -> ul -> li
-          const container = experienceSection.closest('section');
-          const firstItem = container?.querySelector('.pvs-list__paged-list-item');
-          
-          if (firstItem) {
-            // Company name is usually in the first t-14 t-normal span below the role
-            const companyElement = firstItem.querySelector('.t-14.t-normal span');
-            if (companyElement) {
-              const text = companyElement.innerText;
-              // Clean up "Company · Full-time" or multi-line text
-              details.company = text.split(' · ')[0].split('\n')[0].trim();
+        const expItems = document.querySelectorAll('.pvs-list__paged-list-item');
+        for (const item of expItems) {
+            if (item.innerText.toLowerCase().includes('present')) {
+                 const spans = item.querySelectorAll('span[aria-hidden="true"]');
+                 // In the list, the first bold text is usually the role, the second is company
+                 for (let i = 0; i < spans.length; i++) {
+                     const text = spans[i].innerText.trim();
+                     if (i > 0 && text.length > 2 && !text.includes('Present') && !text.includes('Full-time')) {
+                         details.company = text.split(' · ')[0].split('\n')[0].trim();
+                         console.log("[ColdTrack] Company found (Experience):", details.company);
+                         break;
+                     }
+                 }
             }
-          }
+            if (details.company) break;
         }
-      } catch (e) {
-        console.error("Error scraping experience section:", e);
-      }
-    }
-
-    // List of keywords that indicate a role rather than a company
-    const roleKeywords = ['founder', 'president', 'engineer', 'manager', 'director', 'officer', 'lead', 'vp', 'ceo', 'cto', 'head of'];
-    const isLikelyRole = (text) => {
-      const lowerText = text.toLowerCase();
-      return roleKeywords.some(keyword => lowerText.includes(keyword)) && 
-             (lowerText.includes('&') || lowerText.includes(',') || text.split(' ').length > 4);
-    };
-
-    // Clean up if it looks like we captured a dump of text OR a role
-    if (details.company && (details.company.includes('Present') || details.company.length > 60 || isLikelyRole(details.company))) {
-       // If it contains dates, is too long, or looks like a role title, clear it
-       details.company = '';
     }
 
     return details;
   } catch (error) {
-    console.error("Error extracting LinkedIn details:", error);
+    console.error("[ColdTrack] Extraction Error:", error);
+    return { name: '', headline: '', company: '' };
   }
-  return { name: '', headline: '' };
 }
 
-function sendDetailsToIframe() {
+function sendDetailsToIframe(retries = 3) {
   if (iframe && iframe.contentWindow) {
     const scrapedDetails = extractLinkedInDetails();
-    iframe.contentWindow.postMessage({ 
-      action: "scraped-details", 
-      details: scrapedDetails 
-    }, "*");
+    
+    // If we found at least a name, it's a success
+    if (scrapedDetails.name || retries <= 0) {
+        console.log("[ColdTrack] Sending details to iframe...", scrapedDetails);
+        iframe.contentWindow.postMessage({ 
+          action: "scraped-details", 
+          details: scrapedDetails 
+        }, "*");
+    } else {
+        console.log(`[ColdTrack] Extraction returned empty, retrying in 1.5s... (${retries} retries left)`);
+        setTimeout(() => sendDetailsToIframe(retries - 1), 1500);
+    }
   }
 }
 
@@ -104,13 +108,14 @@ function toggleSidebar() {
   if (iframe) {
     if (iframe.style.display === "none") {
       iframe.style.display = "block";
-      sendDetailsToIframe(); // Send details again when re-opened
+      sendDetailsToIframe(); 
     } else {
       iframe.style.display = "none";
     }
   } else {
     iframe = document.createElement('iframe');
     iframe.src = chrome.runtime.getURL('popup.html');
+    iframe.id = 'coldtrack-sidebar';
     iframe.style.cssText = `
       position: fixed;
       top: 20px;
@@ -123,11 +128,12 @@ function toggleSidebar() {
       border-radius: 20px;
       display: block;
       transition: all 0.3s ease;
+      background: white;
     `;
     
     iframe.onload = () => {
-      // Send the details once the iframe has loaded
-      sendDetailsToIframe();
+      console.log("[ColdTrack] Iframe loaded, triggering initial extraction...");
+      setTimeout(() => sendDetailsToIframe(), 1000);
     };
     
     document.body.appendChild(iframe);

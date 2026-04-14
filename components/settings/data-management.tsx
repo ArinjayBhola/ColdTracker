@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ExportExcel } from "@/components/export-excel";
 import { FiDatabase, FiDownload } from "react-icons/fi";
 
-export function DataManagement({ outreachData }: { outreachData: any[] }) {
+export function DataManagement() {
   return (
     <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-premium overflow-hidden group">
       <CardHeader className="pb-4">
@@ -27,7 +27,7 @@ export function DataManagement({ outreachData }: { outreachData: any[] }) {
             </p>
           </div>
           
-          <ExportExcel data={outreachData} fileName="cold-track-full-export" />
+          <ExportExcel fileName="cold-track-full-export" />
         </div>
       </CardContent>
     </Card>
