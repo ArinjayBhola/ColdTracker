@@ -12,7 +12,6 @@ const COLOR_THEMES = [
   { id: "blue" as const, label: "Blue", color: "oklch(0.55 0.15 250)" },
   { id: "purple" as const, label: "Purple", color: "oklch(0.55 0.15 300)" },
   { id: "green" as const, label: "Green", color: "oklch(0.55 0.14 145)" },
-  { id: "orange" as const, label: "Orange", color: "oklch(0.60 0.14 55)" },
   { id: "rose" as const, label: "Rose", color: "oklch(0.55 0.15 10)" },
   { id: "teal" as const, label: "Teal", color: "oklch(0.55 0.12 185)" },
 ];

@@ -5,22 +5,28 @@ import { FiDownload } from "react-icons/fi";
 import * as XLSX from "xlsx";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { getOutreachForExport } from "@/actions/outreach";
+import { useState } from "react";
+import { Loader2 } from "lucide-react";
 
 interface ExportExcelProps {
-  data: any[];
   fileName?: string;
 }
 
-export function ExportExcel({ data, fileName = "outreach-data" }: ExportExcelProps) {
+export function ExportExcel({ fileName = "outreach-data" }: ExportExcelProps) {
   const { toast } = useToast();
+  const [isExporting, setIsExporting] = useState(false);
 
-  const handleExport = () => {
+  const handleExport = async () => {
     try {
+      setIsExporting(true);
+      const data = await getOutreachForExport();
+      
       if (!data || data.length === 0) {
         toast({
-            variant: "destructive",
-            title: "No data to export",
-            description: "There are no outreach records to export at this time.",
+          variant: "destructive",
+          title: "No data to export",
+          description: "There are no outreach records to export at this time.",
         });
         return;
       }
@@ -65,13 +71,21 @@ export function ExportExcel({ data, fileName = "outreach-data" }: ExportExcelPro
           title: "Export failed",
           description: "There was an error exporting your data.",
       });
+    } finally {
+      setIsExporting(false);
     }
   };
 
   return (
-    <Button variant="outline" size="sm" onClick={handleExport} className="gap-2">
-      <FiDownload className="h-4 w-4" />
-      Export to Excel
+    <Button 
+      variant="outline" 
+      size="sm" 
+      onClick={handleExport} 
+      disabled={isExporting}
+      className="gap-2 h-11 px-6 font-bold rounded-xl border-2 hover:bg-muted/50 transition-all"
+    >
+      {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FiDownload className="h-4 w-4" />}
+      {isExporting ? "Exporting..." : "Export to Excel"}
     </Button>
   );
 }

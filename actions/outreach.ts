@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { outreach, users } from "@/db/schema";
 import { outreachFormSchema, STATUSES } from "@/lib/validations";
 import { auth } from "@/lib/auth";
-import { eq, desc, asc, and, sql } from "drizzle-orm";
+import { eq, desc, asc, and, sql, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { addDays } from "date-fns";
 import { recordDailyActivity } from "@/actions/goals";
@@ -156,42 +156,70 @@ export async function getStats() {
     const session = await auth();
     if (!session?.user?.id) return { sent: 0, replies: 0, interviews: 0, offers: 0 };
 
-    const items = await db.query.outreach.findMany({
-        where: eq(outreach.userId, session.user.id),
+    const stats = await db.select({
+        status: outreach.status,
+        count: sql<number>`count(*)`
+    })
+    .from(outreach)
+    .where(eq(outreach.userId, session.user.id))
+    .groupBy(outreach.status);
+
+    const result = { sent: 0, replies: 0, interviews: 0, offers: 0 };
+    stats.forEach(s => {
+        result.sent += Number(s.count);
+        if (s.status === 'REPLIED') result.replies = Number(s.count);
+        if (s.status === 'INTERVIEW') result.interviews = Number(s.count);
+        if (s.status === 'OFFER') result.offers = Number(s.count);
     });
 
-    return {
-        sent: items.length, // Total items
-        replies: items.filter(i => i.status === 'REPLIED').length,
-        interviews: items.filter(i => i.status === 'INTERVIEW').length,
-        offers: items.filter(i => i.status === 'OFFER').length,
-    };
+    return result;
 }
-
-export async function getGroupedOutreachByCompany() {
+export async function getGroupedOutreachByCompany(page: number = 1, limit: number = 10, filter: string = "ALL") {
   const session = await auth();
-  if (!session?.user?.id) return [];
+  if (!session?.user?.id) return { items: [], totalCount: 0 };
 
-  const items = await db.query.outreach.findMany({
-    where: eq(outreach.userId, session.user.id),
-    orderBy: [desc(outreach.createdAt)],
-  });
+  const offset = (page - 1) * limit;
+  
+  const whereClause = [eq(outreach.userId, session.user.id)];
+  if (filter !== "ALL") {
+    // @ts-expect-error - validated status
+    whereClause.push(eq(outreach.status, filter));
+  }
 
-  return items.map(item => ({
-    id: item.id,
-    companyName: item.companyName,
-    companyLink: item.companyLink,
-    roleTargeted: item.roleTargeted,
-    personName: item.contacts[0]?.personName || "No Contact",
-    personRole: item.contacts[0]?.personRole || "N/A",
-    status: item.status,
-    messageSentAt: item.contacts[0]?.messageSentAt, 
-    followUpDueAt: item.contacts[0]?.followUpDueAt,
-    followUpSentAt: item.followUpSentAt,
-    contactMethod: item.contacts[0]?.contactMethod || "EMAIL",
-    contactCount: item.contacts.length,
-    contacts: item.contacts,
-  }));
+  const [items, totalCountRes] = await Promise.all([
+    db.query.outreach.findMany({
+      where: and(...whereClause),
+      orderBy: [desc(outreach.createdAt)],
+      limit,
+      offset,
+    }),
+    db.select({ count: sql<number>`count(*)` })
+      .from(outreach)
+      .where(and(...whereClause))
+  ]);
+
+  const totalCount = Number(totalCountRes[0]?.count || 0);
+
+  return {
+    items: items.map(item => ({
+        id: item.id,
+        companyName: item.companyName,
+        companyLink: item.companyLink,
+        roleTargeted: item.roleTargeted,
+        personName: item.contacts[0]?.personName || "No Contact",
+        personRole: item.contacts[0]?.personRole || "N/A",
+        status: item.status,
+        messageSentAt: item.contacts[0]?.messageSentAt, 
+        followUpDueAt: item.contacts[0]?.followUpDueAt,
+        followUpSentAt: item.followUpSentAt,
+        contactMethod: item.contacts[0]?.contactMethod || "EMAIL",
+        contactCount: item.contacts.length,
+        contacts: item.contacts,
+        date: item.createdAt,
+        updatedAt: item.updatedAt,
+    })),
+    totalCount
+  };
 }
 
 export async function updateOutreachStatus(id: string, newStatus: string) {
@@ -421,4 +449,32 @@ export async function deleteContactAction(outreachId: string, contactIndex: numb
         console.error("Failed to delete contact:", error);
         return { error: "Database error" };
     }
+}
+export async function bulkDeleteOutreach(ids: string[]) {
+    const session = await auth();
+    if (!session?.user?.id) return { error: "Unauthorized" };
+
+    try {
+        await db.delete(outreach)
+            .where(
+                and(
+                    inArray(outreach.id, ids),
+                    eq(outreach.userId, session.user.id)
+                )
+            );
+        
+        revalidatePath("/dashboard");
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to bulk delete outreach:", error);
+        return { error: "Database error" };
+    }
+}export async function getOutreachForExport() {
+  const session = await auth();
+  if (!session?.user?.id) return [];
+
+  return await db.query.outreach.findMany({
+    where: eq(outreach.userId, session.user.id),
+    orderBy: [desc(outreach.createdAt)],
+  });
 }

@@ -16,6 +16,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "./ui/alert-dialog";
+import { Loader2 } from "lucide-react";
+import { Button } from "./ui/button";
 
 export function DeleteArchiveActions({ id, isIcon = false }: { id: string; isIcon?: boolean }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -141,11 +143,24 @@ export function DeleteArchiveActions({ id, isIcon = false }: { id: string; isIco
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
                         <AlertDialogAction
-                            onClick={handleConfirmDelete}
-                            disabled={isDeleting}
+                            asChild
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
-                            {isDeleting ? "Deleting..." : "Delete"}
+                            <Button
+                                variant="destructive"
+                                onClick={handleConfirmDelete}
+                                disabled={isDeleting}
+                                className="h-10 px-4 rounded-xl font-bold"
+                            >
+                                {isDeleting ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Deleting...
+                                    </>
+                                ) : (
+                                    "Delete"
+                                )}
+                            </Button>
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

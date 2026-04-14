@@ -3,19 +3,33 @@
 import { db } from "@/db";
 import { extensionLeads, outreach } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { addDays } from "date-fns";
 import { PromoteLeadValues } from "@/lib/validations";
 
-export async function getExtensionLeadsAction() {
-  const session = await auth();
-  if (!session?.user?.id) return [];
+export async function getExtensionLeadsAction(page: number = 1, limit: number = 10) {
+    const session = await auth();
+    if (!session?.user?.id) return { items: [], totalCount: 0 };
 
-  return await db.query.extensionLeads.findMany({
-    where: eq(extensionLeads.userId, session.user.id),
-    orderBy: [desc(extensionLeads.createdAt)],
-  });
+    const offset = (page - 1) * limit;
+
+    const [items, totalCountRes] = await Promise.all([
+        db.query.extensionLeads.findMany({
+            where: eq(extensionLeads.userId, session.user.id),
+            orderBy: [desc(extensionLeads.createdAt)],
+            limit,
+            offset,
+        }),
+        db.select({ count: sql<number>`count(*)` })
+            .from(extensionLeads)
+            .where(eq(extensionLeads.userId, session.user.id))
+    ]);
+
+    return {
+        items,
+        totalCount: Number(totalCountRes[0]?.count || 0)
+    };
 }
 
 export async function deleteExtensionLeadAction(id: string) {
@@ -224,4 +238,22 @@ export async function addContactToExtensionLeadAction(leadId: string, formData: 
     revalidatePath(`/dashboard/extension-leads/${leadId}`);
     revalidatePath("/dashboard/extension-leads");
     return { success: true };
+}
+export async function bulkDeleteExtensionLeadsAction(ids: string[]) {
+    const session = await auth();
+    if (!session?.user?.id) return { error: "Unauthorized" };
+
+    try {
+        await db.delete(extensionLeads).where(
+            and(
+                inArray(extensionLeads.id, ids),
+                eq(extensionLeads.userId, session.user.id)
+            )
+        );
+        revalidatePath("/dashboard/extension-leads");
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to bulk delete leads:", error);
+        return { error: "Database error" };
+    }
 }

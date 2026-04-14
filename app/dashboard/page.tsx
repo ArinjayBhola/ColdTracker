@@ -12,10 +12,17 @@ import { getExtensionLeadsAction } from "@/actions/extension-leads";
 import { getWeeklyProgress, getDailyProgress, getStreakData, getLast7DaysActivity, recordDailyActivity } from "@/actions/goals";
 import { GoalsStreaksCard } from "@/components/goals-streaks-card";
 
-export default async function DashboardPage() {
-  const outreachItems = await getGroupedOutreachByCompany();
+export default async function DashboardPage(
+  props: {
+    searchParams: Promise<{ page?: string; filter?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const page = Number(searchParams.page) || 1;
+  const filter = searchParams.filter || "ALL";
+  const { items: outreachItems, totalCount } = await getGroupedOutreachByCompany(page, 10, filter);
   const stats = await getStats();
-  const leads = await getExtensionLeadsAction();
+  const { totalCount: leadsCount } = await getExtensionLeadsAction(1, 1);
 
   // Sync today's activity and fetch goals data
   await recordDailyActivity();
@@ -61,7 +68,7 @@ export default async function DashboardPage() {
     },
     {
       title: "Ext. Leads",
-      value: leads.length,
+      value: leadsCount,
       icon: FiLinkedin,
       iconColor: "text-blue-600 dark:text-blue-400",
       bgColor: "bg-blue-500/10",
@@ -85,7 +92,7 @@ export default async function DashboardPage() {
                 </div>
                 <div className="flex items-center gap-3">
                     <DashboardRefreshButton />
-                    <ExportExcel data={outreachItems} fileName="cold-track-export" />
+                    <ExportExcel fileName="cold-track-export" />
                     <Button asChild className="gap-2 h-11 px-6 font-bold rounded-xl shadow-lg shadow-primary/20 hover:shadow-xl transition-all flex-1 md:flex-none justify-center">
                         <Link href="/outreach/new">
                         <FiPlus className="h-5 w-5" />
@@ -152,7 +159,11 @@ export default async function DashboardPage() {
 
             {/* Outreach Table */}
             <div>
-                <OutreachTable items={outreachItems} />
+                <OutreachTable 
+                  items={outreachItems} 
+                  totalCount={totalCount} 
+                  currentPage={page} 
+                />
             </div>
         </div>
       </main>

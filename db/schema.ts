@@ -10,6 +10,7 @@ import {
   boolean,
   jsonb,
   uniqueIndex,
+  index,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { type AdapterAccount } from "next-auth/adapters";
@@ -122,7 +123,10 @@ export const outreach = pgTable("outreach", {
   calendarEventId2: text("calendar_event_id_2"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
-});
+}, (table) => ({
+  userIdIdx: index("outreach_user_id_idx").on(table.userId),
+  createdAtIdx: index("outreach_created_at_idx").on(table.createdAt),
+}));
 
 // --- Extension Schema ---
 export const extensionLeads = pgTable("extension_leads", {
@@ -142,7 +146,10 @@ export const extensionLeads = pgTable("extension_leads", {
   followUpDate: timestamp("follow_up_date", { mode: "date" }),
   notes: text("notes"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
-});
+}, (table) => ({
+  userIdIdx: index("extension_leads_user_id_idx").on(table.userId),
+  createdAtIdx: index("extension_leads_created_at_idx").on(table.createdAt),
+}));
 
 // --- Email Tracking Schema ---
 export const sentEmails = pgTable(

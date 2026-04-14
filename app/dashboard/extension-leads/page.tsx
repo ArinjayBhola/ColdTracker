@@ -5,13 +5,19 @@ import { Sidebar } from "@/components/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-export default async function ExtensionLeadsPage() {
-  const leads = await getExtensionLeadsAction() as any[];
+export default async function ExtensionLeadsPage(
+    props: {
+        searchParams: Promise<{ page?: string }>;
+    }
+) {
+    const searchParams = await props.searchParams;
+    const page = Number(searchParams.page) || 1;
+    const { items: leads, totalCount } = await getExtensionLeadsAction(page, 10);
 
   const statCards = [
     {
       title: "Total Leads",
-      value: leads.length,
+      value: totalCount,
       icon: FiUsers,
       iconColor: "text-blue-600 dark:text-blue-400",
       bgColor: "bg-blue-500/10",
@@ -67,7 +73,7 @@ export default async function ExtensionLeadsPage() {
 
             {/* Leads Table */}
             <div>
-                <ExtensionLeadsTable initialLeads={leads} />
+                <ExtensionLeadsTable initialLeads={leads} totalCount={totalCount} currentPage={page} />
             </div>
         </div>
       </main>
