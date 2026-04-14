@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { goals, dailyActivity, outreach } from "@/db/schema";
+import { goals, dailyActivity, outreach, users } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { eq, and, desc, gte, lte, sql, count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -16,6 +16,14 @@ export async function getOrCreateGoal() {
   });
 
   if (!goal) {
+    // Verify user exists before creating a goal to avoid FK violation
+    const userExists = await db.query.users.findFirst({
+      where: eq(users.id, session.user.id),
+      columns: { id: true }
+    });
+
+    if (!userExists) return null;
+
     const [newGoal] = await db
       .insert(goals)
       .values({ userId: session.user.id, dailyTarget: 3, weeklyTarget: 10 })
@@ -39,6 +47,13 @@ export async function updateDailyTarget(target: number) {
   if (existing) {
     await db.update(goals).set({ dailyTarget: target, updatedAt: new Date() }).where(eq(goals.id, existing.id));
   } else {
+    // Verify user exists before inserting
+    const userExists = await db.query.users.findFirst({
+      where: eq(users.id, session.user.id),
+      columns: { id: true }
+    });
+    if (!userExists) return { error: "User record not found" };
+
     await db.insert(goals).values({ userId: session.user.id, dailyTarget: target });
   }
 
@@ -78,6 +93,13 @@ export async function updateWeeklyTarget(target: number) {
   if (existing) {
     await db.update(goals).set({ weeklyTarget: target, updatedAt: new Date() }).where(eq(goals.id, existing.id));
   } else {
+    // Verify user exists before inserting
+    const userExists = await db.query.users.findFirst({
+      where: eq(users.id, session.user.id),
+      columns: { id: true }
+    });
+    if (!userExists) return { error: "User record not found" };
+
     await db.insert(goals).values({ userId: session.user.id, weeklyTarget: target });
   }
 
@@ -200,22 +222,35 @@ export async function recordDailyActivity() {
 
   const todayCount = Number(result[0]?.count ?? 0);
 
-  // Upsert daily activity
-  const existing = await db.query.dailyActivity.findFirst({
-    where: and(eq(dailyActivity.userId, session.user.id), eq(dailyActivity.date, today)),
-  });
-
-  if (existing) {
-    await db.update(dailyActivity).set({ outreachCount: todayCount }).where(eq(dailyActivity.id, existing.id));
-  } else {
-    await db.insert(dailyActivity).values({
-      userId: session.user.id,
-      date: today,
-      outreachCount: todayCount,
+  try {
+    // Upsert daily activity
+    const existing = await db.query.dailyActivity.findFirst({
+      where: and(eq(dailyActivity.userId, session.user.id), eq(dailyActivity.date, today)),
     });
-  }
 
-  return { success: true, count: todayCount };
+    if (existing) {
+      await db.update(dailyActivity).set({ outreachCount: todayCount }).where(eq(dailyActivity.id, existing.id));
+    } else {
+      // Verify user exists before creating activity to avoid FK violation
+      const userExists = await db.query.users.findFirst({
+        where: eq(users.id, session.user.id),
+        columns: { id: true }
+      });
+
+      if (!userExists) return { error: "User record not found" };
+
+      await db.insert(dailyActivity).values({
+        userId: session.user.id,
+        date: today,
+        outreachCount: todayCount,
+      });
+    }
+
+    return { success: true, count: todayCount };
+  } catch (error) {
+    console.error("Failed to record daily activity:", error);
+    return { error: "Database error" };
+  }
 }
 
 export async function syncActivityHistory() {
@@ -233,6 +268,14 @@ export async function syncActivityHistory() {
     .from(outreach)
     .where(and(eq(outreach.userId, session.user.id), gte(outreach.createdAt, thirtyDaysAgo)))
     .groupBy(sql`to_char(${outreach.createdAt}, 'YYYY-MM-DD')`);
+
+  // Verify user exists once before the loop
+  const userExists = await db.query.users.findFirst({
+      where: eq(users.id, session.user.id),
+      columns: { id: true }
+  });
+
+  if (!userExists) return { error: "User record not found" };
 
   for (const day of dailyCounts) {
     const existing = await db.query.dailyActivity.findFirst({

@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { outreach } from "@/db/schema";
+import { outreach, users } from "@/db/schema";
 import { outreachFormSchema, STATUSES } from "@/lib/validations";
 import { auth } from "@/lib/auth";
 import { eq, desc, asc, and, sql } from "drizzle-orm";
@@ -88,6 +88,16 @@ export async function createOutreachAction(prevState: ActionState, formData: For
         eq(outreach.companyName, companyName)
       )
     });
+
+    // Verify user exists before creating outreach to avoid FK violation
+    const userExists = await db.query.users.findFirst({
+      where: eq(users.id, session.user.id),
+      columns: { id: true }
+    });
+
+    if (!userExists) {
+        return { error: "User account not found. Please try logging in again." };
+    }
 
     if (existing) {
       // Append new contacts to existing ones
