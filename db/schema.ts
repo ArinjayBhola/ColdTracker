@@ -131,7 +131,7 @@ export const outreach = pgTable("outreach", {
 // --- Extension Schema ---
 export const extensionLeads = pgTable("extension_leads", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: text("userId")
+  userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   profileUrl: text("profile_url").notNull(),
