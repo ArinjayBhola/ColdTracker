@@ -15,11 +15,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { deleteAccountAction } from "@/actions/settings";
+import { signOutAction } from "@/actions/auth";
 import { useToast } from "@/hooks/use-toast";
 import { FiTrash2, FiAlertTriangle } from "react-icons/fi";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
-import { signOut } from "next-auth/react";
 
 export function DeleteAccountButton() {
   const { toast } = useToast();
@@ -52,8 +51,7 @@ export function DeleteAccountButton() {
           title: "Account Deleted",
           description: "Your account has been successfully removed.",
         });
-        // Sign out on the client to handle redirect correctly
-        await signOut({ callbackUrl: "/signin" });
+        await signOutAction();
       }
     } catch (error) {
       toast({

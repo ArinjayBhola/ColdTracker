@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { FiLayout, FiPlusCircle, FiBarChart2, FiLogOut, FiCheckSquare, FiChevronLeft, FiChevronRight, FiSettings, FiLinkedin, FiCalendar } from "react-icons/fi";
 import { Button } from "./ui/button";
-import { signOut } from "next-auth/react";
+import { signOutAction } from "@/actions/auth";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useState, useEffect } from "react";
 import Image from "next/image";
@@ -163,18 +163,20 @@ export function Sidebar() {
             {(!isCollapsed || isMobileOpen) && <span className="font-semibold text-sm">Settings</span>}
           </Link>
 
-          <Button 
-              variant="ghost" 
+          <form action={signOutAction} className="w-full">
+            <Button
+              type="submit"
+              variant="ghost"
               className={cn(
                   "w-full flex items-center transition-all duration-200",
                   (isCollapsed && !isMobileOpen) ? "justify-center px-0 h-10" : "justify-start gap-3 px-4 h-12 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
               )}
-              onClick={() => signOut({ callbackUrl: "/signin" })}
               title={isCollapsed && !isMobileOpen ? "Sign Out" : undefined}
-          >
-            <FiLogOut className="h-5 w-5" />
-            {(!isCollapsed || isMobileOpen) && <span className="font-semibold">Sign Out</span>}
-          </Button>
+            >
+              <FiLogOut className="h-5 w-5" />
+              {(!isCollapsed || isMobileOpen) && <span className="font-semibold">Sign Out</span>}
+            </Button>
+          </form>
         </div>
       </div>
     </>

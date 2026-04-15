@@ -18,6 +18,10 @@ declare module "next-auth" {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // Must match `app/api/auth/[...nextauth]`. Auth.js v5 defaults to `/auth`, which breaks
+  // server-side `auth()` / session fetches while the browser still uses `/api/auth`.
+  basePath: "/api/auth",
+  trustHost: true,
   adapter: DrizzleAdapter(db, {
     usersTable: schema.users,
     accountsTable: schema.accounts,

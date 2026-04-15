@@ -2,7 +2,26 @@ import { db } from "@/db/index";
 import { extensionLeads } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { decode } from "next-auth/jwt";
+import { getToken } from "next-auth/jwt";
+
+const CONTACT_METHODS = new Set(["EMAIL", "LINKEDIN"]);
+
+async function resolveUserId(req: Request): Promise<string | undefined> {
+  const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
+  const hasBearer = req.headers.get("authorization")?.startsWith("Bearer ");
+
+  // Extension sends Bearer with the full JWE (from possibly chunked cookies). Try this first.
+  if (secret && hasBearer) {
+    let payload = await getToken({ req, secret, secureCookie: true });
+    if (!payload) payload = await getToken({ req, secret, secureCookie: false });
+    if (payload?.sub) return payload.sub;
+  }
+
+  if (!secret) return undefined;
+
+  const session = await auth();
+  return session?.user?.id;
+}
 
 const getCorsHeaders = (req: Request) => {
   const origin = req.headers.get("origin");
@@ -27,13 +46,10 @@ export async function OPTIONS(req: Request) {
 
 export async function POST(req: Request) {
   const origin = req.headers.get("origin");
-  const authHeader = req.headers.get("authorization");
-  
   console.log(`[EXTENSION_POST] Request from Origin: ${origin}`);
   
   try {
     // DIAGNOSTIC 1: Check Environment
-    const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
     const dbUrl = process.env.DATABASE_URL;
     
     if (!dbUrl) {
@@ -41,39 +57,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Server Configuration Error: Database connection string is missing." }, { status: 500 });
     }
     
-    if (!secret) {
-        console.warn("[EXTENSION_POST] WARNING: No AUTH_SECRET or NEXTAUTH_SECRET found. Manual token decoding will fail.");
-    }
-    
-    let userId: string | undefined;
-
-    // 1. Try standard session (works if cookies are sent)
-    const session = await auth();
-    if (session?.user?.id) {
-      userId = session.user.id;
-    } 
-    // 2. Fallback: manually decode token from Authorization header
-    else if (authHeader?.startsWith("Bearer ")) {
-      const token = authHeader.substring(7);
-      const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
-      
-      if (!secret) {
-        console.error("[EXTENSION_POST] Critical: No AUTH_SECRET or NEXTAUTH_SECRET provided in environment. Token decoding failed.");
-      } else {
-        try {
-            const decoded = await decode({ 
-              token, 
-              secret,
-              salt: origin?.includes("cold-tracker-mu.vercel.app") ? "__Secure-authjs.session-token" : "authjs.session-token"
-            });
-            if (decoded?.sub) {
-              userId = decoded.sub as string;
-            }
-        } catch (decodeError) {
-            console.error("[EXTENSION_POST] JWT Decode Error:", decodeError);
-        }
-      }
-    }
+    const userId = await resolveUserId(req);
 
     if (!userId) {
       console.warn("[EXTENSION_POST] Authentication failed - returning Unauthorized JSON");
@@ -86,7 +70,11 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { profileUrl, companyName, companyUrl, position, personRole, personName: scrapedName, emailAddress, contactMethod } = body;
+    const { profileUrl, companyName, companyUrl, position, personRole, personName: scrapedName, emailAddress, contactMethod: rawContact } = body;
+    const contactMethod =
+      typeof rawContact === "string" && CONTACT_METHODS.has(rawContact.toUpperCase())
+        ? rawContact.toUpperCase()
+        : "LINKEDIN";
 
     if (!profileUrl) {
       return new NextResponse("Profile URL is required", { 
@@ -129,7 +117,7 @@ export async function POST(req: Request) {
             position: position || "Job inquiry",
             personRole: personRole || null,
             emailAddress: emailAddress || null,
-            contactMethod: (contactMethod as any) || "LINKEDIN",
+            contactMethod: contactMethod as "EMAIL" | "LINKEDIN",
             outreachDate: new Date(),
           })
           .returning();

@@ -18,7 +18,10 @@ export type ActionState = {
 export async function createOutreachAction(prevState: ActionState, formData: FormData): Promise<ActionState> {
   const session = await auth();
   if (!session?.user?.id) {
-    return { error: "Unauthorized" };
+    return {
+      error:
+        "We could not verify your session. Please sign out, sign in again, and try once more.",
+    };
   }
 
   // Helper to extract contacts from formData

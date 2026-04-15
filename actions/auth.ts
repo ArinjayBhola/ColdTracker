@@ -6,7 +6,7 @@ import { hash } from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { redirect } from "next/navigation";
-import { signIn } from "@/lib/auth";
+import { signIn, signOut } from "@/lib/auth";
 
 const signUpSchema = z.object({
   name: z.string().min(2),
@@ -47,6 +47,10 @@ export async function signUpAction(prevState: any, formData: FormData) {
 
 export async function googleSignIn() {
     await signIn("google");
+}
+
+export async function signOutAction() {
+  await signOut({ redirectTo: "/signin" });
 }
 
 export async function credentialsSignIn(prevState: any, formData: FormData) {
