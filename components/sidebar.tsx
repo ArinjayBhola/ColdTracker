@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { FiLayout, FiPlusCircle, FiBarChart2, FiLogOut, FiCheckSquare, FiChevronLeft, FiChevronRight, FiSettings, FiLinkedin, FiCalendar } from "react-icons/fi";
+import { FiLayout, FiPlusCircle, FiBarChart2, FiLogOut, FiCheckSquare, FiChevronLeft, FiChevronRight, FiSettings, FiLinkedin, FiCalendar, FiTrendingUp } from "react-icons/fi";
 import { Button } from "./ui/button";
 import { signOutAction } from "@/actions/auth";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -12,6 +12,7 @@ import Image from "next/image";
 
 const links = [
   { href: "/dashboard", label: "Dashboard", icon: FiLayout },
+  { href: "/startups", label: "Startups", icon: FiTrendingUp },
   { href: "/dashboard/extension-leads", label: "Extension Leads", icon: FiLinkedin },
   { href: "/follow-ups", label: "Follow-ups", icon: FiCheckSquare },
   { href: "/calendar", label: "Calendar", icon: FiCalendar },
