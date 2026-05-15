@@ -12,6 +12,7 @@
   "host_permissions": [
     "https://*.linkedin.com/*",
     "https://cold-tracker-mu.vercel.app/*",
+    "https://cold-track.arinjay.dev/*",
     "http://localhost:3000/*"
   ],
   "action": {},

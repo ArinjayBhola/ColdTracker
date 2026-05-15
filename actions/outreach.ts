@@ -16,74 +16,74 @@ export type ActionState = {
 };
 
 export async function createOutreachAction(prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return {
-      error:
-        "We could not verify your session. Please sign out, sign in again, and try once more.",
-    };
-  }
-
-  // Helper to extract contacts from formData
-  const contacts: any[] = [];
-  let i = 0;
-  while (formData.has(`contacts.${i}.personName`)) {
-    contacts.push({
-      personName: formData.get(`contacts.${i}.personName`),
-      personRole: formData.get(`contacts.${i}.personRole`),
-      contactMethod: formData.get(`contacts.${i}.contactMethod`),
-      emailAddress: formData.get(`contacts.${i}.emailAddress`),
-      linkedinProfileUrl: formData.get(`contacts.${i}.linkedinProfileUrl`),
-    });
-    i++;
-  }
-
-  const rawData = {
-    companyName: formData.get("companyName"),
-    companyLink: formData.get("companyLink"),
-    roleTargeted: formData.get("roleTargeted"),
-    status: formData.get("status"),
-    notes: formData.get("notes"),
-    contacts: contacts.map((c, idx) => ({
-      ...c,
-      messageSentAt: formData.get(`contacts.${idx}.messageSentAt`) || formData.get("messageSentAt"),
-      followUpDueAt: formData.get(`contacts.${idx}.followUpDueAt`) || formData.get("followUpDueAt"),
-    })),
-  };
-
-  const parsed = outreachFormSchema.safeParse(rawData);
-  
-  if (!parsed.success) {
-    console.error("Validation failed:", parsed.error.flatten().fieldErrors);
-    return { 
-        error: "Please check the form for errors", 
-        details: parsed.error.flatten().fieldErrors as any
-    };
-  }
-
-  const {
-    companyName,
-    roleTargeted,
-    companyLink,
-    notes,
-    status,
-    contacts: validatedContacts,
-  } = parsed.data;
-
-  const now = new Date();
-  
-  // Apply defaults to each contact if dates are missing
-  const processedContacts = validatedContacts.map(contact => {
-    const contactSentAt = contact.messageSentAt || now;
-    const contactFollowUpDueAt = contact.followUpDueAt || addDays(contactSentAt, 5);
-    return {
-      ...contact,
-      messageSentAt: contactSentAt,
-      followUpDueAt: contactFollowUpDueAt
-    };
-  });
-
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return {
+        error:
+          "We could not verify your session. Please sign out, sign in again, and try once more.",
+      };
+    }
+
+    // Helper to extract contacts from formData
+    const contacts: any[] = [];
+    let i = 0;
+    while (formData.has(`contacts.${i}.personName`)) {
+      contacts.push({
+        personName: formData.get(`contacts.${i}.personName`),
+        personRole: formData.get(`contacts.${i}.personRole`),
+        contactMethod: formData.get(`contacts.${i}.contactMethod`),
+        emailAddress: formData.get(`contacts.${i}.emailAddress`),
+        linkedinProfileUrl: formData.get(`contacts.${i}.linkedinProfileUrl`),
+      });
+      i++;
+    }
+
+    const rawData = {
+      companyName: formData.get("companyName"),
+      companyLink: formData.get("companyLink"),
+      roleTargeted: formData.get("roleTargeted"),
+      status: formData.get("status"),
+      notes: formData.get("notes"),
+      contacts: contacts.map((c, idx) => ({
+        ...c,
+        messageSentAt: formData.get(`contacts.${idx}.messageSentAt`) || formData.get("messageSentAt"),
+        followUpDueAt: formData.get(`contacts.${idx}.followUpDueAt`) || formData.get("followUpDueAt"),
+      })),
+    };
+
+    const parsed = outreachFormSchema.safeParse(rawData);
+    
+    if (!parsed.success) {
+      console.error("Validation failed:", parsed.error.flatten().fieldErrors);
+      return { 
+          error: "Please check the form for errors", 
+          details: parsed.error.flatten().fieldErrors as any
+      };
+    }
+
+    const {
+      companyName,
+      roleTargeted,
+      companyLink,
+      notes,
+      status,
+      contacts: validatedContacts,
+    } = parsed.data;
+
+    const now = new Date();
+    
+    // Apply defaults to each contact if dates are missing
+    const processedContacts = validatedContacts.map(contact => {
+      const contactSentAt = contact.messageSentAt || now;
+      const contactFollowUpDueAt = contact.followUpDueAt || addDays(contactSentAt, 5);
+      return {
+        ...contact,
+        messageSentAt: contactSentAt,
+        followUpDueAt: contactFollowUpDueAt
+      };
+    });
+
     // Check if company already exists for this user
     const existing = await db.query.outreach.findFirst({
       where: and(
@@ -108,7 +108,7 @@ export async function createOutreachAction(prevState: ActionState, formData: For
       await db.update(outreach)
         .set({
           contacts: updatedContacts,
-          roleTargeted, // Update role targeted if changed?
+          roleTargeted,
           companyLink: companyLink || existing.companyLink,
           notes: notes || existing.notes,
           status: status || existing.status,
@@ -116,7 +116,7 @@ export async function createOutreachAction(prevState: ActionState, formData: For
         })
         .where(eq(outreach.id, existing.id));
       
-      await recordDailyActivity();
+      try { await recordDailyActivity(); } catch (e) { console.error("Daily activity error:", e); }
       revalidatePath("/dashboard");
       return { success: true, outreachId: existing.id };
     } else {
@@ -133,13 +133,13 @@ export async function createOutreachAction(prevState: ActionState, formData: For
         updatedAt: now,
       }).returning({ id: outreach.id });
 
-      await recordDailyActivity();
+      try { await recordDailyActivity(); } catch (e) { console.error("Daily activity error:", e); }
       revalidatePath("/dashboard");
       return { success: true, outreachId: result[0]?.id };
     }
   } catch (error) {
-    console.error("Failed to create outreach:", error);
-    return { error: "Database error" };
+    console.error("Critical error in createOutreachAction:", error);
+    return { error: "Database error or unexpected failure" };
   }
 }
 

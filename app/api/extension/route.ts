@@ -62,7 +62,7 @@ export async function POST(req: Request) {
     if (!userId) {
       console.warn("[EXTENSION_POST] Authentication failed - returning Unauthorized JSON");
       return NextResponse.json({ 
-        error: "Unauthorized: Please log in at https://cold-tracker-mu.vercel.app to capture leads." 
+        error: "Unauthorized: Please log in at https://cold-track.arinjay.dev to capture leads." 
       }, { 
         status: 401,
         headers: getCorsHeaders(req) 

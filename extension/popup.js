@@ -2,7 +2,7 @@
  * Session cookies may be split into chunks (__Secure-authjs.session-token.0, .1, …).
  * We must join them in order — a single cookie.get() returns nothing or a fragment.
  */
-const DEFAULT_ORIGIN = "https://cold-tracker-mu.vercel.app";
+const DEFAULT_ORIGIN = "https://cold-track.arinjay.dev";
 
 const SESSION_PREFIXES = [
   "__Secure-authjs.session-token",
