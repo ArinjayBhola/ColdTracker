@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
@@ -26,7 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { FiTrash2, FiAlertTriangle, FiCheck } from "react-icons/fi";
+import { FiTrash2, FiAlertTriangle } from "react-icons/fi";
 import { Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -43,7 +44,15 @@ type OutreachItem = {
   followUpSentAt?: Date | null;
   contactMethod: string;
   contactCount: number;
-  contacts: any[];
+  contacts: {
+    personName?: string;
+    personRole?: string;
+    contactMethod?: string;
+    emailAddress?: string | null;
+    linkedinProfileUrl?: string | null;
+    messageSentAt?: Date | string;
+    followUpDueAt?: Date | string;
+  }[];
 };
 
 type OutreachTableProps = {
@@ -142,7 +151,7 @@ export function OutreachTable({ items, totalCount, currentPage }: OutreachTableP
           variant: "destructive",
         });
       }
-    } catch (error) {
+    } catch {
        toast({
           title: "Error",
           description: "An unexpected error occurred.",
@@ -273,7 +282,17 @@ export function OutreachTable({ items, totalCount, currentPage }: OutreachTableP
             <th className="h-12 px-4 md:px-6 text-right align-middle font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground">Actions</th>
           </tr>
         </thead>
-        <tbody>
+        <motion.tbody
+          initial="hidden"
+          animate="visible"
+          variants={{
+            visible: {
+              transition: {
+                staggerChildren: 0.05,
+              },
+            },
+          }}
+        >
           {filteredItems.length === 0 ? (
             <tr>
               <td colSpan={7} className="p-12 text-center text-muted-foreground text-base italic">
@@ -282,8 +301,12 @@ export function OutreachTable({ items, totalCount, currentPage }: OutreachTableP
             </tr>
           ) : (
             filteredItems.map((item) => (
-              <tr
+              <motion.tr
                 key={item.id}
+                variants={{
+                  hidden: { opacity: 0, y: 10 },
+                  visible: { opacity: 1, y: 0 },
+                }}
                 className={cn(
                   "border-b border-border/30 transition-all duration-200 hover:bg-muted/30 group",
                   selectedIds.has(item.id) && "bg-primary/5 hover:bg-primary/10"
@@ -378,10 +401,10 @@ export function OutreachTable({ items, totalCount, currentPage }: OutreachTableP
                     </div>
                   </div>
                 </td>
-              </tr>
+              </motion.tr>
             ))
           )}
-        </tbody>
+        </motion.tbody>
       </TableContent>
 
       <TablePagination

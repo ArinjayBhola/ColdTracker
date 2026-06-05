@@ -1,8 +1,10 @@
 "use client";
 
+import { motion } from "framer-motion";
+
 import { useState } from "react";
 import { format } from "date-fns";
-import { FiCheckCircle, FiCircle, FiCalendar, FiExternalLink, FiSearch, FiMoreVertical, FiLinkedin, FiMail } from "react-icons/fi";
+import { FiCheckCircle, FiCircle, FiExternalLink, FiMoreVertical, FiLinkedin, FiMail } from "react-icons/fi";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { TableShell, TableContent } from "@/components/ui/data-table/table-shell";
@@ -69,7 +71,7 @@ export function StartupsTable({ items, totalCount, currentPage }: StartupsTableP
         description: "Status updated successfully.",
       });
       router.refresh();
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to update status.",
@@ -86,7 +88,7 @@ export function StartupsTable({ items, totalCount, currentPage }: StartupsTableP
         description: date ? `Set to ${format(date, "MMM d, yyyy")}` : "Date cleared",
       });
       router.refresh();
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to update follow-up date.",
@@ -119,7 +121,17 @@ export function StartupsTable({ items, totalCount, currentPage }: StartupsTableP
             <th className="h-12 px-6 text-right align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Actions</th>
           </tr>
         </thead>
-        <tbody>
+        <motion.tbody
+          initial="hidden"
+          animate="visible"
+          variants={{
+            visible: {
+              transition: {
+                staggerChildren: 0.05,
+              },
+            },
+          }}
+        >
           {filteredItems.length === 0 ? (
             <tr>
               <td colSpan={5} className="p-12 text-center text-muted-foreground italic">
@@ -130,7 +142,14 @@ export function StartupsTable({ items, totalCount, currentPage }: StartupsTableP
             filteredItems.map((item) => {
               const tracking = item.tracking[0] || { outreachDone: false, followUpDate: null };
               return (
-                <tr key={item.id} className="border-b border-border/30 transition-all hover:bg-muted/30 group">
+                <motion.tr 
+                  key={item.id} 
+                  variants={{
+                    hidden: { opacity: 0, y: 10 },
+                    visible: { opacity: 1, y: 0 },
+                  }}
+                  className="border-b border-border/30 transition-all hover:bg-muted/30 group"
+                >
                   <td className="p-6 align-middle">
                     <div className="flex items-center gap-4">
                       <Avatar className="h-10 w-10 border-2 border-muted shrink-0 rounded-xl">
@@ -220,11 +239,11 @@ export function StartupsTable({ items, totalCount, currentPage }: StartupsTableP
                       </DropdownMenu>
                     </div>
                   </td>
-                </tr>
+                </motion.tr>
               );
             })
           )}
-        </tbody>
+        </motion.tbody>
 
       </TableContent>
 

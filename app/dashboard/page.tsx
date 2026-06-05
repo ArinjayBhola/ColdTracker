@@ -11,6 +11,7 @@ import { DashboardRefreshButton } from "@/components/dashboard-refresh-button";
 import { getExtensionLeadsAction } from "@/actions/extension-leads";
 import { getWeeklyProgress, getDailyProgress, getStreakData, getLast7DaysActivity, recordDailyActivity } from "@/actions/goals";
 import { GoalsStreaksCard } from "@/components/goals-streaks-card";
+import { StaggerContainer, StaggerItem } from "@/components/motion-wrapper";
 
 export default async function DashboardPage(
   props: {
@@ -103,9 +104,9 @@ export default async function DashboardPage(
             </div>
 
             {/* Stats Section */}
-                        <div className="grid gap-4 md:gap-6 grid-cols-2 lg:grid-cols-5">
+            <StaggerContainer className="grid gap-4 md:gap-6 grid-cols-2 lg:grid-cols-5">
               {statCards.map((stat) => (
-                <div key={stat.title}>
+                <StaggerItem key={stat.title}>
                   <Card
                     className={cn(
                       "h-[150px] md:h-[170px] border-none ring-1 transition-all hover:shadow-md flex flex-col justify-between",
@@ -146,9 +147,9 @@ export default async function DashboardPage(
                       </div>
                     </CardContent>
                   </Card>
-                </div>
+                </StaggerItem>
               ))}
-            </div>
+            </StaggerContainer>
             {/* Goals & Streaks */}
             <GoalsStreaksCard
               dailyProgress={dailyProgress}

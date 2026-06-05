@@ -30,6 +30,7 @@ export function Sidebar() {
   useEffect(() => {
     const saved = localStorage.getItem("sidebar-collapsed");
     if (saved !== null && window.innerWidth > 768) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsCollapsed(JSON.parse(saved));
     }
     setMounted(true);
@@ -37,6 +38,7 @@ export function Sidebar() {
 
   // Close mobile sidebar on route change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMobileOpen(false);
   }, [pathname]);
 

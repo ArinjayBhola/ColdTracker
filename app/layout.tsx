@@ -1,12 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Recursive } from "next/font/google";
+import { Inter } from "next/font/google";
 import ToastProvider from "@/components/toast-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppearanceProvider } from "@/components/appearance-provider";
 import NextTopLoader from "nextjs-toploader";
 import "./globals.css";
 
-const recursive = Recursive({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "ColdTrack | Professional Outreach CRM",
@@ -53,7 +53,7 @@ export default function RootLayout({
           href="/icons/icon-192.png"
         />
       </head>
-      <body className={`${recursive.className} min-h-screen bg-background text-foreground antialiased`}>
+      <body className={`${inter.className} min-h-screen bg-background text-foreground antialiased`}>
         <Providers>
           <ThemeProvider
             attribute="class"

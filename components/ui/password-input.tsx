@@ -5,8 +5,7 @@ import { FiEye, FiEyeOff } from "react-icons/fi";
 import { Input } from "./input";
 import { cn } from "@/lib/utils";
 
-export interface PasswordInputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {}
+export type PasswordInputProps = React.InputHTMLAttributes<HTMLInputElement>
 
 const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
   ({ className, ...props }, ref) => {
