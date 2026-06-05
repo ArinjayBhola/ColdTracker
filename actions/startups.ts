@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { startups, startupTracking } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { eq, and, sql } from "drizzle-orm";
-import { revalidatePath, unstable_cache as cache, revalidateTag } from "next/cache";
+import { revalidatePath, unstable_cache as cache } from "next/cache";
 
 // Cache for 24 hours for static startup data
 const getCachedStartups = cache(
@@ -58,6 +58,16 @@ export async function getStartupsAction(page: number = 1, pageSize: number = 20)
     ...item,
     tracking: trackingData.filter(t => t.startupId === item.id)
   }));
+
+  // Sort items to push outreached startups to the end
+  itemsWithTracking.sort((a, b) => {
+    const aOutreached = a.tracking.some(t => t.outreachDone);
+    const bOutreached = b.tracking.some(t => t.outreachDone);
+    
+    if (aOutreached && !bOutreached) return 1;
+    if (!aOutreached && bOutreached) return -1;
+    return 0;
+  });
 
   return {
     items: itemsWithTracking,
