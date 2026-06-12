@@ -8,9 +8,9 @@ import { cn } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/date-picker";
 
 interface OutreachTimelineCardProps {
-  messageSentAt: Date | string;
-  followUpDueAt: Date | string; // 1st
-  followUpSentAt?: Date | string | null; // 1st
+  messageSentAt?: Date | string | null;
+  followUpDueAt?: Date | string | null; 
+  followUpSentAt?: Date | string | null; 
   followUp2DueAt?: Date | string | null;
   followUp2SentAt?: Date | string | null;
   isOverdue: boolean;

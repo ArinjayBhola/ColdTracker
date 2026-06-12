@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { extensionLeads, outreach } from "@/db/schema";
+import { extensionLeads, outreach, type OutreachContact } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -90,8 +90,8 @@ export async function promoteLeadToOutreachAction(id: string, values: PromoteLea
       if (existing) {
         // Update existing entry
         const updatedContacts = Array.isArray(existing.contacts) 
-          ? [...(existing.contacts as Record<string, unknown>[]), ...formattedContacts]
-          : [...formattedContacts];
+          ? [...(existing.contacts as OutreachContact[]), ...(formattedContacts as OutreachContact[])]
+          : [...(formattedContacts as OutreachContact[])];
 
         await tx.update(outreach)
           .set({
