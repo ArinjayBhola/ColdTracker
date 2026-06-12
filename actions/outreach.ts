@@ -4,10 +4,11 @@ import { db } from "@/db";
 import { outreach, users } from "@/db/schema";
 import { outreachFormSchema, STATUSES } from "@/lib/validations";
 import { auth } from "@/lib/auth";
-import { eq, desc, asc, and, sql, inArray } from "drizzle-orm";
+import { eq, desc, and, sql, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { addDays } from "date-fns";
 import { recordDailyActivity } from "@/actions/goals";
+import { getCachedData, invalidateCache } from "@/lib/redis";
 export type ActionState = {
   error?: string;
   success?: boolean;
@@ -26,7 +27,7 @@ export async function createOutreachAction(prevState: ActionState, formData: For
     }
 
     // Helper to extract contacts from formData
-    const contacts: any[] = [];
+    const contacts: Record<string, FormDataEntryValue | null>[] = [];
     let i = 0;
     while (formData.has(`contacts.${i}.personName`)) {
       contacts.push({
@@ -58,7 +59,7 @@ export async function createOutreachAction(prevState: ActionState, formData: For
       console.error("Validation failed:", parsed.error.flatten().fieldErrors);
       return { 
           error: "Please check the form for errors", 
-          details: parsed.error.flatten().fieldErrors as any
+          details: parsed.error.flatten().fieldErrors as Record<string, string[]>
       };
     }
 
@@ -117,6 +118,10 @@ export async function createOutreachAction(prevState: ActionState, formData: For
         .where(eq(outreach.id, existing.id));
       
       try { await recordDailyActivity(); } catch (e) { console.error("Daily activity error:", e); }
+      await invalidateCache([
+        `outreach:stats:${session.user.id}`,
+        `outreach:grouped:${session.user.id}:1:10:ALL`
+      ]);
       revalidatePath("/dashboard");
       return { success: true, outreachId: existing.id };
     } else {
@@ -134,6 +139,10 @@ export async function createOutreachAction(prevState: ActionState, formData: For
       }).returning({ id: outreach.id });
 
       try { await recordDailyActivity(); } catch (e) { console.error("Daily activity error:", e); }
+      await invalidateCache([
+        `outreach:stats:${session.user.id}`,
+        `outreach:grouped:${session.user.id}:1:10:ALL`
+      ]);
       revalidatePath("/dashboard");
       return { success: true, outreachId: result[0]?.id };
     }
@@ -159,23 +168,25 @@ export async function getStats() {
     const session = await auth();
     if (!session?.user?.id) return { sent: 0, replies: 0, interviews: 0, offers: 0 };
 
-    const stats = await db.select({
-        status: outreach.status,
-        count: sql<number>`count(*)`
-    })
-    .from(outreach)
-    .where(eq(outreach.userId, session.user.id))
-    .groupBy(outreach.status);
+    return await getCachedData(`outreach:stats:${session.user.id}`, async () => {
+        const stats = await db.select({
+            status: outreach.status,
+            count: sql<number>`count(*)`
+        })
+        .from(outreach)
+        .where(eq(outreach.userId, session.user.id))
+        .groupBy(outreach.status);
 
-    const result = { sent: 0, replies: 0, interviews: 0, offers: 0 };
-    stats.forEach(s => {
-        result.sent += Number(s.count);
-        if (s.status === 'REPLIED') result.replies = Number(s.count);
-        if (s.status === 'INTERVIEW') result.interviews = Number(s.count);
-        if (s.status === 'OFFER') result.offers = Number(s.count);
+        const result = { sent: 0, replies: 0, interviews: 0, offers: 0 };
+        stats.forEach(s => {
+            result.sent += Number(s.count);
+            if (s.status === 'REPLIED') result.replies = Number(s.count);
+            if (s.status === 'INTERVIEW') result.interviews = Number(s.count);
+            if (s.status === 'OFFER') result.offers = Number(s.count);
+        });
+
+        return result;
     });
-
-    return result;
 }
 export async function getGroupedOutreachByCompany(page: number = 1, limit: number = 10, filter: string = "ALL") {
   const session = await auth();
@@ -183,46 +194,48 @@ export async function getGroupedOutreachByCompany(page: number = 1, limit: numbe
 
   const offset = (page - 1) * limit;
   
-  const whereClause = [eq(outreach.userId, session.user.id)];
-  if (filter !== "ALL") {
-    // @ts-expect-error - validated status
-    whereClause.push(eq(outreach.status, filter));
-  }
+  return await getCachedData(`outreach:grouped:${session.user.id}:${page}:${limit}:${filter}`, async () => {
+    const whereClause = [eq(outreach.userId, session.user.id)];
+    if (filter !== "ALL") {
+      // @ts-expect-error - validated status
+      whereClause.push(eq(outreach.status, filter));
+    }
 
-  const [items, totalCountRes] = await Promise.all([
-    db.query.outreach.findMany({
-      where: and(...whereClause),
-      orderBy: [desc(outreach.createdAt)],
-      limit,
-      offset,
-    }),
-    db.select({ count: sql<number>`count(*)` })
-      .from(outreach)
-      .where(and(...whereClause))
-  ]);
+    const [items, totalCountRes] = await Promise.all([
+      db.query.outreach.findMany({
+        where: and(...whereClause),
+        orderBy: [desc(outreach.createdAt)],
+        limit,
+        offset,
+      }),
+      db.select({ count: sql<number>`count(*)` })
+        .from(outreach)
+        .where(and(...whereClause))
+    ]);
 
-  const totalCount = Number(totalCountRes[0]?.count || 0);
+    const totalCount = Number(totalCountRes[0]?.count || 0);
 
-  return {
-    items: items.map(item => ({
-        id: item.id,
-        companyName: item.companyName,
-        companyLink: item.companyLink,
-        roleTargeted: item.roleTargeted,
-        personName: item.contacts[0]?.personName || "No Contact",
-        personRole: item.contacts[0]?.personRole || "N/A",
-        status: item.status,
-        messageSentAt: item.contacts[0]?.messageSentAt, 
-        followUpDueAt: item.contacts[0]?.followUpDueAt,
-        followUpSentAt: item.followUpSentAt,
-        contactMethod: item.contacts[0]?.contactMethod || "EMAIL",
-        contactCount: item.contacts.length,
-        contacts: item.contacts,
-        date: item.createdAt,
-        updatedAt: item.updatedAt,
-    })),
-    totalCount
-  };
+    return {
+      items: items.map(item => ({
+          id: item.id,
+          companyName: item.companyName,
+          companyLink: item.companyLink,
+          roleTargeted: item.roleTargeted,
+          personName: item.contacts[0]?.personName || "No Contact",
+          personRole: item.contacts[0]?.personRole || "N/A",
+          status: item.status,
+          messageSentAt: item.contacts[0]?.messageSentAt, 
+          followUpDueAt: item.contacts[0]?.followUpDueAt,
+          followUpSentAt: item.followUpSentAt,
+          contactMethod: item.contacts[0]?.contactMethod || "EMAIL",
+          contactCount: item.contacts.length,
+          contacts: item.contacts,
+          date: item.createdAt,
+          updatedAt: item.updatedAt,
+      })),
+      totalCount
+    };
+  });
 }
 
 export async function updateOutreachStatus(id: string, newStatus: string) {
@@ -249,6 +262,10 @@ export async function updateOutreachStatus(id: string, newStatus: string) {
                 )
             );
         
+        await invalidateCache([
+          `outreach:stats:${session.user.id}`,
+          `outreach:grouped:${session.user.id}:1:10:ALL`
+        ]);
         revalidatePath("/dashboard");
         return { success: true };
     } catch (error) {
@@ -270,6 +287,10 @@ export async function deleteOutreach(id: string) {
                 )
             );
         
+        await invalidateCache([
+          `outreach:stats:${session.user.id}`,
+          `outreach:grouped:${session.user.id}:1:10:ALL`
+        ]);
         revalidatePath("/dashboard");
         return { success: true };
     } catch (error) {
@@ -323,7 +344,7 @@ export async function addContactToCompanyAction(outreachId: string, formData: Fo
 
     const personName = formData.get("personName") as string;
     const personRole = formData.get("personRole") as string;
-    const contactMethod = formData.get("contactMethod") as any;
+    const contactMethod = formData.get("contactMethod") as string;
     const rawEmail = formData.get("emailAddress") as string;
     const rawLinkedin = formData.get("linkedinProfileUrl") as string;
 
@@ -389,7 +410,7 @@ export async function updateOutreachInlineAction(outreachId: string, contactInde
         if (updatedContacts[contactIndex]) {
             updatedContacts[contactIndex] = {
                 ...updatedContacts[contactIndex],
-                contactMethod: (data.contactMethod as any) || updatedContacts[contactIndex].contactMethod,
+                contactMethod: (data.contactMethod as string) || updatedContacts[contactIndex].contactMethod,
                 emailAddress: data.email || (data.email === "" ? null : updatedContacts[contactIndex].emailAddress),
                 linkedinProfileUrl: data.linkedin || (data.linkedin === "" ? null : updatedContacts[contactIndex].linkedinProfileUrl),
             };

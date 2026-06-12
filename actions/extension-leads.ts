@@ -7,6 +7,7 @@ import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { addDays } from "date-fns";
 import { PromoteLeadValues } from "@/lib/validations";
+import { getCachedData, invalidateCache } from "@/lib/redis";
 
 export async function getExtensionLeadsAction(page: number = 1, limit: number = 10) {
     const session = await auth();
@@ -14,22 +15,24 @@ export async function getExtensionLeadsAction(page: number = 1, limit: number = 
 
     const offset = (page - 1) * limit;
 
-    const [items, totalCountRes] = await Promise.all([
-        db.query.extensionLeads.findMany({
-            where: eq(extensionLeads.userId, session.user.id),
-            orderBy: [desc(extensionLeads.createdAt)],
-            limit,
-            offset,
-        }),
-        db.select({ count: sql<number>`count(*)` })
-            .from(extensionLeads)
-            .where(eq(extensionLeads.userId, session.user.id))
-    ]);
+    return await getCachedData(`extension-leads:${session.user.id}:${page}:${limit}`, async () => {
+        const [items, totalCountRes] = await Promise.all([
+            db.query.extensionLeads.findMany({
+                where: eq(extensionLeads.userId, session.user.id),
+                orderBy: [desc(extensionLeads.createdAt)],
+                limit,
+                offset,
+            }),
+            db.select({ count: sql<number>`count(*)` })
+                .from(extensionLeads)
+                .where(eq(extensionLeads.userId, session.user.id))
+        ]);
 
-    return {
-        items,
-        totalCount: Number(totalCountRes[0]?.count || 0)
-    };
+        return {
+            items,
+            totalCount: Number(totalCountRes[0]?.count || 0)
+        };
+    });
 }
 
 export async function deleteExtensionLeadAction(id: string) {
@@ -43,6 +46,10 @@ export async function deleteExtensionLeadAction(id: string) {
         eq(extensionLeads.userId, session.user.id)
       )
     );
+    await invalidateCache([
+      `extension-leads:${session.user.id}:1:1`,
+      `extension-leads:${session.user.id}:1:10`
+    ]);
     revalidatePath("/dashboard/extension-leads");
     return { success: true };
   } catch (error) {
@@ -70,7 +77,7 @@ export async function promoteLeadToOutreachAction(id: string, values: PromoteLea
       });
 
       // Prepare contacts for JSONB storage (ensure dates are handled by DB)
-      const formattedContacts = contacts.map((c: any) => {
+      const formattedContacts = contacts.map((c: PromoteLeadValues["contacts"][number]) => {
         const sentAt = c.messageSentAt || new Date();
         return {
           ...c,
@@ -83,7 +90,7 @@ export async function promoteLeadToOutreachAction(id: string, values: PromoteLea
       if (existing) {
         // Update existing entry
         const updatedContacts = Array.isArray(existing.contacts) 
-          ? [...(existing.contacts as any[]), ...formattedContacts]
+          ? [...(existing.contacts as Record<string, unknown>[]), ...formattedContacts]
           : [...formattedContacts];
 
         await tx.update(outreach)
@@ -118,6 +125,12 @@ export async function promoteLeadToOutreachAction(id: string, values: PromoteLea
       );
     });
 
+    await invalidateCache([
+      `extension-leads:${session.user.id}:1:1`,
+      `extension-leads:${session.user.id}:1:10`,
+      `outreach:stats:${session.user.id}`,
+      `outreach:grouped:${session.user.id}:1:10:ALL`
+    ]);
     revalidatePath("/dashboard/extension-leads");
     revalidatePath("/dashboard");
     return { success: true, outreachId: newOutreachId };
@@ -144,13 +157,13 @@ export async function updateExtensionLeadAction(id: string, values: {
   companyName?: string;
   companyUrl?: string;
   position?: string;
-  personRole?: any;
+  personRole?: string;
   emailAddress?: string | null;
   outreachDate?: Date;
   followUpDate?: Date | null;
   notes?: string;
   profileUrl?: string;
-  contactMethod?: any;
+  contactMethod?: "EMAIL" | "LINKEDIN";
 }) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
@@ -159,8 +172,7 @@ export async function updateExtensionLeadAction(id: string, values: {
     await db.update(extensionLeads)
       .set({
         ...values,
-        // Ensure nulls are handled correctly if coming from undefined in some cases
-      } as any)
+      } as Record<string, unknown>)
       .where(
         and(
           eq(extensionLeads.id, id),
@@ -194,10 +206,10 @@ export async function addContactToExtensionLeadAction(leadId: string, formData: 
     if (!session?.user?.id) return { error: "Unauthorized" };
 
     const personName = formData.get("personName") as string;
-    const personRole = formData.get("personRole") as any;
+    const personRole = formData.get("personRole") as string;
     const emailAddressStr = formData.get("emailAddress") as string;
     const linkedinProfileUrl = formData.get("linkedinProfileUrl") as string;
-    const contactMethod = formData.get("contactMethod") as any;
+    const contactMethod = formData.get("contactMethod") as "EMAIL" | "LINKEDIN";
 
     const emailAddress = emailAddressStr === "" ? null : emailAddressStr;
 

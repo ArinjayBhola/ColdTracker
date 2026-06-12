@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { eq, and, desc, gte, lte, sql, count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { startOfWeek, endOfWeek, format, subDays, differenceInCalendarDays } from "date-fns";
+import { getCachedData, invalidateCache } from "@/lib/redis";
 
 export async function getOrCreateGoal() {
   const session = await auth();
@@ -65,19 +66,21 @@ export async function getDailyProgress() {
   const session = await auth();
   if (!session?.user?.id) return { target: 3, current: 0, percentage: 0 };
 
-  const goal = await getOrCreateGoal();
-  const target = goal?.dailyTarget ?? 3;
+  return await getCachedData(`goals:daily:${session.user.id}`, async () => {
+    const goal = await getOrCreateGoal();
+    const target = goal?.dailyTarget ?? 3;
 
-  const today = format(new Date(), "yyyy-MM-dd");
+    const today = format(new Date(), "yyyy-MM-dd");
 
-  const activity = await db.query.dailyActivity.findFirst({
-    where: and(eq(dailyActivity.userId, session.user.id), eq(dailyActivity.date, today)),
+    const activity = await db.query.dailyActivity.findFirst({
+      where: and(eq(dailyActivity.userId, session.user.id), eq(dailyActivity.date, today)),
+    });
+
+    const current = activity?.outreachCount ?? 0;
+    const percentage = Math.min(Math.round((current / target) * 100), 100);
+
+    return { target, current, percentage };
   });
-
-  const current = activity?.outreachCount ?? 0;
-  const percentage = Math.min(Math.round((current / target) * 100), 100);
-
-  return { target, current, percentage };
 }
 
 export async function updateWeeklyTarget(target: number) {
@@ -111,73 +114,77 @@ export async function getWeeklyProgress() {
   const session = await auth();
   if (!session?.user?.id) return { target: 10, current: 0, percentage: 0 };
 
-  const goal = await getOrCreateGoal();
-  const target = goal?.weeklyTarget ?? 10;
+  return await getCachedData(`goals:weekly:${session.user.id}`, async () => {
+    const goal = await getOrCreateGoal();
+    const target = goal?.weeklyTarget ?? 10;
 
-  const now = new Date();
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 }); // Monday
-  const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+    const now = new Date();
+    const weekStart = startOfWeek(now, { weekStartsOn: 1 }); // Monday
+    const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
 
-  const weekStartStr = format(weekStart, "yyyy-MM-dd");
-  const weekEndStr = format(weekEnd, "yyyy-MM-dd");
+    const weekStartStr = format(weekStart, "yyyy-MM-dd");
+    const weekEndStr = format(weekEnd, "yyyy-MM-dd");
 
-  const result = await db
-    .select({ total: sql<number>`coalesce(sum(${dailyActivity.outreachCount}), 0)` })
-    .from(dailyActivity)
-    .where(
-      and(
-        eq(dailyActivity.userId, session.user.id),
-        gte(dailyActivity.date, weekStartStr),
-        lte(dailyActivity.date, weekEndStr),
-      ),
-    );
+    const result = await db
+      .select({ total: sql<number>`coalesce(sum(${dailyActivity.outreachCount}), 0)` })
+      .from(dailyActivity)
+      .where(
+        and(
+          eq(dailyActivity.userId, session.user.id),
+          gte(dailyActivity.date, weekStartStr),
+          lte(dailyActivity.date, weekEndStr),
+        ),
+      );
 
-  const current = Number(result[0]?.total ?? 0);
-  const percentage = Math.min(Math.round((current / target) * 100), 100);
+    const current = Number(result[0]?.total ?? 0);
+    const percentage = Math.min(Math.round((current / target) * 100), 100);
 
-  return { target, current, percentage };
+    return { target, current, percentage };
+  });
 }
 
 export async function getStreakData() {
   const session = await auth();
   if (!session?.user?.id) return { currentStreak: 0, longestStreak: 0, todayCount: 0 };
 
-  const today = format(new Date(), "yyyy-MM-dd");
+  return await getCachedData(`goals:streak:${session.user.id}`, async () => {
+    const today = format(new Date(), "yyyy-MM-dd");
 
-  // Get all activity days sorted descending
-  const activities = await db
-    .select({ date: dailyActivity.date, outreachCount: dailyActivity.outreachCount })
-    .from(dailyActivity)
-    .where(and(eq(dailyActivity.userId, session.user.id), gte(dailyActivity.outreachCount, 1)))
-    .orderBy(desc(dailyActivity.date));
+    // Get all activity days sorted descending
+    const activities = await db
+      .select({ date: dailyActivity.date, outreachCount: dailyActivity.outreachCount })
+      .from(dailyActivity)
+      .where(and(eq(dailyActivity.userId, session.user.id), gte(dailyActivity.outreachCount, 1)))
+      .orderBy(desc(dailyActivity.date));
 
-  if (activities.length === 0) return { currentStreak: 0, longestStreak: 0, todayCount: 0 };
+    if (activities.length === 0) return { currentStreak: 0, longestStreak: 0, todayCount: 0 };
 
-  const todayActivity = activities.find((a) => a.date === today);
-  const todayCount = todayActivity?.outreachCount ?? 0;
+    const todayActivity = activities.find((a) => a.date === today);
+    const todayCount = todayActivity?.outreachCount ?? 0;
 
-  // Calculate current streak (consecutive days ending today or yesterday)
-  const activeDates = new Set(activities.map((a) => a.date));
-  let currentStreak = 0;
-  let checkDate = new Date();
+    // Calculate current streak (consecutive days ending today or yesterday)
+    const activeDates = new Set(activities.map((a) => a.date));
+    let currentStreak = 0;
+    let checkDate = new Date();
 
-  // If no activity today, start from yesterday
-  if (!activeDates.has(format(checkDate, "yyyy-MM-dd"))) {
-    checkDate = subDays(checkDate, 1);
+    // If no activity today, start from yesterday
     if (!activeDates.has(format(checkDate, "yyyy-MM-dd"))) {
-      // No activity today or yesterday — streak is broken
-      return { currentStreak: 0, longestStreak: calculateLongestStreak(activities), todayCount };
+      checkDate = subDays(checkDate, 1);
+      if (!activeDates.has(format(checkDate, "yyyy-MM-dd"))) {
+        // No activity today or yesterday — streak is broken
+        return { currentStreak: 0, longestStreak: calculateLongestStreak(activities), todayCount };
+      }
     }
-  }
 
-  while (activeDates.has(format(checkDate, "yyyy-MM-dd"))) {
-    currentStreak++;
-    checkDate = subDays(checkDate, 1);
-  }
+    while (activeDates.has(format(checkDate, "yyyy-MM-dd"))) {
+      currentStreak++;
+      checkDate = subDays(checkDate, 1);
+    }
 
-  const longestStreak = calculateLongestStreak(activities);
+    const longestStreak = calculateLongestStreak(activities);
 
-  return { currentStreak, longestStreak: Math.max(currentStreak, longestStreak), todayCount };
+    return { currentStreak, longestStreak: Math.max(currentStreak, longestStreak), todayCount };
+  });
 }
 
 function calculateLongestStreak(activities: { date: string; outreachCount: number }[]) {
@@ -231,6 +238,12 @@ export async function recordDailyActivity() {
     if (existing) {
       if (existing.outreachCount !== todayCount) {
         await db.update(dailyActivity).set({ outreachCount: todayCount }).where(eq(dailyActivity.id, existing.id));
+        await invalidateCache([
+          `goals:daily:${session.user.id}`,
+          `goals:weekly:${session.user.id}`,
+          `goals:streak:${session.user.id}`,
+          `goals:last7:${session.user.id}`
+        ]);
       }
     } else {
       // Verify user exists before creating activity to avoid FK violation
@@ -246,6 +259,12 @@ export async function recordDailyActivity() {
         date: today,
         outreachCount: todayCount,
       });
+      await invalidateCache([
+        `goals:daily:${session.user.id}`,
+        `goals:weekly:${session.user.id}`,
+        `goals:streak:${session.user.id}`,
+        `goals:last7:${session.user.id}`
+      ]);
     }
 
     return { success: true, count: todayCount };
@@ -306,28 +325,30 @@ export async function getLast7DaysActivity() {
   const session = await auth();
   if (!session?.user?.id) return [];
 
-  const days = [];
-  for (let i = 6; i >= 0; i--) {
-    const date = subDays(new Date(), i);
-    days.push(format(date, "yyyy-MM-dd"));
-  }
+  return await getCachedData(`goals:last7:${session.user.id}`, async () => {
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = subDays(new Date(), i);
+      days.push(format(date, "yyyy-MM-dd"));
+    }
 
-  const activities = await db
-    .select()
-    .from(dailyActivity)
-    .where(
-      and(
-        eq(dailyActivity.userId, session.user.id),
-        gte(dailyActivity.date, days[0]),
-        lte(dailyActivity.date, days[6]),
-      ),
-    );
+    const activities = await db
+      .select()
+      .from(dailyActivity)
+      .where(
+        and(
+          eq(dailyActivity.userId, session.user.id),
+          gte(dailyActivity.date, days[0]),
+          lte(dailyActivity.date, days[6]),
+        ),
+      );
 
-  const activityMap = new Map(activities.map((a) => [a.date, a.outreachCount]));
+    const activityMap = new Map(activities.map((a) => [a.date, a.outreachCount]));
 
-  return days.map((date) => ({
-    date,
-    day: format(new Date(date), "EEE"),
-    count: activityMap.get(date) ?? 0,
-  }));
+    return days.map((date) => ({
+      date,
+      day: format(new Date(date), "EEE"),
+      count: activityMap.get(date) ?? 0,
+    }));
+  });
 }
