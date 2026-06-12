@@ -229,7 +229,9 @@ export async function recordDailyActivity() {
     });
 
     if (existing) {
-      await db.update(dailyActivity).set({ outreachCount: todayCount }).where(eq(dailyActivity.id, existing.id));
+      if (existing.outreachCount !== todayCount) {
+        await db.update(dailyActivity).set({ outreachCount: todayCount }).where(eq(dailyActivity.id, existing.id));
+      }
     } else {
       // Verify user exists before creating activity to avoid FK violation
       const userExists = await db.query.users.findFirst({

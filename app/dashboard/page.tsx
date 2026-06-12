@@ -9,7 +9,7 @@ import { ExportExcel } from "@/components/export-excel";
 import { OutreachTable } from "@/components/outreach-table";
 import { DashboardRefreshButton } from "@/components/dashboard-refresh-button";
 import { getExtensionLeadsAction } from "@/actions/extension-leads";
-import { getWeeklyProgress, getDailyProgress, getStreakData, getLast7DaysActivity, recordDailyActivity } from "@/actions/goals";
+import { getWeeklyProgress, getDailyProgress, getStreakData, getLast7DaysActivity } from "@/actions/goals";
 import { GoalsStreaksCard } from "@/components/goals-streaks-card";
 import { StaggerContainer, StaggerItem } from "@/components/motion-wrapper";
 
@@ -21,13 +21,20 @@ export default async function DashboardPage(
   const searchParams = await props.searchParams;
   const page = Number(searchParams.page) || 1;
   const filter = searchParams.filter || "ALL";
-  const { items: outreachItems, totalCount } = await getGroupedOutreachByCompany(page, 10, filter);
-  const stats = await getStats();
-  const { totalCount: leadsCount } = await getExtensionLeadsAction(1, 1);
 
-  // Sync today's activity and fetch goals data
-  await recordDailyActivity();
-  const [dailyProgress, weeklyProgress, streakData, last7Days] = await Promise.all([
+  // Fetch all dashboard data concurrently to significantly improve page load time
+  const [
+    { items: outreachItems, totalCount },
+    stats,
+    { totalCount: leadsCount },
+    dailyProgress,
+    weeklyProgress,
+    streakData,
+    last7Days
+  ] = await Promise.all([
+    getGroupedOutreachByCompany(page, 10, filter),
+    getStats(),
+    getExtensionLeadsAction(1, 1),
     getDailyProgress(),
     getWeeklyProgress(),
     getStreakData(),
