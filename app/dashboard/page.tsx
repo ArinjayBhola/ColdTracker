@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { getGroupedOutreachByCompany, getStats } from "@/actions/outreach";
 import { Sidebar } from "@/components/sidebar";
 import { Button } from "@/components/ui/button";
@@ -13,32 +14,10 @@ import { getWeeklyProgress, getDailyProgress, getStreakData, getLast7DaysActivit
 import { GoalsStreaksCard } from "@/components/goals-streaks-card";
 import { StaggerContainer, StaggerItem } from "@/components/motion-wrapper";
 
-export default async function DashboardPage(
-  props: {
-    searchParams: Promise<{ page?: string; filter?: string }>;
-  }
-) {
-  const searchParams = await props.searchParams;
-  const page = Number(searchParams.page) || 1;
-  const filter = searchParams.filter || "ALL";
-
-  // Fetch all dashboard data concurrently to significantly improve page load time
-  const [
-    { items: outreachItems, totalCount },
-    stats,
-    { totalCount: leadsCount },
-    dailyProgress,
-    weeklyProgress,
-    streakData,
-    last7Days
-  ] = await Promise.all([
-    getGroupedOutreachByCompany(page, 10, filter),
+async function DashboardStatsCards() {
+  const [stats, { totalCount: leadsCount }] = await Promise.all([
     getStats(),
     getExtensionLeadsAction(1, 1),
-    getDailyProgress(),
-    getWeeklyProgress(),
-    getStreakData(),
-    getLast7DaysActivity(),
   ]);
 
   const statCards = [
@@ -85,6 +64,94 @@ export default async function DashboardPage(
   ];
 
   return (
+    <StaggerContainer className="grid gap-4 md:gap-6 grid-cols-2 lg:grid-cols-5">
+      {statCards.map((stat) => (
+        <StaggerItem key={stat.title}>
+          <Card
+            className={cn(
+              "h-[150px] md:h-[170px] border-none ring-1 transition-all hover:shadow-md flex flex-col justify-between",
+              stat.borderColor.replace("border-", "ring-"),
+              stat.bgColor
+            )}
+          >
+            <CardHeader className="flex flex-row items-center justify-between p-4 md:pb-3">
+              <CardTitle className="text-[10px] md:text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                {stat.title}
+              </CardTitle>
+
+              <div
+                className={cn(
+                  "hidden md:flex p-2.5 rounded-xl bg-background/80",
+                  stat.iconColor
+                )}
+              >
+                <stat.icon className="h-5 w-5" />
+              </div>
+            </CardHeader>
+
+            <CardContent className="px-4 pb-4 md:px-6 md:pb-6 flex flex-col justify-end flex-1">
+              <div className="text-2xl md:text-4xl font-bold tracking-tight">
+                {stat.value}
+              </div>
+
+              {/* Always reserve space for percentage row */}
+              <div className="h-5 mt-1 md:mt-2">
+                {stats.sent > 0 &&
+                  stat.title !== "Total Sent" &&
+                  stat.title !== "Ext. Leads" && (
+                    <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1">
+                      <FiTrendingUp className="w-3 h-3" />
+                      {((stat.value / stats.sent) * 100).toFixed(1)}%
+                    </p>
+                  )}
+              </div>
+            </CardContent>
+          </Card>
+        </StaggerItem>
+      ))}
+    </StaggerContainer>
+  );
+}
+
+async function DashboardGoalsSection() {
+  const [dailyProgress, weeklyProgress, streakData, last7Days] = await Promise.all([
+    getDailyProgress(),
+    getWeeklyProgress(),
+    getStreakData(),
+    getLast7DaysActivity(),
+  ]);
+
+  return (
+    <GoalsStreaksCard
+      dailyProgress={dailyProgress}
+      weeklyProgress={weeklyProgress}
+      streakData={streakData}
+      last7Days={last7Days}
+    />
+  );
+}
+
+async function DashboardOutreachTableSection({ page, filter }: { page: number, filter: string }) {
+  const { items: outreachItems, totalCount } = await getGroupedOutreachByCompany(page, 10, filter);
+  return (
+    <OutreachTable 
+      items={outreachItems} 
+      totalCount={totalCount} 
+      currentPage={page} 
+    />
+  );
+}
+
+export default async function DashboardPage(
+  props: {
+    searchParams: Promise<{ page?: string; filter?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const page = Number(searchParams.page) || 1;
+  const filter = searchParams.filter || "ALL";
+
+  return (
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
       <main className="flex-1 overflow-y-auto p-4 md:p-8">
@@ -111,67 +178,20 @@ export default async function DashboardPage(
             </div>
 
             {/* Stats Section */}
-            <StaggerContainer className="grid gap-4 md:gap-6 grid-cols-2 lg:grid-cols-5">
-              {statCards.map((stat) => (
-                <StaggerItem key={stat.title}>
-                  <Card
-                    className={cn(
-                      "h-[150px] md:h-[170px] border-none ring-1 transition-all hover:shadow-md flex flex-col justify-between",
-                      stat.borderColor.replace("border-", "ring-"),
-                      stat.bgColor
-                    )}
-                  >
-                    <CardHeader className="flex flex-row items-center justify-between p-4 md:pb-3">
-                      <CardTitle className="text-[10px] md:text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                        {stat.title}
-                      </CardTitle>
+            <Suspense fallback={<div className="w-full h-[150px] md:h-[170px] bg-muted/50 animate-pulse rounded-xl" />}>
+              <DashboardStatsCards />
+            </Suspense>
 
-                      <div
-                        className={cn(
-                          "hidden md:flex p-2.5 rounded-xl bg-background/80",
-                          stat.iconColor
-                        )}
-                      >
-                        <stat.icon className="h-5 w-5" />
-                      </div>
-                    </CardHeader>
-
-                    <CardContent className="px-4 pb-4 md:px-6 md:pb-6 flex flex-col justify-end flex-1">
-                      <div className="text-2xl md:text-4xl font-bold tracking-tight">
-                        {stat.value}
-                      </div>
-
-                      {/* Always reserve space for percentage row */}
-                      <div className="h-5 mt-1 md:mt-2">
-                        {stats.sent > 0 &&
-                          stat.title !== "Total Sent" &&
-                          stat.title !== "Ext. Leads" && (
-                            <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1">
-                              <FiTrendingUp className="w-3 h-3" />
-                              {((stat.value / stats.sent) * 100).toFixed(1)}%
-                            </p>
-                          )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </StaggerItem>
-              ))}
-            </StaggerContainer>
             {/* Goals & Streaks */}
-            <GoalsStreaksCard
-              dailyProgress={dailyProgress}
-              weeklyProgress={weeklyProgress}
-              streakData={streakData}
-              last7Days={last7Days}
-            />
+            <Suspense fallback={<div className="w-full h-[300px] bg-muted/50 animate-pulse rounded-xl" />}>
+              <DashboardGoalsSection />
+            </Suspense>
 
             {/* Outreach Table */}
             <div>
-                <OutreachTable 
-                  items={outreachItems} 
-                  totalCount={totalCount} 
-                  currentPage={page} 
-                />
+              <Suspense fallback={<div className="w-full h-[400px] bg-muted/50 animate-pulse rounded-xl" />}>
+                <DashboardOutreachTableSection page={page} filter={filter} />
+              </Suspense>
             </div>
         </div>
       </main>

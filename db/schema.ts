@@ -10,6 +10,7 @@ import {
   boolean,
   jsonb,
   uniqueIndex,
+  unique,
   index,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
@@ -103,6 +104,16 @@ export const verificationTokens = pgTable(
 );
 
 
+export type OutreachContact = {
+  personName: string;
+  personRole: string;
+  contactMethod: string;
+  emailAddress?: string | null;
+  linkedinProfileUrl?: string | null;
+  messageSentAt?: string | Date;
+  followUpDueAt?: string | Date;
+};
+
 // --- Outreach Schema ---
 export const outreach = pgTable("outreach", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -117,7 +128,7 @@ export const outreach = pgTable("outreach", {
   followUp2SentAt: timestamp("follow_up_2_sent_at", { mode: "date" }),
   status: statusEnum("status").default("DRAFT").notNull(),
   notes: text("notes"),
-  contacts: jsonb("contacts").$type<any[]>().default([]).notNull(),
+  contacts: jsonb("contacts").$type<OutreachContact[]>().default([]).notNull(),
   calendarSynced: boolean("calendar_synced").default(false),
   calendarEventId: text("calendar_event_id"),
   calendarEventId2: text("calendar_event_id_2"),
@@ -126,6 +137,8 @@ export const outreach = pgTable("outreach", {
 }, (table) => ({
   userIdIdx: index("outreach_user_id_idx").on(table.userId),
   createdAtIdx: index("outreach_created_at_idx").on(table.createdAt),
+  userIdStatusCreatedAtIdx: index("outreach_user_id_status_created_at_idx").on(table.userId, table.status, table.createdAt),
+  userIdStatusIdx: index("outreach_user_id_status_idx").on(table.userId, table.status),
 }));
 
 // --- Extension Schema ---
@@ -216,6 +229,7 @@ export const dailyActivity = pgTable("daily_activity", {
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
 }, (table) => ({
   userDateIdx: uniqueIndex("daily_activity_user_date_idx").on(table.userId, table.date),
+  userDateUnique: unique("daily_activity_user_date_unique").on(table.userId, table.date),
 }));
 
 // --- Startups Schema ---

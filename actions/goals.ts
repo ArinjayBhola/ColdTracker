@@ -298,23 +298,21 @@ export async function syncActivityHistory() {
 
   if (!userExists) return { error: "User record not found" };
 
-  for (const day of dailyCounts) {
-    const existing = await db.query.dailyActivity.findFirst({
-      where: and(eq(dailyActivity.userId, session.user.id), eq(dailyActivity.date, day.date)),
-    });
+  if (dailyCounts.length > 0) {
+    const valuesToInsert = dailyCounts.map(day => ({
+      userId: session.user.id,
+      date: day.date,
+      outreachCount: Number(day.count),
+    }));
 
-    if (existing) {
-      await db
-        .update(dailyActivity)
-        .set({ outreachCount: Number(day.count) })
-        .where(eq(dailyActivity.id, existing.id));
-    } else {
-      await db.insert(dailyActivity).values({
-        userId: session.user.id,
-        date: day.date,
-        outreachCount: Number(day.count),
+    await db.insert(dailyActivity)
+      .values(valuesToInsert)
+      .onConflictDoUpdate({
+        target: [dailyActivity.userId, dailyActivity.date],
+        set: {
+          outreachCount: sql`excluded.outreach_count`,
+        }
       });
-    }
   }
 
   revalidatePath("/dashboard");
