@@ -27,6 +27,7 @@ import { ExtensionLeadContactsCard } from "./extension-lead-contacts-card";
 import { AddExtensionLeadContactDialog } from "./add-extension-lead-contact-dialog";
 
 interface ExtensionLeadDetailClientProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   initialData: any;
   id: string;
 }
@@ -49,7 +50,7 @@ export function ExtensionLeadDetailClient({ initialData, id }: ExtensionLeadDeta
     staleTime: 60 * 1000,
   });
 
-  const { data: companyLeads = [], refetch: refetchCompanyLeads } = useQuery({
+  const { data: companyLeads = [] } = useQuery({
     queryKey: ["company-extension-leads", item?.companyName],
     queryFn: () => getCompanyExtensionLeads(item?.companyName || ""),
     enabled: !!item?.companyName,
@@ -83,7 +84,9 @@ export function ExtensionLeadDetailClient({ initialData, id }: ExtensionLeadDeta
       if (!item.position || item.position === "-") missingFields.push("position");
       
       if (missingFields.length > 0) {
-        setHighlightMissingFields(missingFields);
+        setTimeout(() => {
+          setHighlightMissingFields(missingFields);
+        }, 0);
         setTimeout(() => setHighlightMissingFields([]), 3000);
       }
     }
@@ -315,7 +318,7 @@ export function ExtensionLeadDetailClient({ initialData, id }: ExtensionLeadDeta
                 outreachDate: data.outreachDate ? new Date(data.outreachDate) : undefined,
                 followUpDate: data.followUpDate ? new Date(data.followUpDate) : null,
                 profileUrl: data.profileUrl,
-                contactMethod: data.contactMethod,
+                contactMethod: data.contactMethod as "EMAIL" | "LINKEDIN" | undefined,
               });
               if (res.success) {
                 toast({ title: "Details updated", description: "Lead details have been saved." });
