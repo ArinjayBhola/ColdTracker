@@ -19,7 +19,7 @@ import { Sidebar } from "@/components/sidebar";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { FiArrowLeft, FiSave, FiBriefcase, FiUser, FiFileText, FiCalendar, FiPlus, FiTrash2, FiRefreshCw } from "react-icons/fi";
+import { FiArrowLeft, FiSave, FiBriefcase, FiUser, FiFileText, FiCalendar, FiPlus, FiTrash2 } from "react-icons/fi";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -33,7 +33,7 @@ function SubmitButton() {
 
 export default function NewOutreachPage() {
     const [state, formAction] = useActionState(createOutreachAction, { error: undefined, details: undefined, success: false });
-    const [contacts, setContacts] = useState([{ 
+    const [contacts, setContacts] = useState(() => [{ 
         id: Date.now(), 
         personName: "",
         personRole: "", 
@@ -42,7 +42,7 @@ export default function NewOutreachPage() {
         linkedinProfileUrl: ""
     }]);
     const [customRoles, setCustomRoles] = useState<Record<number, string>>({});
-    const [sentDate, setSentDate] = useState<Date | undefined>(new Date());
+    const [sentDate, setSentDate] = useState<Date | undefined>(() => new Date());
     const formRef = useRef<HTMLFormElement>(null);
     const router = useRouter();
     const { toast } = useToast();
@@ -287,8 +287,9 @@ export default function NewOutreachPage() {
                                 <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Email</label>
                                 <Input
                                   name={`contacts.${index}.emailAddress`}
-                                  placeholder="example@company.com"
+                                  placeholder="email1@com, email2@com"
                                   type="email"
+                                  multiple
                                   value={contact.emailAddress}
                                   onChange={(e) => {
                                     setContacts(prev => prev.map(c => c.id === contact.id ? { ...c, emailAddress: e.target.value } : c));
@@ -296,6 +297,7 @@ export default function NewOutreachPage() {
                                   className="h-9 text-sm"
                                 />
                                 {state.details?.[`contacts.${index}.emailAddress`] && <p className="text-destructive text-[9px] ml-1">{state.details[`contacts.${index}.emailAddress`][0]}</p>}
+                                <p className="text-[9px] text-muted-foreground ml-1 italic">Comma separated for multiple</p>
                               </div>
                               <div className="space-y-1 md:col-span-2">
                                 <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">LinkedIn URL</label>

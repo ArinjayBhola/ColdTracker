@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-const PERSON_ROLES = ["HR", "CEO", "CTO", "RECRUITER", "OTHER"] as const;
 const CONTACT_METHODS = ["EMAIL", "LINKEDIN"] as const;
 export const STATUSES = [
   "DRAFT",
@@ -17,7 +16,11 @@ const CONTACT_FIELDS = {
   personName: z.string().min(1, "Person name is required"),
   personRole: z.string().min(1, "Role is required"),
   contactMethod: z.enum(CONTACT_METHODS),
-  emailAddress: z.string().email("Invalid email").optional().or(z.literal("")),
+  emailAddress: z.string().refine((val) => {
+    if (!val || val.trim() === "") return true;
+    const emails = val.split(',').map(e => e.trim()).filter(e => e.length > 0);
+    return emails.every(e => z.string().email().safeParse(e).success);
+  }, "Invalid email(s)").optional().or(z.literal("")),
   linkedinProfileUrl: z.preprocess((val) => {
     if (typeof val !== "string" || !val.trim()) return undefined;
     const str = val.trim();

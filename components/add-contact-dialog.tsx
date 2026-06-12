@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FiPlus, FiUser, FiBriefcase, FiMail, FiLinkedin } from "react-icons/fi";
+import { FiPlus, FiUser, FiMail, FiLinkedin } from "react-icons/fi";
 import { 
   Dialog, 
   DialogContent, 
@@ -135,11 +135,13 @@ export function AddContactDialog({ outreachId }: { outreachId: string }) {
                                     <Input 
                                         name="emailAddress" 
                                         type="email" 
-                                        placeholder="example@example.com" 
+                                        multiple
+                                        placeholder="email1@com, email2@com" 
                                         className="h-11 pl-10 rounded-xl" 
                                     />
                                     <FiMail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                 </div>
+                                <p className="text-[10px] text-muted-foreground ml-1 italic">Comma separated for multiple</p>
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">LinkedIn URL (Optional)</label>
