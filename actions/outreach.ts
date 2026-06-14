@@ -270,6 +270,7 @@ export async function deleteOutreach(id: string) {
                 )
             );
         
+        await recordDailyActivity();
         revalidatePath("/dashboard");
         return { success: true };
     } catch (error) {
@@ -466,6 +467,7 @@ export async function bulkDeleteOutreach(ids: string[]) {
                 )
             );
         
+        await recordDailyActivity();
         revalidatePath("/dashboard");
         return { success: true };
     } catch (error) {
