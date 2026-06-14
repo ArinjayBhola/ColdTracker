@@ -6,7 +6,7 @@ import { sendDailyOutreachReminder } from "@/lib/resend";
 import { hash, compare } from "bcryptjs";
 import { eq, count } from "drizzle-orm";
 import { z } from "zod";
-import { auth, signOut } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
 const changePasswordSchema = z.object({
@@ -86,6 +86,37 @@ export async function changePasswordAction(formData: FormData) {
   return { success: "Password updated successfully" };
 }
 
+export async function setPasswordAction(formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  const newPassword = formData.get("newPassword") as string;
+  const confirmPassword = formData.get("confirmPassword") as string;
+
+  if (!newPassword || newPassword.length < 6) {
+    return { error: "Password must be at least 6 characters" };
+  }
+
+  if (newPassword !== confirmPassword) {
+    return { error: "Passwords do not match" };
+  }
+
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, session.user.id),
+  });
+
+  if (!user) {
+    return { error: "User not found" };
+  }
+
+  const hashedPassword = await hash(newPassword, 10);
+  await db.update(users).set({ password: hashedPassword }).where(eq(users.id, session.user.id));
+
+  return { success: "Password set successfully" };
+}
+
 export async function getOutreachStatsAction() {
   const session = await auth();
   if (!session?.user?.id) {
@@ -130,7 +161,10 @@ export async function updateNotificationSettingsAction(formData: FormData) {
   const receiveNotifications = formData.get("receiveNotifications") === "true";
 
   try {
-    const updateData: any = {
+    const updateData: {
+      receiveNotifications: boolean;
+      notificationEmail?: string | null;
+    } = {
       receiveNotifications,
     };
 

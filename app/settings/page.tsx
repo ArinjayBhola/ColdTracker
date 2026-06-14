@@ -9,7 +9,6 @@ import { DeleteAccountButton } from "@/components/settings/delete-account-button
 import { DataManagement } from "@/components/settings/data-management";
 import { NotificationSettings } from "@/components/settings/notification-settings";
 import { EmailAccountSettings } from "@/components/settings/email-account-settings";
-import { CalendarSettings } from "@/components/settings/calendar-settings";
 import { AppearanceSettings } from "@/components/settings/appearance-settings";
 import { FiSettings } from "react-icons/fi";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -89,7 +88,7 @@ export default async function SettingsPage() {
             <div className="lg:col-span-2 space-y-8">
               <AppearanceSettings />
               <EmailAccountSettings />
-              <CalendarSettings />
+
               <ChangePasswordForm />
 
               <NotificationSettings

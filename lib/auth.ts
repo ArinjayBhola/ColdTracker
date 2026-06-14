@@ -5,7 +5,7 @@ import Credentials from "next-auth/providers/credentials";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@/db/index";
 import * as schema from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { compare } from "bcryptjs";
 import { z } from "zod";
 
@@ -34,7 +34,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       authorization: {
         params: {
           scope:
-            "openid email profile https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar",
+            "openid email profile https://www.googleapis.com/auth/gmail.send",
           access_type: "offline",
           prompt: "consent",
         },
@@ -80,7 +80,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    session: ({ session, user, token }) => {
+    signIn: async ({ account }) => {
+      if (account && account.provider !== "credentials") {
+        await db
+          .update(schema.accounts)
+          .set({
+            access_token: account.access_token,
+            expires_at: account.expires_at,
+            ...(account.refresh_token ? { refresh_token: account.refresh_token } : {}),
+            scope: account.scope,
+            id_token: account.id_token,
+            token_type: account.token_type,
+          })
+          .where(
+            and(
+              eq(schema.accounts.provider, account.provider),
+              eq(schema.accounts.providerAccountId, account.providerAccountId)
+            )
+          );
+      }
+      return true;
+    },
+    session: ({ session, token }) => {
       // For creating the session object
       if (session.user && token?.sub) {
          session.user.id = token.sub;

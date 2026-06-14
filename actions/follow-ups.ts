@@ -1,11 +1,11 @@
 "use server";
 
 import { db } from "@/db";
-import { outreach, users } from "@/db/schema";
+import { outreach, type OutreachContact } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { eq, and, asc, desc, not, sql } from "drizzle-orm";
+import { eq, and, desc, not, sql } from "drizzle-orm";
 import { startOfDay, endOfDay, addDays } from "date-fns";
-import { syncOutreachToCalendar } from "@/actions/calendar";
+
 
 export async function getFollowUpItems() {
   const session = await auth();
@@ -15,8 +15,6 @@ export async function getFollowUpItems() {
   const now = new Date();
   const startOfToday = startOfDay(now);
   const endOfToday = endOfDay(now);
-
-  const activeStatuses = ["SENT", "GHOSTED", "INTERVIEW"];
 
   const allItems = await db.query.outreach.findMany({
     where: and(
@@ -32,35 +30,35 @@ export async function getFollowUpItems() {
   const activeItems = allItems.filter(i => !i.followUp2SentAt);
   const sent = allItems.filter(i => !!i.followUp2SentAt).map(i => ({
       ...i,
-      followUpDueAt: i.followUp2DueAt || (i.contacts as any[])[0]?.followUpDueAt || i.updatedAt
+      followUpDueAt: i.followUp2DueAt || (i.contacts as OutreachContact[])[0]?.followUpDueAt || i.updatedAt
   }));
 
   const today = activeItems.filter(i => {
-      const dueAt = i.followUpSentAt ? i.followUp2DueAt : (i.contacts as any[])[0]?.followUpDueAt;
-      const d = new Date(dueAt);
+      const dueAt = i.followUpSentAt ? i.followUp2DueAt : (i.contacts as OutreachContact[])[0]?.followUpDueAt;
+      const d = dueAt ? new Date(dueAt) : new Date();
       return d >= startOfToday && d <= endOfToday;
   }).map(i => ({ 
       ...i, 
-      followUpDueAt: i.followUpSentAt ? i.followUp2DueAt : (i.contacts as any[])[0]?.followUpDueAt 
+      followUpDueAt: i.followUpSentAt ? i.followUp2DueAt : (i.contacts as OutreachContact[])[0]?.followUpDueAt 
   }));
 
   const overdue = allItems.filter(i => {
-      const dueAt = i.followUpSentAt ? i.followUp2DueAt : (i.contacts as any[])[0]?.followUpDueAt;
-      const d = new Date(dueAt);
+      const dueAt = i.followUpSentAt ? i.followUp2DueAt : (i.contacts as OutreachContact[])[0]?.followUpDueAt;
+      const d = dueAt ? new Date(dueAt) : new Date();
       const isSent = i.followUpSentAt ? !!i.followUp2SentAt : !!i.followUpSentAt;
       return d < startOfToday && !isSent;
   }).map(i => ({ 
       ...i, 
-      followUpDueAt: i.followUpSentAt ? i.followUp2DueAt : (i.contacts as any[])[0]?.followUpDueAt 
+      followUpDueAt: i.followUpSentAt ? i.followUp2DueAt : (i.contacts as OutreachContact[])[0]?.followUpDueAt 
   }));
 
   const upcoming = activeItems.filter(i => {
-      const dueAt = i.followUpSentAt ? i.followUp2DueAt : (i.contacts as any[])[0]?.followUpDueAt;
-      const d = new Date(dueAt);
+      const dueAt = i.followUpSentAt ? i.followUp2DueAt : (i.contacts as OutreachContact[])[0]?.followUpDueAt;
+      const d = dueAt ? new Date(dueAt) : new Date();
       return d > endOfToday;
   }).map(i => ({ 
       ...i, 
-      followUpDueAt: i.followUpSentAt ? i.followUp2DueAt : (i.contacts as any[])[0]?.followUpDueAt 
+      followUpDueAt: i.followUpSentAt ? i.followUp2DueAt : (i.contacts as OutreachContact[])[0]?.followUpDueAt 
   }));
 
   return { today, overdue, upcoming, sent };
@@ -77,7 +75,7 @@ export async function toggleFollowUpSentAction(id: string, isSent: boolean, sent
 
     if (!existing) return { error: "Not found" };
 
-    const updateData: any = { updatedAt: new Date() };
+    const updateData: Partial<typeof outreach.$inferInsert> = { updatedAt: new Date() };
 
     if (isSent) {
         // Marking as SENT
@@ -107,15 +105,6 @@ export async function toggleFollowUpSentAction(id: string, isSent: boolean, sent
         )
       );
 
-    // Auto-sync to calendar if enabled
-    if (isSent) {
-      const user = await db.query.users.findFirst({
-        where: eq(users.id, session.user.id),
-      });
-      if (user?.calendarSyncEnabled) {
-        syncOutreachToCalendar(id).catch(() => {});
-      }
-    }
 
     return { success: true };
   } catch (error) {
@@ -135,14 +124,14 @@ export async function updateFollowUpDateAction(id: string, newDate: Date) {
 
     if (!existing) return { error: "Not found" };
 
-    const updateData: any = { updatedAt: new Date() };
+    const updateData: Partial<typeof outreach.$inferInsert> = { updatedAt: new Date() };
 
     if (existing.followUpSentAt) {
         // Update 2nd follow-up date
         updateData.followUp2DueAt = newDate;
     } else {
         // Update 1st follow-up date (stored in contacts[0])
-        const updatedContacts = [...existing.contacts];
+        const updatedContacts = [...(existing.contacts as OutreachContact[])];
         if (updatedContacts[0]) {
             updatedContacts[0] = {
                 ...updatedContacts[0],
@@ -156,13 +145,6 @@ export async function updateFollowUpDateAction(id: string, newDate: Date) {
       .set(updateData)
       .where(eq(outreach.id, id));
 
-    // Auto-sync updated date to calendar if enabled
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, session.user.id),
-    });
-    if (user?.calendarSyncEnabled) {
-      syncOutreachToCalendar(id).catch(() => {});
-    }
 
     return { success: true };
   } catch (error) {
@@ -191,11 +173,11 @@ export async function getPaginatedFollowUpItemsAction(
     orderBy: [desc(sql`${outreach.contacts}->0->>'messageSentAt'`)],
   });
 
-  let filteredRaw = allItems.filter(item => {
-    const firstContact = (item.contacts as any[])[0];
+  const filteredRaw = allItems.filter(item => {
+    const firstContact = (item.contacts as OutreachContact[])[0];
     const dueAt = item.followUpSentAt 
         ? (item.followUp2DueAt ? new Date(item.followUp2DueAt) : null)
-        : (firstContact ? new Date(firstContact.followUpDueAt) : null);
+        : (firstContact?.followUpDueAt ? new Date(firstContact.followUpDueAt) : null);
     
     // Stage filtering logic
     if (stage === "1" && item.followUpSentAt) return false;
@@ -224,8 +206,10 @@ export async function getPaginatedFollowUpItemsAction(
   // Sort by due date for these categories
   if (category !== "SENT") {
       filteredRaw.sort((a, b) => {
-          const tA = new Date(a.followUpSentAt ? a.followUp2DueAt : (a.contacts as any[])[0]?.followUpDueAt).getTime();
-          const tB = new Date(b.followUpSentAt ? b.followUp2DueAt : (b.contacts as any[])[0]?.followUpDueAt).getTime();
+          const aDueAt = a.followUpSentAt ? a.followUp2DueAt : (a.contacts as OutreachContact[])[0]?.followUpDueAt;
+          const bDueAt = b.followUpSentAt ? b.followUp2DueAt : (b.contacts as OutreachContact[])[0]?.followUpDueAt;
+          const tA = aDueAt ? new Date(aDueAt).getTime() : 0;
+          const tB = bDueAt ? new Date(bDueAt).getTime() : 0;
           return tA - tB;
       });
   }
@@ -234,11 +218,11 @@ export async function getPaginatedFollowUpItemsAction(
   const items = filteredRaw.slice(offset, offset + limit).map(item => ({
     id: item.id,
     companyName: item.companyName,
-    personName: (item.contacts as any[])[0]?.personName || "No Contact",
+    personName: (item.contacts as OutreachContact[])[0]?.personName || "No Contact",
     roleTargeted: item.roleTargeted,
     status: item.status,
-    followUpDueAt: item.followUpSentAt ? item.followUp2DueAt : (item.contacts as any[])[0]?.followUpDueAt,
-    contactMethod: (item.contacts as any[])[0]?.contactMethod || "EMAIL",
+    followUpDueAt: item.followUpSentAt ? item.followUp2DueAt : (item.contacts as OutreachContact[])[0]?.followUpDueAt,
+    contactMethod: (item.contacts as OutreachContact[])[0]?.contactMethod || "EMAIL",
     followUpSentAt: item.followUpSentAt,
     followUp2SentAt: item.followUp2SentAt,
     contacts: item.contacts,

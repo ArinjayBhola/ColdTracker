@@ -56,7 +56,6 @@ export const users = pgTable("user", {
   password: text("password"), // For Credentials provider
   notificationEmail: text("notification_email"),
   receiveNotifications: boolean("receive_notifications").default(true),
-  calendarSyncEnabled: boolean("calendar_sync_enabled").default(false),
 });
 
 export const accounts = pgTable(
@@ -129,9 +128,6 @@ export const outreach = pgTable("outreach", {
   status: statusEnum("status").default("DRAFT").notNull(),
   notes: text("notes"),
   contacts: jsonb("contacts").$type<OutreachContact[]>().default([]).notNull(),
-  calendarSynced: boolean("calendar_synced").default(false),
-  calendarEventId: text("calendar_event_id"),
-  calendarEventId2: text("calendar_event_id_2"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
 }, (table) => ({

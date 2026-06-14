@@ -28,11 +28,15 @@ export async function getValidAccessToken(
 
   // Check if token is expired (with 5-minute buffer)
   const isExpired =
-    account.expires_at && account.expires_at * 1000 < Date.now() - 5 * 60 * 1000;
+    !account.expires_at || account.expires_at * 1000 < Date.now() + 5 * 60 * 1000;
 
-  if (isExpired && account.refresh_token) {
-    const refreshed = await refreshAccessToken(account, provider);
-    if (refreshed) return refreshed;
+  if (isExpired) {
+    if (account.refresh_token) {
+      const refreshed = await refreshAccessToken(account, provider);
+      if (refreshed) return refreshed;
+    }
+    // If token is expired and we have no refresh token (or refresh failed), return null
+    return null;
   }
 
   return { accessToken: account.access_token, provider };

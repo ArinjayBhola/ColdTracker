@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { sendEmailAction, getEmailAccountStatus } from "@/actions/email";
-import { FiMail, FiSend, FiAlertCircle } from "react-icons/fi";
+import { FiMail, FiSend, FiAlertCircle, FiPaperclip, FiX } from "react-icons/fi";
 
 type ComposeEmailDialogProps = {
   open: boolean;
@@ -41,6 +41,8 @@ export function ComposeEmailDialog({
     connected: boolean;
     provider: string | null;
   } | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -60,13 +62,19 @@ export function ComposeEmailDialog({
     }
 
     setIsSending(true);
-    const result = await sendEmailAction({
-      outreachId,
-      contactIndex,
-      to,
-      subject,
-      body,
+
+    const formData = new FormData();
+    formData.append("outreachId", outreachId);
+    formData.append("contactIndex", contactIndex.toString());
+    formData.append("to", to);
+    formData.append("subject", subject);
+    formData.append("body", body);
+
+    files.forEach((file) => {
+      formData.append("attachments", file);
     });
+
+    const result = await sendEmailAction(formData);
 
     if (result.success) {
       toast({
@@ -75,6 +83,7 @@ export function ComposeEmailDialog({
       });
       setSubject("");
       setBody("");
+      setFiles([]);
       onOpenChange(false);
     } else {
       toast({
@@ -157,10 +166,76 @@ export function ComposeEmailDialog({
               placeholder="Write your email..."
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              rows={10}
+              rows={8}
               className="resize-y"
             />
           </div>
+
+          <div
+            className={`border-2 border-dashed rounded-lg p-4 transition-colors ${
+              isDragging ? "border-primary bg-primary/5" : "border-border/50"
+            }`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setIsDragging(false);
+              const droppedFiles = Array.from(e.dataTransfer.files);
+              setFiles((prev) => [...prev, ...droppedFiles]);
+            }}
+          >
+            <div className="flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
+              <FiPaperclip className="w-6 h-6 mb-1 opacity-50" />
+              <p>Drag and drop files here, or click to select</p>
+              <Input
+                type="file"
+                multiple
+                className="hidden"
+                id="file-upload"
+                onChange={(e) => {
+                  if (e.target.files) {
+                    setFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+                  }
+                }}
+              />
+              <Label
+                htmlFor="file-upload"
+                className="cursor-pointer text-primary font-medium hover:underline"
+              >
+                Browse files
+              </Label>
+            </div>
+          </div>
+
+          {files.length > 0 && (
+            <div className="space-y-2 max-h-32 overflow-y-auto">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase">
+                Attachments ({files.length})
+              </Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {files.map((file, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between p-2 rounded bg-muted/50 border text-xs"
+                  >
+                    <div className="truncate flex-1 pr-2" title={file.name}>
+                      {file.name}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFiles(files.filter((_, idx) => idx !== i))}
+                      className="text-muted-foreground hover:text-red-500"
+                    >
+                      <FiX size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter>

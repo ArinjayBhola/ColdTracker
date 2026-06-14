@@ -7,7 +7,6 @@ import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { addDays } from "date-fns";
 import { PromoteLeadValues } from "@/lib/validations";
-import { getCachedData, invalidateCache } from "@/lib/redis";
 
 export async function getExtensionLeadsAction(page: number = 1, limit: number = 10) {
     const session = await auth();
@@ -15,24 +14,22 @@ export async function getExtensionLeadsAction(page: number = 1, limit: number = 
 
     const offset = (page - 1) * limit;
 
-    return await getCachedData(`extension-leads:${session.user.id}:${page}:${limit}`, async () => {
-        const [items, totalCountRes] = await Promise.all([
-            db.query.extensionLeads.findMany({
-                where: eq(extensionLeads.userId, session.user.id),
-                orderBy: [desc(extensionLeads.createdAt)],
-                limit,
-                offset,
-            }),
-            db.select({ count: sql<number>`count(*)` })
-                .from(extensionLeads)
-                .where(eq(extensionLeads.userId, session.user.id))
-        ]);
+    const [items, totalCountRes] = await Promise.all([
+        db.query.extensionLeads.findMany({
+            where: eq(extensionLeads.userId, session.user.id),
+            orderBy: [desc(extensionLeads.createdAt)],
+            limit,
+            offset,
+        }),
+        db.select({ count: sql<number>`count(*)` })
+            .from(extensionLeads)
+            .where(eq(extensionLeads.userId, session.user.id))
+    ]);
 
-        return {
-            items,
-            totalCount: Number(totalCountRes[0]?.count || 0)
-        };
-    });
+    return {
+        items,
+        totalCount: Number(totalCountRes[0]?.count || 0)
+    };
 }
 
 export async function deleteExtensionLeadAction(id: string) {
@@ -46,10 +43,7 @@ export async function deleteExtensionLeadAction(id: string) {
         eq(extensionLeads.userId, session.user.id)
       )
     );
-    await invalidateCache([
-      `extension-leads:${session.user.id}:1:1`,
-      `extension-leads:${session.user.id}:1:10`
-    ]);
+
     revalidatePath("/dashboard/extension-leads");
     return { success: true };
   } catch (error) {
@@ -125,12 +119,7 @@ export async function promoteLeadToOutreachAction(id: string, values: PromoteLea
       );
     });
 
-    await invalidateCache([
-      `extension-leads:${session.user.id}:1:1`,
-      `extension-leads:${session.user.id}:1:10`,
-      `outreach:stats:${session.user.id}`,
-      `outreach:grouped:${session.user.id}:1:10:ALL`
-    ]);
+
     revalidatePath("/dashboard/extension-leads");
     revalidatePath("/dashboard");
     return { success: true, outreachId: newOutreachId };

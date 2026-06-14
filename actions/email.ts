@@ -3,7 +3,7 @@
 
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { sentEmails, outreach } from "@/db/schema";
+import { sentEmails, outreach, accounts, users } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { getValidAccessToken, getConnectedEmailProvider } from "@/lib/email/token-refresh";
 import { prepareEmailBody } from "@/lib/email/tracking";
@@ -11,21 +11,32 @@ import { sendViaGmail } from "@/lib/email/gmail";
 import { sendViaOutlook } from "@/lib/email/outlook";
 import { revalidatePath } from "next/cache";
 
-type SendEmailInput = {
-  outreachId: string;
-  contactIndex: number;
-  to: string;
-  subject: string;
-  body: string;
-};
-
-export async function sendEmailAction(input: SendEmailInput) {
+export async function sendEmailAction(formData: FormData) {
   const session = await auth();
   if (!session?.user?.id) {
     return { success: false, error: "Not authenticated" };
   }
 
-  const { outreachId, contactIndex, to, subject, body } = input;
+  const outreachId = formData.get("outreachId") as string;
+  const contactIndex = parseInt(formData.get("contactIndex") as string, 10);
+  const to = formData.get("to") as string;
+  const subject = formData.get("subject") as string;
+  const body = formData.get("body") as string;
+
+  const rawFiles = formData.getAll("attachments") as File[];
+  const attachments: { name: string; type: string; content: string }[] = [];
+
+  for (const file of rawFiles) {
+    if (file && file.size > 0) {
+      const arrayBuffer = await file.arrayBuffer();
+      const content = Buffer.from(arrayBuffer).toString("base64");
+      attachments.push({
+        name: file.name,
+        type: file.type || "application/octet-stream",
+        content,
+      });
+    }
+  }
 
   // Get valid access token
   const tokenResult = await getValidAccessToken(session.user.id);
@@ -48,12 +59,14 @@ export async function sendEmailAction(input: SendEmailInput) {
           to,
           subject,
           htmlBody,
+          attachments,
         })
       : await sendViaOutlook({
           accessToken: tokenResult.accessToken,
           to,
           subject,
           htmlBody,
+          attachments,
         });
 
   if (!sendResult.success) {
@@ -118,4 +131,39 @@ export async function getSentEmailsForOutreach(outreachId: string) {
     .from(sentEmails)
     .where(and(eq(sentEmails.outreachId, outreachId), eq(sentEmails.userId, session.user.id)))
     .orderBy(desc(sentEmails.sentAt));
+}
+
+export async function checkHasPassword() {
+  const session = await auth();
+  if (!session?.user?.id) return { hasPassword: false };
+
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, session.user.id),
+    columns: { password: true },
+  });
+
+  return { hasPassword: !!user?.password };
+}
+
+export async function disconnectEmailAccountAction(provider: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Not authenticated" };
+
+  // Map our internal provider string to the NextAuth provider ID
+  const nextAuthProviderId = provider === "gmail" ? "google" : "microsoft-entra-id";
+
+  try {
+    await db.delete(accounts).where(
+      and(
+        eq(accounts.userId, session.user.id),
+        eq(accounts.provider, nextAuthProviderId)
+      )
+    );
+    
+    // We should not delete the user account, just the OAuth connection
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to disconnect account:", error);
+    return { success: false, error: "Database error while disconnecting account" };
+  }
 }

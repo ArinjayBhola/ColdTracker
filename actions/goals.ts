@@ -6,7 +6,6 @@ import { auth } from "@/lib/auth";
 import { eq, and, desc, gte, lte, sql, count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { startOfWeek, endOfWeek, format, subDays, differenceInCalendarDays } from "date-fns";
-import { getCachedData, invalidateCache } from "@/lib/redis";
 
 export async function getOrCreateGoal() {
   const session = await auth();
@@ -66,7 +65,6 @@ export async function getDailyProgress() {
   const session = await auth();
   if (!session?.user?.id) return { target: 3, current: 0, percentage: 0 };
 
-  return await getCachedData(`goals:daily:${session.user.id}`, async () => {
     const goal = await getOrCreateGoal();
     const target = goal?.dailyTarget ?? 3;
 
@@ -80,7 +78,6 @@ export async function getDailyProgress() {
     const percentage = Math.min(Math.round((current / target) * 100), 100);
 
     return { target, current, percentage };
-  });
 }
 
 export async function updateWeeklyTarget(target: number) {
@@ -114,7 +111,6 @@ export async function getWeeklyProgress() {
   const session = await auth();
   if (!session?.user?.id) return { target: 10, current: 0, percentage: 0 };
 
-  return await getCachedData(`goals:weekly:${session.user.id}`, async () => {
     const goal = await getOrCreateGoal();
     const target = goal?.weeklyTarget ?? 10;
 
@@ -140,14 +136,12 @@ export async function getWeeklyProgress() {
     const percentage = Math.min(Math.round((current / target) * 100), 100);
 
     return { target, current, percentage };
-  });
 }
 
 export async function getStreakData() {
   const session = await auth();
   if (!session?.user?.id) return { currentStreak: 0, longestStreak: 0, todayCount: 0 };
 
-  return await getCachedData(`goals:streak:${session.user.id}`, async () => {
     const today = format(new Date(), "yyyy-MM-dd");
 
     // Get all activity days sorted descending
@@ -184,7 +178,6 @@ export async function getStreakData() {
     const longestStreak = calculateLongestStreak(activities);
 
     return { currentStreak, longestStreak: Math.max(currentStreak, longestStreak), todayCount };
-  });
 }
 
 function calculateLongestStreak(activities: { date: string; outreachCount: number }[]) {
@@ -238,12 +231,7 @@ export async function recordDailyActivity() {
     if (existing) {
       if (existing.outreachCount !== todayCount) {
         await db.update(dailyActivity).set({ outreachCount: todayCount }).where(eq(dailyActivity.id, existing.id));
-        await invalidateCache([
-          `goals:daily:${session.user.id}`,
-          `goals:weekly:${session.user.id}`,
-          `goals:streak:${session.user.id}`,
-          `goals:last7:${session.user.id}`
-        ]);
+
       }
     } else {
       // Verify user exists before creating activity to avoid FK violation
@@ -259,12 +247,7 @@ export async function recordDailyActivity() {
         date: today,
         outreachCount: todayCount,
       });
-      await invalidateCache([
-        `goals:daily:${session.user.id}`,
-        `goals:weekly:${session.user.id}`,
-        `goals:streak:${session.user.id}`,
-        `goals:last7:${session.user.id}`
-      ]);
+
     }
 
     return { success: true, count: todayCount };
@@ -323,7 +306,6 @@ export async function getLast7DaysActivity() {
   const session = await auth();
   if (!session?.user?.id) return [];
 
-  return await getCachedData(`goals:last7:${session.user.id}`, async () => {
     const days = [];
     for (let i = 6; i >= 0; i--) {
       const date = subDays(new Date(), i);
@@ -348,5 +330,4 @@ export async function getLast7DaysActivity() {
       day: format(new Date(date), "EEE"),
       count: activityMap.get(date) ?? 0,
     }));
-  });
 }

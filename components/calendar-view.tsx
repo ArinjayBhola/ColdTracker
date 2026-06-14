@@ -1,14 +1,12 @@
 "use client";
 
-import { useState, useMemo, useTransition } from "react";
+import { useState, useMemo } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { format, parseISO, isToday, isPast, differenceInCalendarDays } from "date-fns";
-import { FiClock, FiVideo, FiCloud, FiCloudOff, FiAlertTriangle, FiChevronRight } from "react-icons/fi";
-import { syncOutreachToCalendar, removeOutreachFromCalendar } from "@/actions/calendar";
+import { format, parseISO, isToday, differenceInCalendarDays } from "date-fns";
+import { FiClock, FiVideo, FiAlertTriangle, FiChevronRight } from "react-icons/fi";
 
 type CalendarEvent = {
   id: string;
@@ -19,12 +17,10 @@ type CalendarEvent = {
   companyName: string;
   roleTargeted: string;
   outreachId: string;
-  synced: boolean;
 };
 
 type CalendarViewProps = {
   events: CalendarEvent[];
-  calendarSyncEnabled: boolean;
 };
 
 const typeConfig = {
@@ -66,12 +62,10 @@ function RelativeDate({ dateStr }: { dateStr: string }) {
   return <span className="text-muted-foreground font-medium">{format(d, "MMM d")}</span>;
 }
 
-export function CalendarView({ events, calendarSyncEnabled }: CalendarViewProps) {
+export function CalendarView({ events }: CalendarViewProps) {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [month, setMonth] = useState<Date>(new Date());
-  const [localEvents, setLocalEvents] = useState(events);
-  const [syncingId, setSyncingId] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [localEvents] = useState(events);
   const [activeTab, setActiveTab] = useState<"date" | "overdue" | "upcoming">("date");
 
   const todayStr = useMemo(() => format(new Date(), "yyyy-MM-dd"), []);
@@ -110,22 +104,7 @@ export function CalendarView({ events, calendarSyncEnabled }: CalendarViewProps)
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [localEvents, todayStr]);
 
-  const handleSyncToggle = (outreachId: string, currentlySynced: boolean) => {
-    setSyncingId(outreachId);
-    startTransition(async () => {
-      if (currentlySynced) {
-        await removeOutreachFromCalendar(outreachId);
-      } else {
-        await syncOutreachToCalendar(outreachId);
-      }
-      setLocalEvents((prev) =>
-        prev.map((e) =>
-          e.outreachId === outreachId ? { ...e, synced: !currentlySynced } : e
-        )
-      );
-      setSyncingId(null);
-    });
-  };
+
 
   // Which events list to show
   const displayEvents =
@@ -283,7 +262,6 @@ export function CalendarView({ events, calendarSyncEnabled }: CalendarViewProps)
                 {displayEvents.map((event) => {
                   const config = typeConfig[event.type];
                   const Icon = config.icon;
-                  const eventDate = parseISO(event.date);
                   const isEventOverdue = event.date < todayStr;
 
                   return (
@@ -322,23 +300,7 @@ export function CalendarView({ events, calendarSyncEnabled }: CalendarViewProps)
                           </div>
                         )}
 
-                        {calendarSyncEnabled && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className={cn(
-                              "h-7 w-7 p-0 rounded-lg transition-all",
-                              event.synced
-                                ? "text-emerald-500 hover:text-red-500"
-                                : "text-muted-foreground/30 hover:text-primary"
-                            )}
-                            onClick={() => handleSyncToggle(event.outreachId, event.synced)}
-                            disabled={syncingId === event.outreachId}
-                            title={event.synced ? "Synced to Google Calendar — click to remove" : "Sync to Google Calendar"}
-                          >
-                            {event.synced ? <FiCloud size={14} /> : <FiCloudOff size={14} />}
-                          </Button>
-                        )}
+
 
                         <FiChevronRight size={14} className="text-muted-foreground/30 hidden md:block" />
                       </div>

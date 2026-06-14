@@ -1,16 +1,12 @@
 import { Sidebar } from "@/components/sidebar";
 import { CalendarView } from "@/components/calendar-view";
-import { getCalendarEvents, getCalendarSyncStatus } from "@/actions/calendar";
+import { getCalendarEvents } from "@/actions/calendar";
 import { FiCalendar, FiClock, FiAlertTriangle, FiArrowRight } from "react-icons/fi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
 
 export default async function CalendarPage() {
-  const [{ events }, syncStatus] = await Promise.all([
-    getCalendarEvents(),
-    getCalendarSyncStatus(),
-  ]);
+  const { events } = await getCalendarEvents();
 
   const today = new Date().toISOString().split("T")[0];
   const todayCount = events.filter((e) => e.date === today).length;
@@ -67,14 +63,6 @@ export default async function CalendarPage() {
                 Your follow-up schedule at a glance
               </p>
             </div>
-            {!syncStatus.hasGoogle && (
-              <Link
-                href="/settings"
-                className="text-xs font-semibold text-primary hover:underline"
-              >
-                Connect Google to sync to Calendar &rarr;
-              </Link>
-            )}
           </div>
 
           {/* Stats */}
@@ -106,7 +94,6 @@ export default async function CalendarPage() {
           {/* Calendar + Events */}
           <CalendarView
             events={events}
-            calendarSyncEnabled={syncStatus.enabled && syncStatus.hasGoogle}
           />
         </div>
       </main>
