@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getSentEmailsForOutreach } from "@/actions/email";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FiMail, FiEye, FiMousePointer } from "react-icons/fi";
+import { FiMail } from "react-icons/fi";
 import { format } from "date-fns";
 
 type SentEmailsCardProps = {
@@ -16,6 +16,7 @@ export function SentEmailsCard({ outreachId }: SentEmailsCardProps) {
     queryFn: () => getSentEmailsForOutreach(outreachId),
     staleTime: 30 * 1000,
   });
+  console.log(emails);
 
   if (emails.length === 0) return null;
 
@@ -42,20 +43,6 @@ export function SentEmailsCard({ outreachId }: SentEmailsCardProps) {
               </span>
             </div>
             <div className="flex items-center gap-3 text-xs">
-              <span
-                className={`flex items-center gap-1 ${
-                  email.openedAt ? "text-success font-medium" : "text-muted-foreground"
-                }`}>
-                <FiEye className="w-3 h-3" />
-                {email.openedAt ? "Opened" : "Not opened"}
-              </span>
-              <span
-                className={`flex items-center gap-1 ${
-                  email.clickedAt ? "text-success font-medium" : "text-muted-foreground"
-                }`}>
-                <FiMousePointer className="w-3 h-3" />
-                {email.clickedAt ? "Clicked" : "No clicks"}
-              </span>
               <span className="text-muted-foreground capitalize">via {email.provider}</span>
             </div>
           </div>

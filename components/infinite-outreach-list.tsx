@@ -21,11 +21,11 @@ type OutreachItem = {
   personName: string;
   roleTargeted: string;
   status: string;
-  followUpDueAt: Date;
+  followUpDueAt: Date | string | null | undefined;
   contactMethod: string;
-  followUpSentAt?: Date | null;
-  followUp2SentAt?: Date | null;
-  contacts: any[];
+  followUpSentAt?: Date | string | null;
+  followUp2SentAt?: Date | string | null;
+  contacts: unknown[];
 };
 
 type Category = "OVERDUE" | "TODAY" | "UPCOMING" | "SENT" | "ALL_ACTIVE";
@@ -79,7 +79,7 @@ export function InfiniteOutreachList({
     initialData: (category === initialCategory && stageFilter === "ALL") ? {
       pages: [{ items: initialItems, hasMore: initialHasMore }],
       pageParams: [1]
-    } as any : undefined,
+    } as { pages: { items: OutreachItem[], hasMore: boolean }[], pageParams: number[] } : undefined,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -226,7 +226,7 @@ export function InfiniteOutreachList({
 
         <Select 
           value={stageFilter} 
-          onValueChange={(v: any) => setStageFilter(v)}
+          onValueChange={(v: "ALL" | "1" | "2") => setStageFilter(v)}
           disabled={category === "SENT"}
         >
           <SelectTrigger className="h-11 border-2">
