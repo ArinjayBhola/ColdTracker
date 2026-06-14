@@ -332,7 +332,7 @@ export function InfiniteOutreachList({
                             <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                 <span className="flex items-center gap-1">
                                     <FiClock className="w-3.5 h-3.5" />
-                                    {format(new Date(item.followUpDueAt), "MMM d, yyyy")}
+                                    {item.followUpDueAt ? format(new Date(item.followUpDueAt), "MMM d, yyyy") : "N/A"}
                                 </span>
                                 <span className={cn(
                                     "flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold border",
