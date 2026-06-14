@@ -281,6 +281,15 @@ export async function syncActivityHistory() {
 
   if (!userExists) return { error: "User record not found" };
 
+  await db.update(dailyActivity)
+    .set({ outreachCount: 0 })
+    .where(
+      and(
+        eq(dailyActivity.userId, session.user.id),
+        gte(dailyActivity.date, format(thirtyDaysAgo, 'yyyy-MM-dd'))
+      )
+    );
+
   if (dailyCounts.length > 0) {
     const valuesToInsert = dailyCounts.map(day => ({
       userId: session.user.id,
