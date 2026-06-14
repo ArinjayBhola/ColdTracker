@@ -17,6 +17,7 @@ import { SentEmailsCard } from "@/components/outreach/sent-emails-card";
 import { ComposeEmailDialog } from "@/components/compose-email-dialog";
 import { Button } from "@/components/ui/button";
 import { FiSend } from "react-icons/fi";
+import { type OutreachContact } from "@/db/schema";
 
 type OutreachDetailClientProps = {
   initialData: Awaited<ReturnType<typeof getOutreachById>>;
@@ -51,41 +52,6 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
     setIsRefreshing(true);
     await Promise.all([refetchItem(), refetchContacts()]);
     setTimeout(() => setIsRefreshing(false), 500);
-  };
-
-  const handleToggleFollowUp = async () => {
-    if (!item) return;
-    
-    setIsUpdatingFollowUp(true);
-    // If both are sent, we are reverting 2nd. If only 1st is sent, we are reverting 1st or marking 2nd.
-    // The server action now handles toggle better.
-    const currentlySent = !!item.followUp2SentAt || (!!item.followUpSentAt && !item.followUp2SentAt);
-    
-    // In details page, we usually Toggle the "next" logical action.
-    // But the user requested "Mark as Unsent" fix.
-    // Let's make it smarter: if 1st is sent, button is "Mark Sent (Stage 2)" or "Mark Unsent (Stage 1)".
-    
-    // For simplicity, let's keep the toggle logic but make it aware of the stages.
-    // If all sent, isSent is true (we want to unsent).
-    // If none sent, isSent is false (we want to sent).
-    const isSent = !!item.followUp2SentAt; 
-    
-    // Actually, let's just use the logic from InfiniteOutreachList which worked well.
-    // But here we have an "Unsent" button too.
-    
-    // The server action `toggleFollowUpSentAction(id, isSent)`:
-    // If isSent=true: 
-    //    if !followUpSentAt -> set followUpSentAt
-    //    else if !followUp2SentAt -> set followUp2SentAt
-    // If isSent=false:
-    //    if followUp2SentAt -> nullify followUp2SentAt
-    //    else if followUpSentAt -> nullify followUpSentAt
-    
-    // If the button clicked is "Mark as Sent", we pass true.
-    // If the button clicked is "Mark as Unsent", we pass false.
-    
-    // How do we know which one was clicked? 
-    // Let's change handleToggleFollowUp to accept a boolean.
   };
 
   const [isComposeOpen, setIsComposeOpen] = useState(false);
@@ -203,7 +169,7 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
         companyName={item.companyName}
         roleTargeted={item.roleTargeted}
         status={item.status}
-        contacts={item.contacts as any[]}
+        contacts={item.contacts as OutreachContact[]}
         activeContactIndex={activeContactIndex}
         isRefreshing={isRefreshing}
         onRefresh={handleRefresh}
@@ -215,15 +181,15 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
           <OutreachDetailsCard
             roleTargeted={item.roleTargeted}
             companyLink={item.companyLink}
-            contactMethod={item.contacts?.[activeContactIndex]?.contactMethod || (item as any).contactMethod}
-            emailAddress={item.contacts?.[activeContactIndex]?.emailAddress || (item as any).emailAddress}
-            linkedinProfileUrl={item.contacts?.[activeContactIndex]?.linkedinProfileUrl || (item as any).linkedinProfileUrl}
+            contactMethod={item.contacts?.[activeContactIndex]?.contactMethod || (item as unknown as {contactMethod?: string}).contactMethod}
+            emailAddress={item.contacts?.[activeContactIndex]?.emailAddress || (item as unknown as {emailAddress?: string}).emailAddress}
+            linkedinProfileUrl={item.contacts?.[activeContactIndex]?.linkedinProfileUrl || (item as unknown as {linkedinProfileUrl?: string}).linkedinProfileUrl}
             editable={true}
             onSave={handleSaveDetails}
           />
 
           {/* Send Email Button - visible when contact has email */}
-          {(activeContact?.emailAddress || (item as any).emailAddress) && (
+          {(activeContact?.emailAddress || (item as unknown as {emailAddress?: string}).emailAddress) && (
             <>
               <Button
                 onClick={() => setIsComposeOpen(true)}
@@ -238,8 +204,12 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
                 onOpenChange={setIsComposeOpen}
                 outreachId={item.id}
                 contactIndex={activeContactIndex}
-                to={activeContact?.emailAddress || (item as any).emailAddress}
+                to={activeContact?.emailAddress || (item as unknown as {emailAddress?: string}).emailAddress || ""}
                 companyName={item.companyName}
+                companyUrl={item.companyLink || ""}
+                personName={activeContact?.personName || "there"}
+                personRole={activeContact?.personRole || "Contact"}
+                roleTargeted={item.roleTargeted}
               />
             </>
           )}

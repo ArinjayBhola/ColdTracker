@@ -282,6 +282,19 @@ export const startupTracking = pgTable("startup_tracking", {
   userStartupIdx: uniqueIndex("startup_tracking_user_startup_idx").on(table.userId, table.startupId),
 }));
 
+// --- Email Templates Schema ---
+export const emailTemplates = pgTable("email_templates", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  subjectTemplate: text("subject_template").notNull(),
+  bodyTemplate: text("body_template").notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+});
+
 // --- Relations ---
 export const startupsRelations = relations(startups, ({ many }) => ({
   tracking: many(startupTracking),

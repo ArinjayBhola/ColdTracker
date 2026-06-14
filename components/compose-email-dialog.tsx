@@ -15,7 +15,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { sendEmailAction, getEmailAccountStatus } from "@/actions/email";
-import { FiMail, FiSend, FiAlertCircle, FiPaperclip, FiX } from "react-icons/fi";
+import { generateEmailDraftAction } from "@/actions/ai";
+import { getTemplatesAction } from "@/actions/templates";
+import { FiMail, FiSend, FiAlertCircle, FiPaperclip, FiX, FiZap, FiEdit2 } from "react-icons/fi";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type ComposeEmailDialogProps = {
   open: boolean;
@@ -24,6 +27,17 @@ type ComposeEmailDialogProps = {
   contactIndex: number;
   to: string;
   companyName: string;
+  companyUrl?: string;
+  personName?: string;
+  personRole?: string;
+  roleTargeted?: string;
+};
+
+type EmailTemplate = {
+  id: string;
+  name: string;
+  subjectTemplate: string;
+  bodyTemplate: string;
 };
 
 export function ComposeEmailDialog({
@@ -33,23 +47,90 @@ export function ComposeEmailDialog({
   contactIndex,
   to,
   companyName,
+  companyUrl,
+  personName,
+  personRole,
+  roleTargeted,
 }: ComposeEmailDialogProps) {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [editableTo, setEditableTo] = useState(to);
+  const [isEditingTo, setIsEditingTo] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [emailStatus, setEmailStatus] = useState<{
     connected: boolean;
     provider: string | null;
   } | null>(null);
   const [files, setFiles] = useState<File[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("none");
   const { toast } = useToast();
+
+  const [prevOpen, setPrevOpen] = useState(false);
+  const [prevTo, setPrevTo] = useState("");
+
+  // Derive state during render to avoid cascading updates in useEffect
+  if (open !== prevOpen || to !== prevTo) {
+    setPrevOpen(open);
+    setPrevTo(to);
+    if (open) {
+      setEditableTo(to);
+      setIsEditingTo(false);
+    }
+  }
 
   useEffect(() => {
     if (open) {
       getEmailAccountStatus().then(setEmailStatus);
+      getTemplatesAction().then(res => {
+        if (res.success && res.data) setTemplates(res.data);
+      });
     }
   }, [open]);
+
+  const handleApplyTemplate = (templateId: string) => {
+    setSelectedTemplate(templateId);
+    if (templateId === "none") return;
+    const template = templates.find(t => t.id === templateId);
+    if (template) {
+      const pName = personName || "there";
+      const cName = companyName || "your company";
+      const rName = roleTargeted || "the open position";
+      
+      setSubject(template.subjectTemplate
+        .replace(/\{\{companyName\}\}/g, cName)
+        .replace(/\{\{personName\}\}/g, pName)
+        .replace(/\{\{position\}\}/g, rName)
+      );
+      setBody(template.bodyTemplate
+        .replace(/\{\{companyName\}\}/g, cName)
+        .replace(/\{\{personName\}\}/g, pName)
+        .replace(/\{\{position\}\}/g, rName)
+      );
+    }
+  };
+
+  const handleGenerateAI = async () => {
+    setIsGenerating(true);
+    toast({ title: "Generating email...", description: "Hermes AI is thinking..." });
+    const res = await generateEmailDraftAction({
+      companyName,
+      companyUrl: companyUrl || "",
+      position: roleTargeted || "any position",
+      personName: personName || "there",
+      personRole: personRole || "Recruiter/Hiring Manager"
+    });
+    
+    if (res.success && res.data) {
+      setSubject(res.data.subject);
+      setBody(res.data.body);
+      toast({ title: "Email generated!" });
+    } else {
+      toast({ title: "Failed to generate", description: res.error || "Unknown error", variant: "destructive" });
+    }
+    setIsGenerating(false);
+  };
 
   const handleSend = async () => {
     if (!subject.trim() || !body.trim()) {
@@ -66,7 +147,7 @@ export function ComposeEmailDialog({
     const formData = new FormData();
     formData.append("outreachId", outreachId);
     formData.append("contactIndex", contactIndex.toString());
-    formData.append("to", to);
+    formData.append("to", editableTo);
     formData.append("subject", subject);
     formData.append("body", body);
 
@@ -79,7 +160,7 @@ export function ComposeEmailDialog({
     if (result.success) {
       toast({
         title: "Email sent",
-        description: `Email sent to ${to} successfully.`,
+        description: `Email sent to ${editableTo} successfully.`,
       });
       setSubject("");
       setBody("");
@@ -138,15 +219,72 @@ export function ComposeEmailDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Button 
+            variant="secondary" 
+            className="flex-1 h-11"
+            onClick={handleGenerateAI}
+            disabled={isGenerating}
+          >
+            <FiZap className="mr-2 text-primary" />
+            {isGenerating ? "Generating..." : "Generate with AI"}
+          </Button>
+          
+          <div className="flex-1">
+            <Select value={selectedTemplate} onValueChange={handleApplyTemplate}>
+              <SelectTrigger className="h-11">
+                <SelectValue placeholder="Use a template..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No template</SelectItem>
+                {templates.map(t => (
+                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="space-y-4 mt-2">
           <div className="space-y-2">
             <Label htmlFor="to">To</Label>
-            <Input
-              id="to"
-              value={to}
-              disabled
-              className="bg-muted/50"
-            />
+            <div className="flex items-center gap-2">
+              {isEditingTo ? (
+                <Input
+                  id="to"
+                  value={editableTo}
+                  onChange={(e) => setEditableTo(e.target.value)}
+                  className="flex-1"
+                  autoFocus
+                  onBlur={() => setIsEditingTo(false)}
+                />
+              ) : to && to.includes(",") ? (
+                <Select value={editableTo} onValueChange={setEditableTo}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select email..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {to.split(",").map(e => e.trim()).filter(Boolean).map(email => (
+                      <SelectItem key={email} value={email}>{email}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="to"
+                  value={editableTo}
+                  placeholder="Enter email address..."
+                  disabled={!isEditingTo}
+                  className={`flex-1 ${!isEditingTo ? 'bg-muted/50' : ''}`}
+                  onChange={(e) => setEditableTo(e.target.value)}
+                />
+              )}
+              {!isEditingTo && (
+                <Button variant="outline" size="icon" onClick={() => setIsEditingTo(true)} className="shrink-0" title="Edit email">
+                  <FiEdit2 className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -171,43 +309,31 @@ export function ComposeEmailDialog({
             />
           </div>
 
-          <div
-            className={`border-2 border-dashed rounded-lg p-4 transition-colors ${
-              isDragging ? "border-primary bg-primary/5" : "border-border/50"
-            }`}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setIsDragging(true);
-            }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setIsDragging(false);
-              const droppedFiles = Array.from(e.dataTransfer.files);
-              setFiles((prev) => [...prev, ...droppedFiles]);
-            }}
-          >
-            <div className="flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
-              <FiPaperclip className="w-6 h-6 mb-1 opacity-50" />
-              <p>Drag and drop files here, or click to select</p>
-              <Input
-                type="file"
-                multiple
-                className="hidden"
-                id="file-upload"
-                onChange={(e) => {
-                  if (e.target.files) {
-                    setFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
-                  }
-                }}
-              />
-              <Label
-                htmlFor="file-upload"
-                className="cursor-pointer text-primary font-medium hover:underline"
-              >
-                Browse files
-              </Label>
-            </div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => document.getElementById("file-upload")?.click()}
+            >
+              <FiPaperclip className="w-4 h-4" />
+              Attach Files
+            </Button>
+            <Input
+              type="file"
+              multiple
+              className="hidden"
+              id="file-upload"
+              onChange={(e) => {
+                if (e.target.files) {
+                  setFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+                }
+              }}
+            />
+            <span className="text-xs text-muted-foreground">
+              {files.length > 0 ? `${files.length} file(s) selected` : "No files attached"}
+            </span>
           </div>
 
           {files.length > 0 && (
