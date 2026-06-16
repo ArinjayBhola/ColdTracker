@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getSentEmailsForOutreach } from "@/actions/email";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import {
+  getSentEmailsForOutreach,
+  deleteSentEmailAction,
+} from "@/actions/email";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -10,6 +13,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useToast } from "@/hooks/use-toast";
 import {
   FiMail,
   FiEye,
@@ -17,6 +21,7 @@ import {
   FiMousePointer,
   FiClock,
   FiSend,
+  FiTrash2,
 } from "react-icons/fi";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -33,6 +38,7 @@ type EmailEvent = {
 
 export function SentEmailsCard({ outreachId }: SentEmailsCardProps) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [live, setLive] = useState(false);
 
   const { data: emails = [] } = useQuery({
@@ -42,6 +48,31 @@ export function SentEmailsCard({ outreachId }: SentEmailsCardProps) {
     // Fallback poll in case the live stream drops; the SSE push handles the
     // instant updates, so this can stay infrequent.
     refetchInterval: 5 * 60 * 1000,
+  });
+
+  const queryKey = ["sent-emails", outreachId];
+
+  const { mutate: deleteEmail } = useMutation({
+    mutationFn: (id: string) => deleteSentEmailAction(id),
+    // Optimistic: drop the row from the UI immediately on click.
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<typeof emails>(queryKey);
+      queryClient.setQueryData<typeof emails>(queryKey, (old) =>
+        (old ?? []).filter((e) => e.id !== id)
+      );
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      // Roll back if the server rejected the delete.
+      if (context?.previous) {
+        queryClient.setQueryData(queryKey, context.previous);
+      }
+      toast({ title: "Couldn't remove email", variant: "destructive" });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
   });
 
   // Live updates: subscribe to this outreach's tracking stream (SSE). When the
@@ -138,11 +169,22 @@ export function SentEmailsCard({ outreachId }: SentEmailsCardProps) {
                     To: {email.to}
                   </p>
                 </div>
-                <span
-                  className="shrink-0 text-xs text-muted-foreground whitespace-nowrap"
-                  title={format(new Date(email.sentAt), "PPpp")}>
-                  {format(new Date(email.sentAt), "MMM d, h:mm a")}
-                </span>
+                <div className="flex shrink-0 items-center gap-2 self-start">
+                  <span
+                    className="text-xs text-muted-foreground whitespace-nowrap"
+                    title={format(new Date(email.sentAt), "PPpp")}>
+                    {format(new Date(email.sentAt), "MMM d, h:mm a")}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => deleteEmail(email.id)}
+                    title="Remove from list"
+                    aria-label="Remove email"
+                    className="rounded-md p-1.5 text-muted-foreground/60 transition-colors hover:bg-destructive/10 hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40 sm:opacity-0 sm:group-hover:opacity-100">
+                    <FiTrash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
 
               {/* Tracking badges */}

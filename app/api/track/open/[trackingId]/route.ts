@@ -55,8 +55,9 @@ export async function GET(
         timestamp: new Date().toISOString(),
       });
     }
-  } catch {
-    // Silently fail - don't break the tracking pixel
+  } catch (err) {
+    // Log for Vercel observability, but never break the tracking pixel response.
+    console.error(`[track/open] failed for ${trackingId}:`, err);
   }
 
   return new Response(TRANSPARENT_GIF, {

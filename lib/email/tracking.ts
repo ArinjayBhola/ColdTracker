@@ -16,7 +16,9 @@ export function getTrackingPixelUrl(trackingId: string): string {
 }
 
 export function appendTrackingPixel(html: string, trackingId: string): string {
-  const pixel = `<img src="${getTrackingPixelUrl(trackingId)}" width="1" height="1" style="display:none" alt="" />`;
+  // IMPORTANT: do NOT use `display:none` — Gmail/Outlook skip downloading hidden
+  // images, so the open never registers. Keep it loadable but invisible.
+  const pixel = `<img src="${getTrackingPixelUrl(trackingId)}" width="1" height="1" alt="" style="display:block;border:0;width:1px;height:1px;max-width:1px;max-height:1px;overflow:hidden;opacity:0" />`;
 
   // Insert before closing body tag if present, otherwise append
   if (html.includes("</body>")) {

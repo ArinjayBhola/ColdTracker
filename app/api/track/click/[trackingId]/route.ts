@@ -58,8 +58,9 @@ export async function GET(
         timestamp: new Date().toISOString(),
       });
     }
-  } catch {
-    // Silently fail - still redirect
+  } catch (err) {
+    // Log for Vercel observability, but still redirect the user to their link.
+    console.error(`[track/click] failed for ${trackingId}:`, err);
   }
 
   return NextResponse.redirect(url);

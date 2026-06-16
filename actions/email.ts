@@ -140,6 +140,28 @@ export async function getSentEmailsForOutreach(outreachId: string) {
   });
 }
 
+export async function deleteSentEmailAction(sentEmailId: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  // Scope the delete to the owner; emailEvents cascade-delete via FK.
+  const deleted = await db
+    .delete(sentEmails)
+    .where(
+      and(eq(sentEmails.id, sentEmailId), eq(sentEmails.userId, session.user.id))
+    )
+    .returning({ id: sentEmails.id, outreachId: sentEmails.outreachId });
+
+  if (deleted.length === 0) {
+    return { success: false, error: "Email not found" };
+  }
+
+  revalidatePath(`/outreach/${deleted[0].outreachId}`);
+  return { success: true };
+}
+
 export async function checkHasPassword() {
   const session = await auth();
   if (!session?.user?.id) return { hasPassword: false };
