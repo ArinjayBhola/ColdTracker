@@ -16,7 +16,12 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ trackingId: string }> }
 ) {
-  const { trackingId } = await params;
+  const resolvedParams = await params;
+  let trackingId = resolvedParams.trackingId;
+  
+  if (trackingId.endsWith(".gif")) {
+    trackingId = trackingId.slice(0, -4);
+  }
 
   try {
     // Find the sent email by tracking ID
@@ -64,6 +69,7 @@ export async function GET(
     status: 200,
     headers: {
       "Content-Type": "image/gif",
+      "Content-Length": TRANSPARENT_GIF.length.toString(),
       "Cache-Control": "no-store, no-cache, must-revalidate",
     },
   });

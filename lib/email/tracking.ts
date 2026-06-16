@@ -12,7 +12,7 @@ export function rewriteLinksForTracking(
 }
 
 export function getTrackingPixelUrl(trackingId: string): string {
-  return `${BASE_URL}/api/track/open/${trackingId}`;
+  return `${BASE_URL}/api/track/open/${trackingId}.gif`;
 }
 
 export function appendTrackingPixel(html: string, trackingId: string): string {
