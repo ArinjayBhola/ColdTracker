@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -66,6 +67,7 @@ export function ComposeEmailDialog({
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>("none");
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const [prevOpen, setPrevOpen] = useState(false);
   const [prevTo, setPrevTo] = useState("");
@@ -162,6 +164,8 @@ export function ComposeEmailDialog({
         title: "Email sent",
         description: `Email sent to ${editableTo} successfully.`,
       });
+      // Refresh the Sent Emails card without a full page reload.
+      queryClient.invalidateQueries({ queryKey: ["sent-emails", outreachId] });
       setSubject("");
       setBody("");
       setFiles([]);

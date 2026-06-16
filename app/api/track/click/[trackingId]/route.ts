@@ -2,6 +2,9 @@ import { db } from "@/db";
 import { sentEmails, emailEvents } from "@/db/schema";
 import { eq, isNull, and } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+import { publishTrackingEvent } from "@/lib/redis";
+
+export const runtime = "nodejs";
 
 export async function GET(
   req: NextRequest,
@@ -43,6 +46,16 @@ export async function GET(
         ip:
           req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
           undefined,
+      });
+
+      // Push to any dashboard watching this outreach live.
+      await publishTrackingEvent({
+        type: "click",
+        outreachId: email.outreachId,
+        sentEmailId: email.id,
+        trackingId,
+        url,
+        timestamp: new Date().toISOString(),
       });
     }
   } catch {

@@ -126,11 +126,18 @@ export async function getSentEmailsForOutreach(outreachId: string) {
   const session = await auth();
   if (!session?.user?.id) return [];
 
-  return db
-    .select()
-    .from(sentEmails)
-    .where(and(eq(sentEmails.outreachId, outreachId), eq(sentEmails.userId, session.user.id)))
-    .orderBy(desc(sentEmails.sentAt));
+  return db.query.sentEmails.findMany({
+    where: and(
+      eq(sentEmails.outreachId, outreachId),
+      eq(sentEmails.userId, session.user.id)
+    ),
+    orderBy: desc(sentEmails.sentAt),
+    with: {
+      events: {
+        orderBy: (events, { asc }) => asc(events.timestamp),
+      },
+    },
+  });
 }
 
 export async function checkHasPassword() {

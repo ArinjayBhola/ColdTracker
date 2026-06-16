@@ -2,6 +2,9 @@ import { db } from "@/db";
 import { sentEmails, emailEvents } from "@/db/schema";
 import { eq, isNull, and } from "drizzle-orm";
 import { NextRequest } from "next/server";
+import { publishTrackingEvent } from "@/lib/redis";
+
+export const runtime = "nodejs";
 
 // 1x1 transparent GIF
 const TRANSPARENT_GIF = Buffer.from(
@@ -41,6 +44,15 @@ export async function GET(
         ip:
           req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
           undefined,
+      });
+
+      // Push to any dashboard watching this outreach live.
+      await publishTrackingEvent({
+        type: "open",
+        outreachId: email.outreachId,
+        sentEmailId: email.id,
+        trackingId,
+        timestamp: new Date().toISOString(),
       });
     }
   } catch {
