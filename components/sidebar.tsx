@@ -18,7 +18,7 @@ const links = [
   { href: "/calendar", label: "Calendar", icon: FiCalendar },
   { href: "/outreach/new", label: "Add Outreach", icon: FiPlusCircle },
   { href: "/templates", label: "Templates", icon: FiFileText },
-  { href: "/stats", label: "Analytics", icon: FiBarChart2 },
+  { href: "/stats", label: "Stats", icon: FiBarChart2 },
 ];
 
 export function Sidebar() {

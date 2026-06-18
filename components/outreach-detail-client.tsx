@@ -13,10 +13,6 @@ import { OutreachHeader } from "@/components/outreach/outreach-header";
 import { OutreachDetailsCard } from "@/components/outreach/outreach-details-card";
 import { OutreachTimelineCard } from "@/components/outreach/outreach-timeline-card";
 import { OutreachContactsCard } from "@/components/outreach/outreach-contacts-card";
-import { SentEmailsCard } from "@/components/outreach/sent-emails-card";
-import { ComposeEmailDialog } from "@/components/compose-email-dialog";
-import { Button } from "@/components/ui/button";
-import { FiSend } from "react-icons/fi";
 import { type OutreachContact } from "@/db/schema";
 
 type OutreachDetailClientProps = {
@@ -54,7 +50,6 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
-  const [isComposeOpen, setIsComposeOpen] = useState(false);
   const [isEditingSentDate, setIsEditingSentDate] = useState<number | null>(null); // null, 1 or 2
   const [newSentDate, setNewSentDate] = useState<Date | undefined>(undefined);
 
@@ -188,32 +183,6 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
             onSave={handleSaveDetails}
           />
 
-          {/* Send Email Button - visible when contact has email */}
-          {(activeContact?.emailAddress || (item as unknown as {emailAddress?: string}).emailAddress) && (
-            <>
-              <Button
-                onClick={() => setIsComposeOpen(true)}
-                className="w-full"
-                size="lg"
-              >
-                <FiSend className="mr-2" />
-                Send Email
-              </Button>
-              <ComposeEmailDialog
-                open={isComposeOpen}
-                onOpenChange={setIsComposeOpen}
-                outreachId={item.id}
-                contactIndex={activeContactIndex}
-                to={activeContact?.emailAddress || (item as unknown as {emailAddress?: string}).emailAddress || ""}
-                companyName={item.companyName}
-                companyUrl={item.companyLink || ""}
-                personName={activeContact?.personName || "there"}
-                personRole={activeContact?.personRole || "Contact"}
-                roleTargeted={item.roleTargeted}
-              />
-            </>
-          )}
-
           <Card className="border-2 shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-xl font-extrabold">
@@ -275,8 +244,6 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
             onSelect={setActiveContactIndex}
             onDelete={handleDeleteContact}
           />
-
-          <SentEmailsCard outreachId={item.id} />
         </div>
       </div>
     </div>

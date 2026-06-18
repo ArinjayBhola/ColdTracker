@@ -33,10 +33,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       allowDangerousEmailAccountLinking: true,
       authorization: {
         params: {
-          scope:
-            "openid email profile https://www.googleapis.com/auth/gmail.send",
-          access_type: "offline",
-          prompt: "consent",
+          scope: "openid email profile",
         },
       },
     }),
@@ -47,7 +44,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       allowDangerousEmailAccountLinking: true,
       authorization: {
         params: {
-          scope: "openid email profile Mail.Send offline_access",
+          scope: "openid email profile",
         },
       },
     }),

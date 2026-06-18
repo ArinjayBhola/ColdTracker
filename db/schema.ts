@@ -37,13 +37,6 @@ export const statusEnum = pgEnum("status", [
   "CLOSED",
 ]);
 
-// --- Email Enums ---
-export const emailProviderEnum = pgEnum("email_provider", ["gmail", "outlook"]);
-export const trackingEventTypeEnum = pgEnum("tracking_event_type", [
-  "open",
-  "click",
-]);
-
 // --- Auth Schema ---
 export const users = pgTable("user", {
   id: text("id")
@@ -160,49 +153,6 @@ export const extensionLeads = pgTable("extension_leads", {
   createdAtIdx: index("extension_leads_created_at_idx").on(table.createdAt),
 }));
 
-// --- Email Tracking Schema ---
-export const sentEmails = pgTable(
-  "sent_emails",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    outreachId: uuid("outreach_id")
-      .notNull()
-      .references(() => outreach.id, { onDelete: "cascade" }),
-    userId: text("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    contactIndex: integer("contact_index").notNull().default(0),
-    to: text("to").notNull(),
-    subject: text("subject").notNull(),
-    body: text("body").notNull(),
-    trackingId: uuid("tracking_id")
-      .notNull()
-      .$defaultFn(() => crypto.randomUUID()),
-    provider: emailProviderEnum("provider").notNull(),
-    sentAt: timestamp("sent_at", { mode: "date" }).defaultNow().notNull(),
-    openedAt: timestamp("opened_at", { mode: "date" }),
-    clickedAt: timestamp("clicked_at", { mode: "date" }),
-  },
-  (table) => ({
-    trackingIdIdx: uniqueIndex("sent_emails_tracking_id_idx").on(
-      table.trackingId
-    ),
-  })
-);
-
-export const emailEvents = pgTable("email_events", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  sentEmailId: uuid("sent_email_id")
-    .notNull()
-    .references(() => sentEmails.id, { onDelete: "cascade" }),
-  trackingId: uuid("tracking_id").notNull(),
-  type: trackingEventTypeEnum("type").notNull(),
-  url: text("url"),
-  userAgent: text("user_agent"),
-  ip: text("ip"),
-  timestamp: timestamp("timestamp", { mode: "date" }).defaultNow().notNull(),
-});
-
 // --- Goals & Streaks Schema ---
 export const goals = pgTable("goals", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -317,25 +267,6 @@ export const startupTrackingRelations = relations(startupTracking, ({ one }) => 
   startup: one(startups, {
     fields: [startupTracking.startupId],
     references: [startups.id],
-  }),
-}));
-
-export const sentEmailsRelations = relations(sentEmails, ({ one, many }) => ({
-  outreach: one(outreach, {
-    fields: [sentEmails.outreachId],
-    references: [outreach.id],
-  }),
-  user: one(users, {
-    fields: [sentEmails.userId],
-    references: [users.id],
-  }),
-  events: many(emailEvents),
-}));
-
-export const emailEventsRelations = relations(emailEvents, ({ one }) => ({
-  sentEmail: one(sentEmails, {
-    fields: [emailEvents.sentEmailId],
-    references: [sentEmails.id],
   }),
 }));
 
