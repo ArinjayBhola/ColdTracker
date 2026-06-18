@@ -1,8 +1,17 @@
 "use client"
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 import * as React from "react"
+
+// Devtools are only loaded in development so they never reach the production bundle.
+const ReactQueryDevtools =
+  process.env.NODE_ENV === "development"
+    ? React.lazy(() =>
+        import("@tanstack/react-query-devtools").then((m) => ({
+          default: m.ReactQueryDevtools,
+        }))
+      )
+    : () => null
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = React.useState(
@@ -23,7 +32,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       {children}
-      <ReactQueryDevtools initialIsOpen={false} />
+      <React.Suspense fallback={null}>
+        <ReactQueryDevtools initialIsOpen={false} />
+      </React.Suspense>
     </QueryClientProvider>
   )
 }

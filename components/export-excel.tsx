@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { FiDownload } from "react-icons/fi";
-import * as XLSX from "xlsx";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { getOutreachForExport } from "@/actions/outreach";
@@ -53,6 +52,9 @@ export function ExportExcel({ fileName = "outreach-data" }: ExportExcelProps) {
         }));
       });
 
+      // Load the heavy xlsx library only when an export is actually requested,
+      // keeping it out of the dashboard's initial bundle.
+      const XLSX = await import("xlsx");
       const worksheet = XLSX.utils.json_to_sheet(formattedData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Outreach");
