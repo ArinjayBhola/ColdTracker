@@ -6,10 +6,31 @@ import { db } from "@/db";
 import { sentEmails, outreach, accounts, users } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { getValidAccessToken, getConnectedEmailProvider } from "@/lib/email/token-refresh";
-import { prepareEmailBody } from "@/lib/email/tracking";
+import { prepareEmailBody, resolveBaseUrl } from "@/lib/email/tracking";
 import { sendViaGmail } from "@/lib/email/gmail";
 import { sendViaOutlook } from "@/lib/email/outlook";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+
+/**
+ * Derive the public origin from the incoming request headers so tracking links
+ * always point at the domain the app is actually served from. Falls back to the
+ * env-based resolution when headers are unavailable.
+ */
+async function getRequestOrigin(): Promise<string> {
+  try {
+    const h = await headers();
+    const host = h.get("x-forwarded-host") || h.get("host");
+    if (host) {
+      const proto =
+        h.get("x-forwarded-proto") || (host.startsWith("localhost") ? "http" : "https");
+      return `${proto}://${host}`;
+    }
+  } catch {
+    // headers() can throw outside a request scope — fall through to env resolution.
+  }
+  return resolveBaseUrl();
+}
 
 export async function sendEmailAction(formData: FormData) {
   const session = await auth();
@@ -47,9 +68,12 @@ export async function sendEmailAction(formData: FormData) {
     };
   }
 
-  // Generate tracking ID and prepare email body
+  // Generate tracking ID and prepare email body. Resolve the origin from the
+  // live request so the embedded tracking pixel/links use the real domain
+  // (never localhost), which is what makes recipient opens register.
   const trackingId = crypto.randomUUID();
-  const htmlBody = prepareEmailBody(body, trackingId);
+  const baseUrl = await getRequestOrigin();
+  const htmlBody = prepareEmailBody(body, trackingId, baseUrl);
 
   // Send via the appropriate provider
   const sendResult =

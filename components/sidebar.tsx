@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { FiLayout, FiPlusCircle, FiBarChart2, FiLogOut, FiCheckSquare, FiChevronLeft, FiChevronRight, FiSettings, FiLinkedin, FiCalendar, FiTrendingUp, FiFileText } from "react-icons/fi";
+import { FiLayout, FiPlusCircle, FiBarChart2, FiLogOut, FiCheckSquare, FiChevronLeft, FiChevronRight, FiSettings, FiLinkedin, FiCalendar, FiTrendingUp, FiFileText, FiActivity } from "react-icons/fi";
 import { Button } from "./ui/button";
 import { signOutAction } from "@/actions/auth";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -19,6 +19,7 @@ const links = [
   { href: "/outreach/new", label: "Add Outreach", icon: FiPlusCircle },
   { href: "/templates", label: "Templates", icon: FiFileText },
   { href: "/stats", label: "Stats", icon: FiBarChart2 },
+  { href: "/analytics", label: "Analytics", icon: FiActivity },
 ];
 
 export function Sidebar() {
