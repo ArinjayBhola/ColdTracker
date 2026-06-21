@@ -3,7 +3,7 @@
 import { db } from "@/db";
 import { startups, startupTracking } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, inArray } from "drizzle-orm";
 import { revalidatePath, unstable_cache as cache } from "next/cache";
 
 // Cache for 24 hours for static startup data
@@ -46,12 +46,12 @@ export async function getStartupsAction(page: number = 1, pageSize: number = 20)
 
   // Fetch dynamic tracking data for this user
   const startupIds = items.map(i => i.id);
-  const trackingData = await db.query.startupTracking.findMany({
+  const trackingData = startupIds.length > 0 ? await db.query.startupTracking.findMany({
     where: and(
       eq(startupTracking.userId, session.user.id),
-      sql`${startupTracking.startupId} IN ${startupIds}`
+      inArray(startupTracking.startupId, startupIds)
     ),
-  });
+  }) : [];
 
   // Merge tracking data into items
   const itemsWithTracking = items.map(item => ({
