@@ -10,21 +10,23 @@ import { revalidatePath, unstable_cache as cache } from "next/cache";
 const getCachedStartups = cache(
   async (page: number, pageSize: number) => {
     const offset = (page - 1) * pageSize;
-    const items = await db.query.startups.findMany({
-      limit: pageSize,
-      offset: offset,
-      with: {
-        employees: true,
-      },
-      orderBy: (startups, { desc }) => [desc(startups.createdAt)],
-    });
+    const [items, countResult, sectorResults] = await Promise.all([
+      db.query.startups.findMany({
+        limit: pageSize,
+        offset: offset,
+        with: {
+          employees: true,
+        },
+        orderBy: (startups, { desc }) => [desc(startups.createdAt)],
+      }),
+      db.select({ count: sql<number>`count(*)` }).from(startups),
+      db.select({
+        sector: startups.sector,
+        count: sql<number>`count(*)`
+      }).from(startups).groupBy(startups.sector)
+    ]);
 
-    const [{ count }] = await db.select({ count: sql<number>`count(*)` }).from(startups);
-
-    const sectorResults = await db.select({
-      sector: startups.sector,
-      count: sql<number>`count(*)`
-    }).from(startups).groupBy(startups.sector);
+    const count = countResult[0].count;
 
     const sectorCounts: Record<string, number> = {};
     sectorResults.forEach(r => {
@@ -63,7 +65,7 @@ export async function getStartupsAction(page: number = 1, pageSize: number = 20)
   itemsWithTracking.sort((a, b) => {
     const aOutreached = a.tracking.some(t => t.outreachDone);
     const bOutreached = b.tracking.some(t => t.outreachDone);
-    
+
     if (aOutreached && !bOutreached) return 1;
     if (!aOutreached && bOutreached) return -1;
     return 0;
