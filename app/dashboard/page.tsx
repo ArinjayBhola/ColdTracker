@@ -10,7 +10,7 @@ import { ExportExcel } from "@/components/export-excel";
 import { OutreachTable } from "@/components/outreach-table";
 import { DashboardRefreshButton } from "@/components/dashboard-refresh-button";
 import { getExtensionLeadsAction } from "@/actions/extension-leads";
-import { getWeeklyProgress, getDailyProgress, getStreakData, getLast7DaysActivity } from "@/actions/goals";
+import { getDashboardGoalsData } from "@/actions/goals";
 import { GoalsStreaksCard } from "@/components/goals-streaks-card";
 import { StaggerContainer, StaggerItem } from "@/components/motion-wrapper";
 
@@ -25,41 +25,31 @@ async function DashboardStatsCards() {
       title: "Total Sent",
       value: stats.sent,
       icon: FiSend,
-      iconColor: "text-blue-600 dark:text-blue-400",
-      bgColor: "bg-blue-500/10",
-      borderColor: "border-blue-500/20",
+      iconColor: "text-primary",
     },
     {
       title: "Replies",
       value: stats.replies,
       icon: FiMessageCircle,
-      iconColor: "text-purple-600 dark:text-purple-400",
-      bgColor: "bg-purple-500/10",
-      borderColor: "border-purple-500/20",
+      iconColor: "text-violet-600 dark:text-violet-400",
     },
     {
       title: "Interviews",
       value: stats.interviews,
       icon: FiVideo,
       iconColor: "text-amber-600 dark:text-amber-400",
-      bgColor: "bg-amber-500/10",
-      borderColor: "border-amber-500/20",
     },
     {
       title: "Offers",
       value: stats.offers,
       icon: FiAward,
       iconColor: "text-emerald-600 dark:text-emerald-400",
-      bgColor: "bg-emerald-500/10",
-      borderColor: "border-emerald-500/20",
     },
     {
       title: "Ext. Leads",
       value: leadsCount,
       icon: FiLinkedin,
-      iconColor: "text-blue-600 dark:text-blue-400",
-      bgColor: "bg-blue-500/10",
-      borderColor: "border-blue-500/20",
+      iconColor: "text-sky-600 dark:text-sky-400",
     },
   ];
 
@@ -68,20 +58,16 @@ async function DashboardStatsCards() {
       {statCards.map((stat) => (
         <StaggerItem key={stat.title}>
           <Card
-            className={cn(
-              "h-[150px] md:h-[170px] border-none ring-1 transition-all hover:shadow-md flex flex-col justify-between",
-              stat.borderColor.replace("border-", "ring-"),
-              stat.bgColor
-            )}
+            className="h-[142px] md:h-[154px] flex flex-col justify-between"
           >
-            <CardHeader className="flex flex-row items-center justify-between p-4 md:pb-3">
-              <CardTitle className="text-[10px] md:text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            <CardHeader className="flex flex-row items-center justify-between p-4 pb-2">
+              <CardTitle className="text-xs font-bold uppercase text-muted-foreground">
                 {stat.title}
               </CardTitle>
 
               <div
                 className={cn(
-                  "hidden md:flex p-2.5 rounded-xl bg-background/80",
+                  "hidden md:flex h-9 w-9 items-center justify-center rounded-md border bg-background",
                   stat.iconColor
                 )}
               >
@@ -89,8 +75,8 @@ async function DashboardStatsCards() {
               </div>
             </CardHeader>
 
-            <CardContent className="px-4 pb-4 md:px-6 md:pb-6 flex flex-col justify-end flex-1">
-              <div className="text-2xl md:text-4xl font-bold tracking-tight">
+            <CardContent className="px-4 pb-4 flex flex-col justify-end flex-1">
+              <div className="text-3xl md:text-4xl font-bold">
                 {stat.value}
               </div>
 
@@ -99,7 +85,7 @@ async function DashboardStatsCards() {
                 {stats.sent > 0 &&
                   stat.title !== "Total Sent" &&
                   stat.title !== "Ext. Leads" && (
-                    <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1">
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
                       <FiTrendingUp className="w-3 h-3" />
                       {((stat.value / stats.sent) * 100).toFixed(1)}%
                     </p>
@@ -114,18 +100,13 @@ async function DashboardStatsCards() {
 }
 
 async function DashboardGoalsSection() {
-  const [dailyProgress, weeklyProgress, streakData, last7Days] = await Promise.all([
-    getDailyProgress(),
-    getWeeklyProgress(),
-    getStreakData(),
-    getLast7DaysActivity(),
-  ]);
+  const { daily, weekly, streak, last7Days } = await getDashboardGoalsData();
 
   return (
     <GoalsStreaksCard
-      dailyProgress={dailyProgress}
-      weeklyProgress={weeklyProgress}
-      streakData={streakData}
+      dailyProgress={daily}
+      weeklyProgress={weekly}
+      streakData={streak}
       last7Days={last7Days}
     />
   );
@@ -152,23 +133,23 @@ export default async function DashboardPage(
   const filter = searchParams.filter || "ALL";
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="app-page">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto p-4 md:p-8">
-        <div className="max-w-7xl mx-auto space-y-6 md:space-y-10">
+      <main className="app-main">
+        <div className="app-container">
             {/* Header */}
-            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between pt-16 md:pt-0">
+            <div className="flex flex-col gap-5 border-b pb-6 md:flex-row md:items-center md:justify-between">
                 <div className="space-y-1">
-                    <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Dashboard</h1>
+                    <h1 className="text-3xl md:text-4xl font-extrabold">Dashboard</h1>
                     <p className="text-muted-foreground text-sm flex items-center gap-2">
-                        <FiTrendingUp className="w-4 h-4 text-primary" />
+                        <FiTrendingUp className="w-4 h-4" />
                         Real-time job search performance metrics
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     <DashboardRefreshButton />
                     <ExportExcel fileName="cold-track-export" />
-                    <Button asChild className="gap-2 h-11 px-6 font-bold rounded-xl shadow-lg shadow-primary/20 hover:shadow-xl transition-all flex-1 md:flex-none justify-center">
+                    <Button asChild className="gap-2 h-11 px-5 flex-1 md:flex-none justify-center">
                         <Link href="/outreach/new">
                         <FiPlus className="h-5 w-5" />
                         New Outreach

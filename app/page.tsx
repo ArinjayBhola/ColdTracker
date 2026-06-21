@@ -2,172 +2,124 @@
 
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { FiArrowRight, FiTarget, FiZap, FiLayout, FiMenu, FiX } from "react-icons/fi";
+import { FiArrowRight, FiCheckCircle, FiClock, FiGrid, FiMenu, FiSend, FiX } from "react-icons/fi";
 import { useState } from "react";
+import type { ReactNode } from "react";
 import Image from "next/image";
+
+const rows = [
+  { company: "Northstar Labs", contact: "Maya Chen", status: "Replied", due: "Today" },
+  { company: "VectorOps", contact: "Arun Patel", status: "Follow-up", due: "Jun 24" },
+  { company: "Clearbit Systems", contact: "Elena Ruiz", status: "Sent", due: "Jun 26" },
+];
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-primary/10">
-      {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 glass border-b border-border/40 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-1 group cursor-pointer">
-            <div className="relative w-16 h-16 flex items-center justify-center overflow-hidden">
-              <Image 
-                src="/logo.png" 
-                alt="ColdTrack Logo" 
-                fill
-                className="object-contain scale-[1.3] dark:invert dark:brightness-200 transition-all"
-                priority
-              />
-            </div>
-            <span className="text-2xl font-bold tracking-tighter text-foreground/90 -ml-1">ColdTrack</span>
+    <div className="min-h-screen bg-background text-foreground">
+      <nav className="sticky top-0 z-50 border-b bg-background">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:px-6">
+          <Link href="/" className="flex items-center gap-3">
+            <span className="relative flex h-10 w-10 items-center justify-center rounded-md border bg-card">
+              <Image src="/logo.png" alt="ColdTrack Logo" fill className="object-contain p-1 dark:invert" priority />
+            </span>
+            <span className="text-lg font-bold">ColdTrack</span>
           </Link>
-          
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-6">
-            <Link href="/signin" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mr-2">
-              Sign in
-            </Link>
-            <Link href="/signup">
-              <Button size="sm" className="h-9 px-5 rounded-lg font-medium shadow-sm hover:shadow-md transition-all active:scale-[0.98]">
-                Get Started
-              </Button>
-            </Link>
+
+          <div className="hidden items-center gap-3 md:flex">
+            <Button variant="ghost" asChild>
+              <Link href="/signin">Sign in</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/signup">Get started</Link>
+            </Button>
           </div>
 
-          {/* Mobile Menu Toggle */}
           <MobileMenu />
         </div>
       </nav>
 
-      <main className="pt-24">
-        {/* Hero Section */}
-        <section className="relative overflow-hidden pt-20 pb-24 lg:pt-32 lg:pb-40">
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-[10%] left-[5%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] animate-pulse" />
-            <div className="absolute bottom-[10%] right-[5%] w-[30%] h-[30%] bg-accent/5 rounded-full blur-[100px] animate-pulse delay-1000" />
-          </div>
-
-          <div className="max-w-7xl mx-auto px-6 relative z-10 text-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/5 border border-primary/10 text-primary text-xs font-bold uppercase tracking-widest mb-8 animate-fade-in">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-              </span>
-              Now in Private Beta
-            </div>
-            
-            <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-[1.1] animate-fade-in px-4 text-foreground">
-              Professional <span className="text-primary italic">Outreach</span> <br className="hidden md:block" />
-              Tracking Simplified.
-            </h1>
-            
-            <p className="max-w-2xl mx-auto text-lg md:text-xl text-muted-foreground/80 leading-relaxed mb-12 animate-fade-in delay-100">
-              ColdTrack is a high-performance CRM designed specifically for outreach professionals. Manage prospects, automate follow-up schedules, and optimize your conversion funnel in one unified dashboard.
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in delay-200">
-              <Link href="/signup">
-                <Button size="lg" className="h-14 px-8 text-lg rounded-2xl font-bold gap-3 shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 transition-all active:scale-[0.97]">
-                  Launch Dashboard <FiArrowRight className="w-5 h-5" />
+      <main>
+        <section className="border-b">
+          <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 md:grid-cols-[0.9fr_1.1fr] md:px-6 md:py-20">
+            <div className="flex flex-col justify-center">
+              <p className="mb-4 w-fit rounded-md border bg-card px-3 py-1 text-xs font-bold uppercase text-muted-foreground">
+                Outreach pipeline
+              </p>
+              <h1 className="max-w-2xl text-4xl font-extrabold leading-tight md:text-6xl">
+                ColdTrack
+              </h1>
+              <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground md:text-lg">
+                A focused workspace for tracking cold outreach, follow-ups, replies, interviews, and active leads without spreadsheet drift.
+              </p>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Button size="lg" asChild className="h-11 px-5">
+                  <Link href="/signup">
+                    Start tracking <FiArrowRight />
+                  </Link>
                 </Button>
-              </Link>
-              <Link href="/signin">
-                <Button variant="outline" size="lg" className="h-14 px-8 text-lg rounded-2xl font-bold border-border/60 hover:bg-muted/50 transition-all active:scale-[0.97]">
-                  View live demo
+                <Button size="lg" variant="outline" asChild className="h-11 px-5">
+                  <Link href="/signin">Open dashboard</Link>
                 </Button>
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        {/* Features Grid */}
-        <section className="py-24 bg-muted/30">
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">Precision Tracking, Professional Results</h2>
-              <p className="text-muted-foreground max-w-xl mx-auto">Everything you need to turn cold outreach into warm relationships.</p>
+              </div>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-8">
-              {[
-                {
-                  icon: <FiTarget className="w-6 h-6" />,
-                  title: "Smart Targeting",
-                  description: "Keep track of high-value prospects and where they are in your funnel at any given time."
-                },
-                {
-                  icon: <FiZap className="w-6 h-6" />,
-                  title: "Rapid Follow-ups",
-                  description: "Never miss a beat with an automated schedule for your follow-up sequence."
-                },
-                {
-                  icon: <FiLayout className="w-6 h-6" />,
-                  title: "Unified CRM",
-                  description: "A single, focused view of all your outreach activities across every channel."
-                }
-              ].map((feat, i) => (
-                <div key={i} className="p-8 rounded-3xl bg-background border border-border/40 hover:border-primary/20 hover:shadow-premium transition-all group">
-                  <div className="w-12 h-12 rounded-2xl bg-primary/5 text-primary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                    {feat.icon}
-                  </div>
-                  <h3 className="text-xl font-bold mb-3">{feat.title}</h3>
-                  <p className="text-muted-foreground leading-relaxed">{feat.description}</p>
+            <div className="rounded-lg border bg-card shadow-sm">
+              <div className="flex items-center justify-between border-b p-4">
+                <div>
+                  <p className="text-sm font-bold">Today&apos;s queue</p>
+                  <p className="text-xs text-muted-foreground">3 active follow-ups</p>
                 </div>
-              ))}
+                <Button size="sm">
+                  <FiSend /> Add outreach
+                </Button>
+              </div>
+              <div className="divide-y">
+                {rows.map((row) => (
+                  <div key={row.company} className="grid grid-cols-[1fr_auto] gap-4 p-4 md:grid-cols-[1.2fr_1fr_auto_auto] md:items-center">
+                    <div>
+                      <p className="font-semibold">{row.company}</p>
+                      <p className="text-sm text-muted-foreground">{row.contact}</p>
+                    </div>
+                    <span className="hidden text-sm text-muted-foreground md:block">LinkedIn</span>
+                    <span className="w-fit rounded-md border bg-muted px-2.5 py-1 text-xs font-semibold">{row.status}</span>
+                    <span className="text-sm font-semibold">{row.due}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-3 border-t text-center">
+                <Metric value="42" label="sent" />
+                <Metric value="11" label="replies" />
+                <Metric value="5" label="interviews" />
+              </div>
             </div>
           </div>
         </section>
 
-        {/* Call to Action */}
-        <section className="py-24 relative overflow-hidden">
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="relative rounded-[2.5rem] bg-foreground text-background overflow-hidden p-12 md:p-24 text-center">
-              <div className="absolute top-0 right-0 w-96 h-96 bg-primary/20 rounded-full blur-[100px]" />
-              <div className="absolute bottom-0 left-0 w-96 h-96 bg-accent/20 rounded-full blur-[100px]" />
-              
-              <h2 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-8 relative z-10">Ready to scale your <br /> outreach performance?</h2>
-              <p className="text-background/70 max-w-lg mx-auto mb-12 text-lg relative z-10">Join 500+ professionals using ColdTrack to streamline their daily workflow and close more deals.</p>
-              
-              <Link href="/signup" className="relative z-10 inline-block">
-                <Button size="lg" className="h-16 px-10 text-xl rounded-2xl font-bold bg-white text-black hover:bg-white/90 transition-all active:scale-[0.98]">
-                  Start for Free
-                </Button>
-              </Link>
-              
-              <p className="mt-8 text-sm text-background/40 relative z-10">No credit card required • 14-day free trial • Cancel anytime</p>
-            </div>
-          </div>
+        <section className="mx-auto grid max-w-7xl gap-4 px-4 py-10 md:grid-cols-3 md:px-6">
+          <Feature icon={<FiGrid />} title="Single pipeline" text="See every company, contact, status, and next step in one operational view." />
+          <Feature icon={<FiClock />} title="Follow-up discipline" text="Keep daily and weekly outreach targets visible beside your actual activity." />
+          <Feature icon={<FiCheckCircle />} title="Decision-ready stats" text="Measure replies, interviews, offers, and stale leads without manual cleanup." />
         </section>
       </main>
+    </div>
+  );
+}
 
-      {/* Footer */}
-      <footer className="py-12 border-t border-border/40">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="flex items-center gap-1 grayscale brightness-0 opacity-80 hover:grayscale-0 hover:opacity-100 transition-all cursor-pointer">
-            <div className="relative w-14 h-14 overflow-hidden">
-              <Image 
-                src="/logo.png" 
-                alt="ColdTrack Logo" 
-                fill
-                className="object-contain dark:invert dark:brightness-200"
-              />
-            </div>
-            <span className="text-lg font-bold tracking-tight -ml-1">ColdTrack</span>
-          </div>
-          
-          <div className="flex gap-8 text-sm font-medium text-muted-foreground">
-            <Link href="#" className="hover:text-foreground transition-colors">Privacy</Link>
-            <Link href="#" className="hover:text-foreground transition-colors">Terms</Link>
-            <Link href="#" className="hover:text-foreground transition-colors">Twitter</Link>
-            <Link href="#" className="hover:text-foreground transition-colors">Contact</Link>
-          </div>
-          
-          <p className="text-xs text-muted-foreground">© 2026 ColdTrack. All rights reserved.</p>
-        </div>
-      </footer>
+function Metric({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="p-4">
+      <p className="text-2xl font-bold">{value}</p>
+      <p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
+function Feature({ icon, title, text }: { icon: ReactNode; title: string; text: string }) {
+  return (
+    <div className="rounded-lg border bg-card p-5">
+      <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-md border text-primary">{icon}</div>
+      <h2 className="font-bold">{title}</h2>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p>
     </div>
   );
 }
@@ -177,25 +129,18 @@ function MobileMenu() {
 
   return (
     <div className="md:hidden">
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className="p-2 text-foreground"
-      >
-        {isOpen ? <FiX size={24} /> : <FiMenu size={24} />}
+      <button onClick={() => setIsOpen(!isOpen)} className="rounded-md border p-2 text-foreground">
+        {isOpen ? <FiX size={20} /> : <FiMenu size={20} />}
       </button>
 
       {isOpen && (
-        <div className="absolute top-16 left-0 w-full bg-background border-b border-border/40 p-6 flex flex-col gap-4 shadow-xl animate-in slide-in-from-top-2">
-          <Link href="/signin" onClick={() => setIsOpen(false)}>
-            <Button variant="outline" className="w-full justify-center h-12 text-base">
-              Sign in
-            </Button>
-          </Link>
-          <Link href="/signup" onClick={() => setIsOpen(false)}>
-            <Button className="w-full justify-center h-12 text-base">
-              Get Started
-            </Button>
-          </Link>
+        <div className="absolute left-0 top-16 flex w-full flex-col gap-3 border-b bg-background p-4 shadow-sm">
+          <Button variant="outline" asChild onClick={() => setIsOpen(false)}>
+            <Link href="/signin">Sign in</Link>
+          </Button>
+          <Button asChild onClick={() => setIsOpen(false)}>
+            <Link href="/signup">Get started</Link>
+          </Button>
         </div>
       )}
     </div>

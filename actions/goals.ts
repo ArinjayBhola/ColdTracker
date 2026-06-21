@@ -61,25 +61,6 @@ export async function updateDailyTarget(target: number) {
   return { success: true };
 }
 
-export async function getDailyProgress() {
-  const session = await auth();
-  if (!session?.user?.id) return { target: 3, current: 0, percentage: 0 };
-
-    const goal = await getOrCreateGoal();
-    const target = goal?.dailyTarget ?? 3;
-
-    const today = format(new Date(), "yyyy-MM-dd");
-
-    const activity = await db.query.dailyActivity.findFirst({
-      where: and(eq(dailyActivity.userId, session.user.id), eq(dailyActivity.date, today)),
-    });
-
-    const current = activity?.outreachCount ?? 0;
-    const percentage = Math.min(Math.round((current / target) * 100), 100);
-
-    return { target, current, percentage };
-}
-
 export async function updateWeeklyTarget(target: number) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
@@ -105,79 +86,6 @@ export async function updateWeeklyTarget(target: number) {
 
   revalidatePath("/dashboard");
   return { success: true };
-}
-
-export async function getWeeklyProgress() {
-  const session = await auth();
-  if (!session?.user?.id) return { target: 10, current: 0, percentage: 0 };
-
-    const goal = await getOrCreateGoal();
-    const target = goal?.weeklyTarget ?? 10;
-
-    const now = new Date();
-    const weekStart = startOfWeek(now, { weekStartsOn: 1 }); // Monday
-    const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
-
-    const weekStartStr = format(weekStart, "yyyy-MM-dd");
-    const weekEndStr = format(weekEnd, "yyyy-MM-dd");
-
-    const result = await db
-      .select({ total: sql<number>`coalesce(sum(${dailyActivity.outreachCount}), 0)` })
-      .from(dailyActivity)
-      .where(
-        and(
-          eq(dailyActivity.userId, session.user.id),
-          gte(dailyActivity.date, weekStartStr),
-          lte(dailyActivity.date, weekEndStr),
-        ),
-      );
-
-    const current = Number(result[0]?.total ?? 0);
-    const percentage = Math.min(Math.round((current / target) * 100), 100);
-
-    return { target, current, percentage };
-}
-
-export async function getStreakData() {
-  const session = await auth();
-  if (!session?.user?.id) return { currentStreak: 0, longestStreak: 0, todayCount: 0 };
-
-    const today = format(new Date(), "yyyy-MM-dd");
-
-    // Get all activity days sorted descending
-    const activities = await db
-      .select({ date: dailyActivity.date, outreachCount: dailyActivity.outreachCount })
-      .from(dailyActivity)
-      .where(and(eq(dailyActivity.userId, session.user.id), gte(dailyActivity.outreachCount, 1)))
-      .orderBy(desc(dailyActivity.date));
-
-    if (activities.length === 0) return { currentStreak: 0, longestStreak: 0, todayCount: 0 };
-
-    const todayActivity = activities.find((a) => a.date === today);
-    const todayCount = todayActivity?.outreachCount ?? 0;
-
-    // Calculate current streak (consecutive days ending today or yesterday)
-    const activeDates = new Set(activities.map((a) => a.date));
-    let currentStreak = 0;
-    let checkDate = new Date();
-
-    // If no activity today, start from yesterday
-    if (!activeDates.has(format(checkDate, "yyyy-MM-dd"))) {
-      checkDate = subDays(checkDate, 1);
-      if (!activeDates.has(format(checkDate, "yyyy-MM-dd"))) {
-        // No activity today or yesterday — streak is broken
-        return { currentStreak: 0, longestStreak: calculateLongestStreak(activities), todayCount };
-      }
-    }
-
-    while (activeDates.has(format(checkDate, "yyyy-MM-dd"))) {
-      currentStreak++;
-      checkDate = subDays(checkDate, 1);
-    }
-
-    const longestStreak = calculateLongestStreak(activities);
-
-    return { currentStreak, longestStreak: Math.max(currentStreak, longestStreak), todayCount };
 }
 
 function calculateLongestStreak(activities: { date: string; outreachCount: number }[]) {
@@ -311,32 +219,85 @@ export async function syncActivityHistory() {
   return { success: true };
 }
 
-export async function getLast7DaysActivity() {
+// Consolidated dashboard fetch: authenticates once, reads the goal once, and
+// pulls all activity rows a single time, then derives daily/weekly/streak/last-7
+// in memory. Replaces 4 separate actions that each re-ran auth() and re-fetched
+// the goal (getDailyProgress + getWeeklyProgress each called getOrCreateGoal).
+export async function getDashboardGoalsData() {
   const session = await auth();
-  if (!session?.user?.id) return [];
+  const emptyDaily = { target: 3, current: 0, percentage: 0 };
+  const emptyWeekly = { target: 10, current: 0, percentage: 0 };
+  const emptyStreak = { currentStreak: 0, longestStreak: 0, todayCount: 0 };
+  if (!session?.user?.id) {
+    return { daily: emptyDaily, weekly: emptyWeekly, streak: emptyStreak, last7Days: [] as { date: string; day: string; count: number }[] };
+  }
 
-    const days = [];
-    for (let i = 6; i >= 0; i--) {
-      const date = subDays(new Date(), i);
-      days.push(format(date, "yyyy-MM-dd"));
-    }
+  const userId = session.user.id;
+  const now = new Date();
+  const today = format(now, "yyyy-MM-dd");
+  const weekStartStr = format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd");
+  const weekEndStr = format(endOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd");
 
-    const activities = await db
-      .select()
+  // One goal read + one activity read, in parallel.
+  const [goal, activities] = await Promise.all([
+    getOrCreateGoal(),
+    db
+      .select({ date: dailyActivity.date, outreachCount: dailyActivity.outreachCount })
       .from(dailyActivity)
-      .where(
-        and(
-          eq(dailyActivity.userId, session.user.id),
-          gte(dailyActivity.date, days[0]),
-          lte(dailyActivity.date, days[6]),
-        ),
-      );
+      .where(eq(dailyActivity.userId, userId))
+      .orderBy(desc(dailyActivity.date)),
+  ]);
 
-    const activityMap = new Map(activities.map((a) => [a.date, a.outreachCount]));
+  const dailyTarget = goal?.dailyTarget ?? 3;
+  const weeklyTarget = goal?.weeklyTarget ?? 10;
 
-    return days.map((date) => ({
-      date,
-      day: format(new Date(date), "EEE"),
-      count: activityMap.get(date) ?? 0,
-    }));
+  // Daily
+  const todayCount = activities.find((a) => a.date === today)?.outreachCount ?? 0;
+  const daily = {
+    target: dailyTarget,
+    current: todayCount,
+    percentage: Math.min(Math.round((todayCount / dailyTarget) * 100), 100),
+  };
+
+  // Weekly
+  const weeklyTotal = activities
+    .filter((a) => a.date >= weekStartStr && a.date <= weekEndStr)
+    .reduce((sum, a) => sum + a.outreachCount, 0);
+  const weekly = {
+    target: weeklyTarget,
+    current: weeklyTotal,
+    percentage: Math.min(Math.round((weeklyTotal / weeklyTarget) * 100), 100),
+  };
+
+  // Streak: only days with >= 1 outreach count.
+  const activeDays = activities.filter((a) => a.outreachCount >= 1);
+  const activeDates = new Set(activeDays.map((a) => a.date));
+  let currentStreak = 0;
+  let checkDate = new Date();
+  if (!activeDates.has(format(checkDate, "yyyy-MM-dd"))) {
+    checkDate = subDays(checkDate, 1);
+  }
+  while (activeDates.has(format(checkDate, "yyyy-MM-dd"))) {
+    currentStreak++;
+    checkDate = subDays(checkDate, 1);
+  }
+  const longestStreak = calculateLongestStreak(activeDays);
+  const streak = {
+    currentStreak,
+    longestStreak: Math.max(currentStreak, longestStreak),
+    todayCount,
+  };
+
+  // Last 7 days
+  const last7Days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = format(subDays(now, i), "yyyy-MM-dd");
+    last7Days.push({
+      date: d,
+      day: format(new Date(d), "EEE"),
+      count: activities.find((a) => a.date === d)?.outreachCount ?? 0,
+    });
+  }
+
+  return { daily, weekly, streak, last7Days };
 }

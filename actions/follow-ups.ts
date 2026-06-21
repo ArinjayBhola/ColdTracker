@@ -3,66 +3,8 @@
 import { db } from "@/db";
 import { outreach, type OutreachContact } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { eq, and, desc, not, sql } from "drizzle-orm";
+import { eq, and, desc, asc, sql, notInArray, isNotNull, isNull, lt, lte, gte, gt, type SQL } from "drizzle-orm";
 import { startOfDay, endOfDay, addDays } from "date-fns";
-
-
-export async function getFollowUpItems() {
-  const session = await auth();
-  if (!session?.user?.id) return { today: [], overdue: [], upcoming: [], sent: [] };
-
-  const userId = session.user.id;
-  const now = new Date();
-  const startOfToday = startOfDay(now);
-  const endOfToday = endOfDay(now);
-
-  const allItems = await db.query.outreach.findMany({
-    where: and(
-        eq(outreach.userId, userId),
-        not(eq(outreach.status, "REPLIED")),
-        not(eq(outreach.status, "REJECTED")),
-        not(eq(outreach.status, "OFFER")),
-        not(eq(outreach.status, "CLOSED"))
-    ),
-    orderBy: [desc(outreach.updatedAt)],
-  });
-
-  const activeItems = allItems.filter(i => !i.followUp2SentAt);
-  const sent = allItems.filter(i => !!i.followUp2SentAt).map(i => ({
-      ...i,
-      followUpDueAt: i.followUp2DueAt || (i.contacts as OutreachContact[])[0]?.followUpDueAt || i.updatedAt
-  }));
-
-  const today = activeItems.filter(i => {
-      const dueAt = i.followUpSentAt ? i.followUp2DueAt : (i.contacts as OutreachContact[])[0]?.followUpDueAt;
-      const d = dueAt ? new Date(dueAt) : new Date();
-      return d >= startOfToday && d <= endOfToday;
-  }).map(i => ({ 
-      ...i, 
-      followUpDueAt: i.followUpSentAt ? i.followUp2DueAt : (i.contacts as OutreachContact[])[0]?.followUpDueAt 
-  }));
-
-  const overdue = allItems.filter(i => {
-      const dueAt = i.followUpSentAt ? i.followUp2DueAt : (i.contacts as OutreachContact[])[0]?.followUpDueAt;
-      const d = dueAt ? new Date(dueAt) : new Date();
-      const isSent = i.followUpSentAt ? !!i.followUp2SentAt : !!i.followUpSentAt;
-      return d < startOfToday && !isSent;
-  }).map(i => ({ 
-      ...i, 
-      followUpDueAt: i.followUpSentAt ? i.followUp2DueAt : (i.contacts as OutreachContact[])[0]?.followUpDueAt 
-  }));
-
-  const upcoming = activeItems.filter(i => {
-      const dueAt = i.followUpSentAt ? i.followUp2DueAt : (i.contacts as OutreachContact[])[0]?.followUpDueAt;
-      const d = dueAt ? new Date(dueAt) : new Date();
-      return d > endOfToday;
-  }).map(i => ({ 
-      ...i, 
-      followUpDueAt: i.followUpSentAt ? i.followUp2DueAt : (i.contacts as OutreachContact[])[0]?.followUpDueAt 
-  }));
-
-  return { today, overdue, upcoming, sent };
-}
 
 export async function toggleFollowUpSentAction(id: string, isSent: boolean, sentAt?: Date) {
   const session = await auth();
@@ -168,60 +110,66 @@ export async function getPaginatedFollowUpItemsAction(
   const startOfToday = startOfDay(now);
   const endOfToday = endOfDay(now);
 
-  const allItems = await db.query.outreach.findMany({
-    where: and(eq(outreach.userId, userId)),
-    orderBy: [desc(sql`${outreach.contacts}->0->>'messageSentAt'`)],
-  });
+  // The "effective due date" is the 2nd follow-up date once the 1st has been sent,
+  // otherwise the 1st follow-up date stored inside contacts[0] (JSONB). Computed in
+  // SQL so we can filter/sort/paginate at the database instead of in memory.
+  const effectiveDue = sql<Date>`
+    CASE WHEN ${outreach.followUpSentAt} IS NOT NULL
+         THEN ${outreach.followUp2DueAt}::timestamptz
+         ELSE (${outreach.contacts}->0->>'followUpDueAt')::timestamptz END
+  `;
 
-  const filteredRaw = allItems.filter(item => {
-    const firstContact = (item.contacts as OutreachContact[])[0];
-    const dueAt = item.followUpSentAt 
-        ? (item.followUp2DueAt ? new Date(item.followUp2DueAt) : null)
-        : (firstContact?.followUpDueAt ? new Date(firstContact.followUpDueAt) : null);
-    
-    // Stage filtering logic
-    if (stage === "1" && item.followUpSentAt) return false;
-    if (stage === "2" && (!item.followUpSentAt || item.followUp2SentAt)) return false;
+  const conditions: SQL[] = [eq(outreach.userId, userId)];
 
-    if (category === "SENT") {
-        return !!item.followUp2SentAt;
-    }
+  // Stage filtering
+  if (stage === "1") conditions.push(isNull(outreach.followUpSentAt));
+  if (stage === "2") conditions.push(and(isNotNull(outreach.followUpSentAt), isNull(outreach.followUp2SentAt))!);
 
-    const isMatch = !item.followUp2SentAt && 
-           !["REPLIED", "REJECTED", "OFFER", "CLOSED"].includes(item.status);
+  if (category === "SENT") {
+    conditions.push(isNotNull(outreach.followUp2SentAt));
+  } else {
+    // Active follow-ups: not fully completed and not in a terminal status.
+    conditions.push(isNull(outreach.followUp2SentAt));
+    conditions.push(notInArray(outreach.status, ["REPLIED", "REJECTED", "OFFER", "CLOSED"]));
+    conditions.push(sql`${effectiveDue} IS NOT NULL`);
 
-    if (!isMatch) return false;
-
-    if (!dueAt) return false;
-
-    switch (category) {
-        case "OVERDUE": return dueAt < startOfToday;
-        case "TODAY": return dueAt >= startOfToday && dueAt <= endOfToday;
-        case "UPCOMING": return dueAt > endOfToday;
-        case "ALL_ACTIVE": return true;
-        default: return false;
-    }
-  });
-
-  // Sort by due date for these categories
-  if (category !== "SENT") {
-      filteredRaw.sort((a, b) => {
-          const aDueAt = a.followUpSentAt ? a.followUp2DueAt : (a.contacts as OutreachContact[])[0]?.followUpDueAt;
-          const bDueAt = b.followUpSentAt ? b.followUp2DueAt : (b.contacts as OutreachContact[])[0]?.followUpDueAt;
-          const tA = aDueAt ? new Date(aDueAt).getTime() : 0;
-          const tB = bDueAt ? new Date(bDueAt).getTime() : 0;
-          return tA - tB;
-      });
+    if (category === "OVERDUE") conditions.push(lt(effectiveDue, startOfToday));
+    if (category === "TODAY") conditions.push(and(gte(effectiveDue, startOfToday), lte(effectiveDue, endOfToday))!);
+    if (category === "UPCOMING") conditions.push(gt(effectiveDue, endOfToday));
+    // ALL_ACTIVE adds no extra date predicate.
   }
 
-  const hasMore = filteredRaw.length > offset + limit;
-  const items = filteredRaw.slice(offset, offset + limit).map(item => ({
+  const orderBy =
+    category === "SENT"
+      ? desc(sql`${outreach.contacts}->0->>'messageSentAt'`)
+      : asc(effectiveDue);
+
+  // Fetch one extra row to determine hasMore without a separate count query.
+  const rows = await db
+    .select({
+      id: outreach.id,
+      companyName: outreach.companyName,
+      roleTargeted: outreach.roleTargeted,
+      status: outreach.status,
+      followUpSentAt: outreach.followUpSentAt,
+      followUp2SentAt: outreach.followUp2SentAt,
+      contacts: outreach.contacts,
+      effectiveDue,
+    })
+    .from(outreach)
+    .where(and(...conditions))
+    .orderBy(orderBy)
+    .limit(limit + 1)
+    .offset(offset);
+
+  const hasMore = rows.length > limit;
+  const items = rows.slice(0, limit).map((item) => ({
     id: item.id,
     companyName: item.companyName,
     personName: (item.contacts as OutreachContact[])[0]?.personName || "No Contact",
     roleTargeted: item.roleTargeted,
     status: item.status,
-    followUpDueAt: item.followUpSentAt ? item.followUp2DueAt : (item.contacts as OutreachContact[])[0]?.followUpDueAt,
+    followUpDueAt: item.effectiveDue,
     contactMethod: (item.contacts as OutreachContact[])[0]?.contactMethod || "EMAIL",
     followUpSentAt: item.followUpSentAt,
     followUp2SentAt: item.followUp2SentAt,

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import Link from "next/link";
 import { useActionState, useTransition } from "react";
-import { FiUser, FiMail, FiLock } from "react-icons/fi";
+import { FiUser, FiMail, FiLock, FiArrowLeft } from "react-icons/fi";
 
 export default function SignUpPage() {
   const [state, formAction, isPending] = useActionState(signUpAction, null);
@@ -21,32 +21,37 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4 relative overflow-hidden">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/3 -right-48 w-96 h-96 bg-accent/5 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/3 -left-48 w-96 h-96 bg-primary/5 rounded-full blur-3xl animate-pulse delay-1000" />
-      </div>
-
-      <div className="w-full max-w-md space-y-8 relative z-10">
-        {/* Header */}
-        <div className="text-center space-y-3 animate-fade-in">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary shadow-lg shadow-primary/20 mb-2">
-            <span className="text-xl font-bold text-primary-foreground italic tracking-tighter">CT</span>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            Create an account
-          </h1>
-          <p className="text-muted-foreground">
-            Join ColdTrack and start tracking your success
-          </p>
+    <div className="grid min-h-screen bg-background md:grid-cols-[0.85fr_1.15fr]">
+      <aside className="hidden border-r bg-sidebar p-8 md:flex md:flex-col md:justify-between">
+        <Link href="/" className="flex items-center gap-3 text-sm font-bold">
+          <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground">CT</span>
+          ColdTrack
+        </Link>
+        <div className="max-w-sm">
+          <p className="mb-3 text-xs font-bold uppercase text-muted-foreground">New workspace</p>
+          <h2 className="text-3xl font-extrabold leading-tight">Set up a clean pipeline for every outreach motion.</h2>
+          <p className="mt-4 text-sm leading-6 text-muted-foreground">Track prospects, schedule follow-ups, and measure conversion from the first message.</p>
         </div>
+      </aside>
 
-        {/* Sign Up Card */}
-        <div className="glass-strong rounded-3xl p-6 md:p-8 shadow-premium space-y-6 animate-slide-in border border-border/40">
+      <main className="flex min-h-screen items-center justify-center p-4">
+        <div className="w-full max-w-md space-y-6">
+          <Button variant="ghost" asChild className="px-0 text-muted-foreground">
+            <Link href="/"><FiArrowLeft /> Back to home</Link>
+          </Button>
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold text-foreground">
+              Create an account
+            </h1>
+            <p className="text-muted-foreground">
+              Join ColdTrack and start tracking your success
+            </p>
+          </div>
+
+        <div className="rounded-lg border bg-card p-6 shadow-sm md:p-8 space-y-6">
           <form action={formAction} className="space-y-5">
             {state?.error && (
-              <div className="text-sm text-destructive bg-destructive/5 p-4 rounded-xl font-medium border border-destructive/10 animate-fade-in">
+              <div className="rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm font-medium text-destructive">
                 {state.error}
               </div>
             )}
@@ -54,7 +59,7 @@ export default function SignUpPage() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground ml-1 flex items-center gap-2">
-                  <FiUser className="w-4 h-4 text-muted-foreground/70" />
+                  <FiUser className="w-4 h-4 text-muted-foreground" />
                   Full name
                 </label>
                 <Input
@@ -69,7 +74,7 @@ export default function SignUpPage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground ml-1 flex items-center gap-2">
-                  <FiMail className="w-4 h-4 text-muted-foreground/70" />
+                  <FiMail className="w-4 h-4 text-muted-foreground" />
                   Email address
                 </label>
                 <Input
@@ -83,23 +88,23 @@ export default function SignUpPage() {
               
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground ml-1 flex items-center gap-2">
-                  <FiLock className="w-4 h-4 text-muted-foreground/70" />
+                  <FiLock className="w-4 h-4 text-muted-foreground" />
                   Password
                 </label>
                 <PasswordInput
                   name="password"
-                  placeholder="••••••••"
+                  placeholder="Password"
                   required
                   minLength={6}
                   className="h-11"
                 />
-                <p className="text-[11px] text-muted-foreground/70 ml-1 leading-relaxed">
+                <p className="text-[11px] text-muted-foreground ml-1 leading-relaxed">
                   Minimum 6 characters with letters and numbers
                 </p>
               </div>
             </div>
             
-            <Button className="w-full h-11 text-base font-medium shadow-sm hover:shadow-md transition-all active:scale-[0.98]" type="submit" disabled={isAnyPending}>
+            <Button className="w-full h-11 text-base" type="submit" disabled={isAnyPending}>
               {isPending ? "Creating account..." : "Create account"}
             </Button>
           </form>
@@ -118,7 +123,7 @@ export default function SignUpPage() {
           <form action={handleGoogleSignIn}>
             <Button 
                 variant="outline" 
-                className="w-full h-11 gap-3 font-medium border-border/60 hover:bg-muted/50 hover:border-border transition-all active:scale-[0.98]" 
+                className="w-full h-11 gap-3" 
                 type="submit"
                 disabled={isAnyPending}
             >
@@ -137,17 +142,18 @@ export default function SignUpPage() {
 
           <div className="text-center text-sm text-muted-foreground pt-2">
             Already have an account?{" "}
-            <Link href="/signin" className="font-semibold text-primary hover:text-primary/80 transition-all underline-offset-4 hover:underline">
+            <Link href="/signin" className="font-semibold text-primary underline-offset-4 hover:underline">
               Sign in
             </Link>
           </div>
         </div>
 
         {/* Footer */}
-        <p className="text-center text-xs text-muted-foreground/60 leading-relaxed px-8">
+        <p className="text-center text-xs text-muted-foreground leading-relaxed px-8">
           By creating an account, you agree to our <Link href="#" className="underline decoration-border/60 hover:text-foreground">Terms of Service</Link> and <Link href="#" className="underline decoration-border/60 hover:text-foreground">Privacy Policy</Link>
         </p>
       </div>
+      </main>
     </div>
   );
 }

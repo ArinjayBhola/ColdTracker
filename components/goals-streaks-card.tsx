@@ -70,10 +70,10 @@ function EditableTarget({ value, onSave, onCancel, isPending, max = 100 }: { val
         }}
         autoFocus
       />
-      <button onClick={handleSave} disabled={isPending} className="p-1 rounded hover:bg-primary/10">
+      <button onClick={handleSave} disabled={isPending} className="rounded p-1 hover:bg-muted">
         <FiCheck className="w-3.5 h-3.5 text-green-600" />
       </button>
-      <button onClick={onCancel} className="p-1 rounded hover:bg-primary/10">
+      <button onClick={onCancel} className="rounded p-1 hover:bg-muted">
         <FiX className="w-3.5 h-3.5 text-red-500" />
       </button>
     </div>
@@ -121,16 +121,16 @@ export function GoalsStreaksCard({ dailyProgress, weeklyProgress, streakData, la
   return (
     <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
       {/* Daily Goal Progress */}
-      <Card className="border-none ring-1 ring-cyan-500/20 bg-cyan-500/5 transition-all hover:shadow-md">
+      <Card>
         <CardHeader className="flex flex-row items-center justify-between p-4 pb-2">
           <CardTitle className="text-[10px] md:text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-            <FiSun className="w-4 h-4 text-cyan-500" />
+            <FiSun className="w-4 h-4 text-primary" />
             Daily Goal
           </CardTitle>
           {!editingDaily ? (
             <button
               onClick={() => setEditingDaily(true)}
-              className="p-1.5 rounded-lg hover:bg-cyan-500/10 transition-colors"
+              className="p-1.5 rounded-md hover:bg-muted transition-colors"
             >
               <FiEdit3 className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
@@ -147,7 +147,7 @@ export function GoalsStreaksCard({ dailyProgress, weeklyProgress, streakData, la
         <CardContent className="p-4 pt-0 flex items-center gap-5">
           <ProgressRing percentage={dailyProgress.percentage} size={90} strokeWidth={7} className={cn(
             dailyProgress.percentage >= 100 ? "text-green-500" :
-            dailyProgress.percentage >= 60 ? "text-cyan-500" :
+            dailyProgress.percentage >= 60 ? "text-primary" :
             dailyProgress.percentage >= 30 ? "text-amber-500" : "text-red-400"
           )} />
           <div className="space-y-1">
@@ -169,7 +169,7 @@ export function GoalsStreaksCard({ dailyProgress, weeklyProgress, streakData, la
       </Card>
 
       {/* Weekly Goal Progress */}
-      <Card className="border-none ring-1 ring-primary/20 bg-primary/5 transition-all hover:shadow-md">
+      <Card>
         <CardHeader className="flex flex-row items-center justify-between p-4 pb-2">
           <CardTitle className="text-[10px] md:text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <FiTarget className="w-4 h-4 text-primary" />
@@ -178,7 +178,7 @@ export function GoalsStreaksCard({ dailyProgress, weeklyProgress, streakData, la
           <div className="flex items-center gap-1">
             <button
               onClick={handleSync}
-              className="p-1.5 rounded-lg hover:bg-primary/10 transition-colors"
+              className="p-1.5 rounded-md hover:bg-muted transition-colors"
               title="Sync activity from outreach history"
             >
               <FiRefreshCw className={cn("w-3.5 h-3.5 text-muted-foreground", isSyncing && "animate-spin")} />
@@ -186,7 +186,7 @@ export function GoalsStreaksCard({ dailyProgress, weeklyProgress, streakData, la
             {!editingWeekly ? (
               <button
                 onClick={() => setEditingWeekly(true)}
-                className="p-1.5 rounded-lg hover:bg-primary/10 transition-colors"
+                className="p-1.5 rounded-md hover:bg-muted transition-colors"
               >
                 <FiEdit3 className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
@@ -219,7 +219,7 @@ export function GoalsStreaksCard({ dailyProgress, weeklyProgress, streakData, la
       </Card>
 
       {/* Streak Card */}
-      <Card className="border-none ring-1 ring-amber-500/20 bg-amber-500/5 transition-all hover:shadow-md">
+      <Card>
         <CardHeader className="flex flex-row items-center justify-between p-4 pb-2">
           <CardTitle className="text-[10px] md:text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <FiZap className="w-4 h-4 text-amber-500" />
@@ -259,7 +259,7 @@ export function GoalsStreaksCard({ dailyProgress, weeklyProgress, streakData, la
       </Card>
 
       {/* Last 7 Days Activity */}
-      <Card className="border-none ring-1 ring-emerald-500/20 bg-emerald-500/5 transition-all hover:shadow-md">
+      <Card>
         <CardHeader className="flex flex-row items-center justify-between p-4 pb-2">
           <CardTitle className="text-[10px] md:text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <FiTrendingUp className="w-4 h-4 text-emerald-500" />

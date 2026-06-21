@@ -124,10 +124,11 @@ export const outreach = pgTable("outreach", {
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
 }, (table) => ({
-  userIdIdx: index("outreach_user_id_idx").on(table.userId),
-  createdAtIdx: index("outreach_created_at_idx").on(table.createdAt),
+  // Covers the default dashboard list / export: WHERE userId ORDER BY createdAt DESC.
+  userIdCreatedAtIdx: index("outreach_user_id_created_at_idx").on(table.userId, table.createdAt),
+  // Covers status-filtered list + getStats grouping. Its (userId) and (userId,status)
+  // prefixes also serve those narrower lookups, so no standalone indexes are needed.
   userIdStatusCreatedAtIdx: index("outreach_user_id_status_created_at_idx").on(table.userId, table.status, table.createdAt),
-  userIdStatusIdx: index("outreach_user_id_status_idx").on(table.userId, table.status),
 }));
 
 // --- Extension Schema ---
@@ -212,7 +213,10 @@ export const startupEmployees = pgTable("startup_employees", {
   emailsSent: integer("emails_sent").default(0),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
-});
+}, (table) => ({
+  // FK used by the `with: { employees: true }` relation load on the startups page.
+  startupIdIdx: index("startup_employees_startup_id_idx").on(table.startupId),
+}));
 
 
 export const startupTracking = pgTable("startup_tracking", {

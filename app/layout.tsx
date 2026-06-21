@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#6d4c41",
+  themeColor: "#f7f8fb",
 };
 
 import { Providers } from "@/components/providers";
@@ -62,7 +62,7 @@ export default function RootLayout({
             disableTransitionOnChange>
             <AppearanceProvider>
               <NextTopLoader
-                color="#2563eb"
+                color="#1f6f9f"
                 showSpinner={false}
               />
               <ToastProvider />

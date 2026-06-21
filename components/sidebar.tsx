@@ -53,7 +53,7 @@ export function Sidebar() {
   if (!mounted) {
     return (
         <div className={cn(
-            "hidden md:flex h-screen flex-col border-r border-border/50 bg-card/50 backdrop-blur-xl py-8 shadow-premium transition-all duration-300 ease-in-out relative w-72 px-5 opacity-0"
+            "hidden md:flex h-screen flex-col border-r bg-sidebar py-5 transition-all duration-300 ease-in-out relative w-72 px-4 opacity-0"
         )} />
     );
   }
@@ -63,7 +63,7 @@ export function Sidebar() {
       {/* Mobile Toggle Button */}
       <button 
         onClick={() => setIsMobileOpen(!isMobileOpen)}
-        className="md:hidden fixed top-4 left-4 z-[100] p-2 rounded-xl bg-primary text-primary-foreground shadow-lg active:scale-95 transition-all hover:scale-105"
+        className="md:hidden fixed top-4 left-4 z-[100] p-2 rounded-md border bg-card text-foreground shadow-sm"
       >
         {isMobileOpen ? <FiChevronLeft size={20} /> : <FiLayout size={20} />}
       </button>
@@ -71,47 +71,47 @@ export function Sidebar() {
       {/* Mobile Overlay */}
       {isMobileOpen && (
         <div 
-          className="md:hidden fixed inset-0 bg-background/80 backdrop-blur-sm z-[35] animate-in fade-in duration-200"
+          className="md:hidden fixed inset-0 bg-background/80 z-[35] animate-in fade-in duration-200"
           onClick={() => setIsMobileOpen(false)}
         />
       )}
 
       <div className={cn(
-        "fixed inset-y-0 left-0 z-[36] md:relative flex h-screen flex-col border-r border-border/50 bg-card/50 backdrop-blur-xl py-8 shadow-premium transition-all duration-300 ease-in-out",
-        isCollapsed ? "w-20 px-3" : "w-72 px-5",
+        "fixed inset-y-0 left-0 z-[36] md:relative flex h-screen flex-col border-r bg-sidebar py-5 transition-all duration-300 ease-in-out",
+        isCollapsed ? "w-20 px-3" : "w-72 px-4",
         isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       )}>
         {/* Collapse Toggle Button (Desktop) */}
         <button 
           onClick={toggleSidebar}
-          className="hidden md:flex absolute -right-3 top-10 w-6 h-6 rounded-full bg-primary items-center justify-center text-primary-foreground shadow-lg hover:scale-110 transition-transform z-[37] border-2 border-background"
+          className="hidden md:flex absolute -right-3 top-8 h-6 w-6 rounded-md border bg-card items-center justify-center text-muted-foreground shadow-sm z-[37]"
         >
           {isCollapsed ? <FiChevronRight size={14} /> : <FiChevronLeft size={14} />}
         </button>
 
         {/* Logo & Theme Toggle */}
         <div className={cn(
-          "mb-10 flex items-center justify-between px-3",
+          "mb-7 flex items-center justify-between border-b pb-5 px-1",
           isCollapsed && "flex-col gap-4"
         )}>
-          <div className="flex items-center gap-1 group cursor-pointer">
-            <Link href="/dashboard" className="relative w-16 h-16 flex items-center justify-center transition-all shrink-0">
+          <div className="flex items-center gap-2 group cursor-pointer">
+            <Link href="/dashboard" className="relative h-10 w-10 flex items-center justify-center shrink-0 rounded-md border bg-card">
               <Image 
                 src="/logo.png" 
                 alt="ColdTrack Logo" 
                 fill
-                className="object-contain scale-[1.3] dark:invert dark:brightness-200 transition-all"
+                className="object-contain p-1 dark:invert dark:brightness-200"
                 priority
               />
             </Link>
             {(!isCollapsed || isMobileOpen) && (
-              <div className="-ml-1">
+              <div>
                 <Link href="/dashboard">
-                  <h1 className="text-xl font-bold tracking-tight text-foreground/90 leading-none mb-1">
+                  <h1 className="text-base font-bold text-foreground leading-none mb-1">
                     ColdTrack
                   </h1>
                 </Link>
-                <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground/60">Outreach Manager</p>
+                <p className="text-[10px] uppercase font-bold text-muted-foreground">Outreach CRM</p>
               </div>
             )}
           </div>
@@ -119,7 +119,7 @@ export function Sidebar() {
         </div>
         
         {/* Navigation */}
-        <nav className="flex-1 space-y-2">
+        <nav className="flex-1 space-y-1">
           {links.map((link) => {
             const Icon = link.icon;
             // Precise matching for the root dashboard to avoid matching sub-routes
@@ -132,17 +132,17 @@ export function Sidebar() {
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "flex items-center rounded-xl py-3.5 text-sm font-semibold transition-all duration-200 group relative overflow-hidden",
+                  "flex items-center rounded-md py-3 text-sm font-semibold transition-colors duration-200 group relative overflow-hidden",
                   isActive 
-                      ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" 
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                      ? "bg-primary text-primary-foreground" 
+                      : "text-sidebar-foreground hover:text-foreground hover:bg-card",
                   showLabel ? "px-4 gap-3" : "justify-center px-0"
                 )}
                 title={isCollapsed && !isMobileOpen ? link.label : undefined}
               >
                 <Icon className={cn(
                   "h-5 w-5 transition-transform duration-200 relative z-10",
-                  isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground group-hover:scale-110"
+                  isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground"
                 )} />
                 {showLabel && <span className="relative z-10">{link.label}</span>}
               </Link>
@@ -151,14 +151,14 @@ export function Sidebar() {
         </nav>
 
         {/* Bottom Actions */}
-        <div className="mt-auto pt-6 border-t border-border/50 flex flex-col gap-2">
+        <div className="mt-auto pt-4 border-t flex flex-col gap-1">
           <Link
             href="/settings"
             className={cn(
-              "flex items-center rounded-xl transition-all duration-200 group",
+              "flex items-center rounded-md transition-colors duration-200 group",
               pathname === "/settings" 
-                ? "bg-primary/10 text-primary" 
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                ? "bg-card text-primary border border-border" 
+                : "text-muted-foreground hover:text-foreground hover:bg-card",
               (isCollapsed && !isMobileOpen) ? "justify-center p-2.5" : "px-4 py-3 gap-3"
             )}
             title="Settings"
@@ -173,7 +173,7 @@ export function Sidebar() {
               variant="ghost"
               className={cn(
                   "w-full flex items-center transition-all duration-200",
-                  (isCollapsed && !isMobileOpen) ? "justify-center px-0 h-10" : "justify-start gap-3 px-4 h-12 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                  (isCollapsed && !isMobileOpen) ? "justify-center px-0 h-10" : "justify-start gap-3 px-4 h-12 text-muted-foreground hover:text-destructive hover:bg-card"
               )}
               title={isCollapsed && !isMobileOpen ? "Sign Out" : undefined}
             >
