@@ -44,7 +44,7 @@ function ProgressRing({ percentage, size = 100, strokeWidth = 8, className }: { 
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-lg font-bold">{percentage}%</span>
+        <span className="num-display text-xl font-semibold">{percentage}<span className="text-xs text-muted-foreground">%</span></span>
       </div>
     </div>
   );
@@ -151,8 +151,8 @@ export function GoalsStreaksCard({ dailyProgress, weeklyProgress, streakData, la
             dailyProgress.percentage >= 30 ? "text-amber-500" : "text-red-400"
           )} />
           <div className="space-y-1">
-            <p className="text-2xl font-bold">
-              {dailyProgress.current}<span className="text-muted-foreground text-base font-normal">/{dailyProgress.target}</span>
+            <p className="num-display text-3xl font-semibold">
+              {dailyProgress.current}<span className="text-muted-foreground text-lg font-normal">/{dailyProgress.target}</span>
             </p>
             <p className="text-xs text-muted-foreground">outreach today</p>
             {dailyProgress.percentage >= 100 ? (
@@ -203,8 +203,8 @@ export function GoalsStreaksCard({ dailyProgress, weeklyProgress, streakData, la
         <CardContent className="p-4 pt-0 flex items-center gap-5">
           <ProgressRing percentage={weeklyProgress.percentage} size={90} strokeWidth={7} />
           <div className="space-y-1">
-            <p className="text-2xl font-bold">
-              {weeklyProgress.current}<span className="text-muted-foreground text-base font-normal">/{weeklyProgress.target}</span>
+            <p className="num-display text-3xl font-semibold">
+              {weeklyProgress.current}<span className="text-muted-foreground text-lg font-normal">/{weeklyProgress.target}</span>
             </p>
             <p className="text-xs text-muted-foreground">outreach this week</p>
             {weeklyProgress.percentage >= 100 ? (
@@ -228,7 +228,7 @@ export function GoalsStreaksCard({ dailyProgress, weeklyProgress, streakData, la
         </CardHeader>
         <CardContent className="p-4 pt-0">
           <div className="flex items-baseline gap-2 mb-3">
-            <span className="text-4xl font-bold text-amber-600 dark:text-amber-400">
+            <span className="num-display text-5xl font-semibold text-amber-600 dark:text-amber-400">
               {streakData.currentStreak}
             </span>
             <span className="text-sm text-muted-foreground">

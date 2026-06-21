@@ -22,16 +22,17 @@ export default function SignInPage() {
 
   return (
     <div className="grid min-h-screen bg-background md:grid-cols-[0.85fr_1.15fr]">
-      <aside className="hidden border-r bg-sidebar p-8 md:flex md:flex-col md:justify-between">
-        <Link href="/" className="flex items-center gap-3 text-sm font-bold">
-          <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground">CT</span>
+      <aside className="hidden border-r border-border bg-sidebar p-10 md:flex md:flex-col md:justify-between">
+        <Link href="/" className="flex items-center gap-3 text-sm font-semibold">
+          <span className="font-display flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-soft">CT</span>
           ColdTrack
         </Link>
         <div className="max-w-sm">
-          <p className="mb-3 text-xs font-bold uppercase text-muted-foreground">Workspace access</p>
-          <h2 className="text-3xl font-extrabold leading-tight">Pick up your outreach queue where you left off.</h2>
-          <p className="mt-4 text-sm leading-6 text-muted-foreground">Review active leads, send follow-ups, and keep your pipeline current.</p>
+          <p className="eyebrow mb-4">Workspace access</p>
+          <h2 className="font-display text-4xl font-semibold leading-[1.15] tracking-tight">Pick up your outreach queue where you left off.</h2>
+          <p className="mt-5 text-[0.9375rem] leading-7 text-muted-foreground">Review active leads, send follow-ups, and keep your pipeline current.</p>
         </div>
+        <p className="text-xs text-muted-foreground">Outreach CRM · Built for the job hunt</p>
       </aside>
 
       <main className="flex min-h-screen items-center justify-center p-4">
@@ -40,7 +41,7 @@ export default function SignInPage() {
             <Link href="/"><FiArrowLeft /> Back to home</Link>
           </Button>
           <div className="space-y-2">
-            <h1 className="text-3xl font-bold text-foreground">
+            <h1 className="font-display text-4xl font-semibold tracking-tight text-foreground">
               Welcome back
             </h1>
             <p className="text-muted-foreground">
@@ -48,7 +49,7 @@ export default function SignInPage() {
             </p>
           </div>
 
-        <div className="rounded-lg border bg-card p-6 shadow-sm md:p-8 space-y-6">
+        <div className="rounded-xl border border-border bg-card p-6 shadow-soft md:p-8 space-y-6">
           <form action={formAction} className="space-y-5">
             {state?.error && (
               <div className="rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm font-medium text-destructive">

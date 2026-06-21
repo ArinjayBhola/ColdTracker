@@ -42,13 +42,13 @@ export default function LandingPage() {
         <section className="border-b">
           <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 md:grid-cols-[0.9fr_1.1fr] md:px-6 md:py-20">
             <div className="flex flex-col justify-center">
-              <p className="mb-4 w-fit rounded-md border bg-card px-3 py-1 text-xs font-bold uppercase text-muted-foreground">
+              <p className="eyebrow mb-5 w-fit rounded-full border border-border bg-card px-3 py-1.5 shadow-soft">
                 Outreach pipeline
               </p>
-              <h1 className="max-w-2xl text-4xl font-extrabold leading-tight md:text-6xl">
+              <h1 className="font-display max-w-2xl text-5xl font-semibold leading-[1.05] tracking-tight md:text-7xl">
                 ColdTrack
               </h1>
-              <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground md:text-lg">
+              <p className="mt-6 max-w-xl text-base leading-7 text-muted-foreground md:text-lg">
                 A focused workspace for tracking cold outreach, follow-ups, replies, interviews, and active leads without spreadsheet drift.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -63,10 +63,10 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div className="rounded-lg border bg-card shadow-sm">
-              <div className="flex items-center justify-between border-b p-4">
+            <div className="rounded-xl border border-border bg-card shadow-raise">
+              <div className="flex items-center justify-between border-b border-border p-4">
                 <div>
-                  <p className="text-sm font-bold">Today&apos;s queue</p>
+                  <p className="font-display text-base font-semibold">Today&apos;s queue</p>
                   <p className="text-xs text-muted-foreground">3 active follow-ups</p>
                 </div>
                 <Button size="sm">
@@ -107,18 +107,18 @@ export default function LandingPage() {
 
 function Metric({ value, label }: { value: string; label: string }) {
   return (
-    <div className="p-4">
-      <p className="text-2xl font-bold">{value}</p>
-      <p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p>
+    <div className="p-4 border-r border-border last:border-r-0">
+      <p className="num-display text-3xl font-semibold">{value}</p>
+      <p className="eyebrow mt-1">{label}</p>
     </div>
   );
 }
 
 function Feature({ icon, title, text }: { icon: ReactNode; title: string; text: string }) {
   return (
-    <div className="rounded-lg border bg-card p-5">
-      <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-md border text-primary">{icon}</div>
-      <h2 className="font-bold">{title}</h2>
+    <div className="rounded-xl border border-border bg-card p-6 shadow-soft transition-all hover-lift">
+      <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-muted/40 text-primary">{icon}</div>
+      <h2 className="font-display text-lg font-semibold">{title}</h2>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p>
     </div>
   );

@@ -9,7 +9,7 @@ interface TableShellProps {
 
 export function TableShell({ children, className }: TableShellProps) {
   return (
-    <div className={cn("rounded-2xl border-2 border-border/50 bg-card overflow-hidden", className)}>
+    <div className={cn("rounded-xl border border-border bg-card overflow-hidden shadow-soft", className)}>
       {children}
     </div>
   );

@@ -58,36 +58,36 @@ async function DashboardStatsCards() {
       {statCards.map((stat) => (
         <StaggerItem key={stat.title}>
           <Card
-            className="h-[142px] md:h-[154px] flex flex-col justify-between"
+            className="h-[142px] md:h-[154px] flex flex-col justify-between hover-lift"
           >
             <CardHeader className="flex flex-row items-center justify-between p-4 pb-2">
-              <CardTitle className="text-xs font-bold uppercase text-muted-foreground">
+              <CardTitle className="eyebrow font-sans">
                 {stat.title}
               </CardTitle>
 
               <div
                 className={cn(
-                  "hidden md:flex h-9 w-9 items-center justify-center rounded-md border bg-background",
+                  "hidden md:flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-muted/40",
                   stat.iconColor
                 )}
               >
-                <stat.icon className="h-5 w-5" />
+                <stat.icon className="h-[18px] w-[18px]" />
               </div>
             </CardHeader>
 
             <CardContent className="px-4 pb-4 flex flex-col justify-end flex-1">
-              <div className="text-3xl md:text-4xl font-bold">
+              <div className="num-display text-4xl md:text-[2.75rem] font-semibold leading-none">
                 {stat.value}
               </div>
 
               {/* Always reserve space for percentage row */}
-              <div className="h-5 mt-1 md:mt-2">
+              <div className="h-5 mt-2 md:mt-3">
                 {stats.sent > 0 &&
                   stat.title !== "Total Sent" &&
                   stat.title !== "Ext. Leads" && (
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <FiTrendingUp className="w-3 h-3" />
-                      {((stat.value / stats.sent) * 100).toFixed(1)}%
+                      <FiTrendingUp className="w-3 h-3 text-success" />
+                      {((stat.value / stats.sent) * 100).toFixed(1)}% of sent
                     </p>
                   )}
               </div>
@@ -138,11 +138,12 @@ export default async function DashboardPage(
       <main className="app-main">
         <div className="app-container">
             {/* Header */}
-            <div className="flex flex-col gap-5 border-b pb-6 md:flex-row md:items-center md:justify-between">
-                <div className="space-y-1">
-                    <h1 className="text-3xl md:text-4xl font-extrabold">Dashboard</h1>
+            <div className="flex flex-col gap-5 border-b border-border pb-7 md:flex-row md:items-end md:justify-between">
+                <div className="space-y-2">
+                    <p className="eyebrow">Overview</p>
+                    <h1 className="font-display text-4xl md:text-5xl font-semibold tracking-tight">Dashboard</h1>
                     <p className="text-muted-foreground text-sm flex items-center gap-2">
-                        <FiTrendingUp className="w-4 h-4" />
+                        <FiTrendingUp className="w-4 h-4 text-primary" />
                         Real-time job search performance metrics
                     </p>
                 </div>

@@ -25,13 +25,11 @@ export const viewport: Viewport = {
 
 import { Providers } from "@/components/providers";
 
-// Anti-FOUC script to apply theme/density from localStorage before hydration
+// Anti-FOUC script to apply density from localStorage before hydration
 const appearanceScript = `
 (function() {
   try {
-    var t = localStorage.getItem('color-theme');
     var d = localStorage.getItem('density');
-    if (t && t !== 'default') document.documentElement.setAttribute('data-theme', t);
     if (d && d !== 'comfortable') document.documentElement.setAttribute('data-density', d);
   } catch(e) {}
 })();

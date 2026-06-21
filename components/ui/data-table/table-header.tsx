@@ -21,14 +21,14 @@ export function TableHeader({
   children,
 }: TableHeaderProps) {
   return (
-    <div className="p-6 border-b border-border/50 bg-muted/30">
+    <div className="p-6 border-b border-border bg-muted/30">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <div className="w-1.5 h-6 rounded-full bg-primary" />
+          <h2 className="font-display text-2xl font-semibold tracking-tight flex items-center gap-2.5">
+            <span className="w-1 h-6 rounded-full bg-primary" />
             {title}
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
+          <p className="text-sm text-muted-foreground mt-1.5">{subtitle}</p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -38,7 +38,7 @@ export function TableHeader({
               placeholder={placeholder}
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="w-full h-10 pl-10 pr-10 rounded-lg border-2 border-border bg-background text-sm focus:outline-none focus:border-primary transition-colors"
+              className="w-full h-10 pl-10 pr-10 rounded-lg border border-input bg-card text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
             />
             <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             {searchQuery && (

@@ -184,14 +184,14 @@ export function OutreachTable({ items, totalCount, currentPage }: OutreachTableP
             </Button>
           )}
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
             <button
               onClick={() => handleFilterChange("ALL")}
               className={cn(
-                "px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-colors whitespace-nowrap",
+                "px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap",
                 filter === "ALL"
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background border-border hover:bg-muted/50"
+                  ? "bg-primary text-primary-foreground shadow-soft"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               All
@@ -199,10 +199,10 @@ export function OutreachTable({ items, totalCount, currentPage }: OutreachTableP
             <button
               onClick={() => handleFilterChange("EMAIL")}
               className={cn(
-                "px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-colors flex items-center gap-2 whitespace-nowrap",
+                "px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-2 whitespace-nowrap",
                 filter === "EMAIL"
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background border-border hover:bg-muted/50"
+                  ? "bg-primary text-primary-foreground shadow-soft"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               <FiMail className="w-4 h-4" />
@@ -211,10 +211,10 @@ export function OutreachTable({ items, totalCount, currentPage }: OutreachTableP
             <button
               onClick={() => handleFilterChange("LINKEDIN")}
               className={cn(
-                "px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-colors flex items-center gap-2 whitespace-nowrap",
+                "px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-2 whitespace-nowrap",
                 filter === "LINKEDIN"
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background border-border hover:bg-muted/50"
+                  ? "bg-primary text-primary-foreground shadow-soft"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               <FiLinkedin className="w-4 h-4" />
@@ -415,34 +415,34 @@ export function OutreachTable({ items, totalCount, currentPage }: OutreachTableP
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent className="rounded-[2.5rem] border-2 shadow-2xl backdrop-blur-2xl bg-card/95 max-w-[440px] p-8">
+        <AlertDialogContent className="rounded-2xl border border-border shadow-raise bg-card max-w-[440px] p-8">
           <AlertDialogHeader className="space-y-6">
             <div className="flex flex-col items-center text-center space-y-4">
-              <div className="w-20 h-20 rounded-[2rem] bg-destructive/5 flex items-center justify-center border-2 border-destructive/10 shadow-inner">
-                <FiAlertTriangle className="w-10 h-10 text-destructive animate-pulse" />
+              <div className="w-16 h-16 rounded-2xl bg-destructive/8 flex items-center justify-center border border-destructive/15">
+                <FiAlertTriangle className="w-8 h-8 text-destructive" />
               </div>
               <div className="space-y-2">
-                <AlertDialogTitle className="text-3xl font-extrabold tracking-tight">Mass Delete?</AlertDialogTitle>
-                <AlertDialogDescription className="text-base font-medium text-muted-foreground">
-                  You are about to permanently remove <span className="font-bold text-foreground underline decoration-destructive/30 decoration-2 underline-offset-2">{selectedIds.size}</span> entries.
+                <AlertDialogTitle className="font-display text-2xl font-semibold tracking-tight">Delete {selectedIds.size} {selectedIds.size === 1 ? "entry" : "entries"}?</AlertDialogTitle>
+                <AlertDialogDescription className="text-sm text-muted-foreground leading-relaxed">
+                  This permanently removes the selected outreach, including all associated contacts and status history.
                 </AlertDialogDescription>
               </div>
             </div>
 
-            <div className="bg-destructive/10 border-2 border-destructive/20 rounded-2xl p-4 flex gap-3 items-start animate-in fade-in zoom-in-95 duration-500">
-               <FiAlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
-               <p className="text-sm font-bold text-destructive leading-relaxed">
-                 Critical: This action cannot be undone. All associated contacts and status history will be lost forever.
+            <div className="bg-destructive/8 border border-destructive/20 rounded-xl p-3.5 flex gap-3 items-start">
+               <FiAlertTriangle className="w-4.5 h-4.5 text-destructive shrink-0 mt-0.5" />
+               <p className="text-sm font-medium text-destructive leading-relaxed">
+                 This action cannot be undone.
                </p>
             </div>
           </AlertDialogHeader>
-          
-          <AlertDialogFooter className="grid grid-cols-2 gap-4 mt-8 sm:flex-none">
+
+          <AlertDialogFooter className="grid grid-cols-2 gap-3 mt-8 sm:flex-none">
             <AlertDialogCancel asChild>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 disabled={isDeleting}
-                className="h-14 rounded-2xl font-bold border-2 hover:bg-muted transition-all active:scale-95"
+                className="h-11"
               >
                 Keep them
               </Button>
@@ -454,7 +454,7 @@ export function OutreachTable({ items, totalCount, currentPage }: OutreachTableP
                 variant="destructive"
                 onClick={handleBulkDelete}
                 disabled={isDeleting}
-                className="h-14 rounded-2xl font-bold shadow-xl shadow-destructive/20 bg-destructive hover:bg-destructive/90 transition-all active:scale-95"
+                className="h-11"
               >
                 {isDeleting ? (
                   <>
