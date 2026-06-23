@@ -102,6 +102,11 @@ export type OutreachContact = {
   contactMethod: string;
   emailAddress?: string | null;
   linkedinProfileUrl?: string | null;
+  // Optional saved permalink to the exact Gmail/Outlook thread (e.g.
+  // https://mail.google.com/mail/#sent/<id>). Stored per-contact in JSONB, so
+  // no migration is needed. Pasted manually; the live "Open in Gmail" search
+  // link is derived from emailAddress and needs nothing stored.
+  emailThreadUrl?: string | null;
   messageSentAt?: string | Date;
   followUpDueAt?: string | Date;
 };

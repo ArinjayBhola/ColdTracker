@@ -393,6 +393,7 @@ export async function updateOutreachInlineAction(outreachId: string, contactInde
                 contactMethod: (data.contactMethod as string) || updatedContacts[contactIndex].contactMethod,
                 emailAddress: data.email || (data.email === "" ? null : updatedContacts[contactIndex].emailAddress),
                 linkedinProfileUrl: data.linkedin || (data.linkedin === "" ? null : updatedContacts[contactIndex].linkedinProfileUrl),
+                emailThreadUrl: data.emailThreadUrl === "" ? null : (data.emailThreadUrl ?? updatedContacts[contactIndex].emailThreadUrl),
             };
         }
 
