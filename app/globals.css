@@ -131,9 +131,23 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary-foreground;
+    @apply bg-background text-foreground antialiased;
     font-family: var(--font-sans);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
+  }
+
+  /* High-contrast text selection. The accent fills the highlight solidly and
+     primary-foreground is tuned to contrast it, so selected text stays legible
+     in both light and dark themes. */
+  ::selection {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+    text-shadow: none;
+  }
+  ::-moz-selection {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+    text-shadow: none;
   }
 
   h1,

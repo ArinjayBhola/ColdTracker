@@ -19,7 +19,13 @@ const client =
     // exhaust Neon's connection limit.
     max: 10,
     idle_timeout: 20,
-    connect_timeout: 10,
+    // Neon (free tier) scales the compute to zero after ~5 min idle. The pooler
+    // accepts the TCP socket instantly, but the first query has to wait for the
+    // compute to wake, which often takes >10s. A short connect_timeout turns that
+    // cold start into a CONNECT_TIMEOUT error, so give it room to wake up.
+    connect_timeout: 30,
+    // Keep idle sockets alive so warm instances don't get reaped mid-flight.
+    keep_alive: 30,
   });
 
 // Cache in every environment (including production) so warm instances reuse the
