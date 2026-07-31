@@ -33,18 +33,28 @@ export async function createOutreachAction(prevState: ActionState, formData: For
         personName: formData.get(`contacts.${i}.personName`),
         personRole: formData.get(`contacts.${i}.personRole`),
         contactMethod: formData.get(`contacts.${i}.contactMethod`),
-        emailAddress: formData.get(`contacts.${i}.emailAddress`),
+        emailAddress: formData.get(`contacts.${i}.emailAddress`) || "",
         linkedinProfileUrl: formData.get(`contacts.${i}.linkedinProfileUrl`),
       });
       i++;
     }
 
+    if (contacts.length === 0) {
+      contacts.push({
+        personName: "",
+        personRole: "RECRUITER",
+        contactMethod: "EMAIL",
+        emailAddress: "",
+        linkedinProfileUrl: "",
+      });
+    }
+
     const rawData = {
       companyName: formData.get("companyName"),
-      companyLink: formData.get("companyLink"),
+      companyLink: formData.get("companyLink") || undefined,
       roleTargeted: formData.get("roleTargeted"),
-      status: formData.get("status"),
-      notes: formData.get("notes"),
+      status: formData.get("status") || undefined,
+      notes: formData.get("notes") || undefined,
       contacts: contacts.map((c, idx) => ({
         ...c,
         messageSentAt: formData.get(`contacts.${idx}.messageSentAt`) || formData.get("messageSentAt"),
@@ -182,11 +192,11 @@ export async function getGroupedOutreachByCompany(page: number = 1, limit: numbe
   if (!session?.user?.id) return { items: [], totalCount: 0 };
 
   const offset = (page - 1) * limit;
+  const methodFilter = filter === "EMAIL" || filter === "LINKEDIN" ? filter : "ALL";
   
   const whereClause = [eq(outreach.userId, session.user.id)];
-  if (filter !== "ALL") {
-    // @ts-expect-error - validated status
-    whereClause.push(eq(outreach.status, filter));
+  if (methodFilter !== "ALL") {
+    whereClause.push(sql`coalesce(${outreach.contacts}->0->>'contactMethod', 'EMAIL') = ${methodFilter}`);
   }
 
   const [items, totalCountRes] = await Promise.all([

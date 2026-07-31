@@ -13,9 +13,15 @@ export const STATUSES = [
 ] as const;
 
 const CONTACT_FIELDS = {
-  personName: z.string().min(1, "Person name is required"),
-  personRole: z.string().min(1, "Role is required"),
-  contactMethod: z.enum(CONTACT_METHODS),
+  personName: z.string().optional().default(""),
+  personRole: z.preprocess((val) => {
+    if (typeof val !== "string" || !val.trim()) return "RECRUITER";
+    return val;
+  }, z.string().min(1, "Role is required")),
+  contactMethod: z.preprocess((val) => {
+    if (typeof val !== "string" || !val.trim()) return "EMAIL";
+    return val;
+  }, z.enum(CONTACT_METHODS)),
   emailAddress: z.string().refine((val) => {
     if (!val || val.trim() === "") return true;
     const emails = val.split(',').map(e => e.trim()).filter(e => e.length > 0);
@@ -43,9 +49,12 @@ export const outreachFormSchema = z.object({
     }
     return str;
   }, z.string().url("Invalid URL").optional().or(z.literal(""))),
-  roleTargeted: z.string().min(1, "Role targeted is required"),
+  roleTargeted: z.preprocess((val) => {
+    if (typeof val !== "string" || !val.trim()) return "Job inquiry";
+    return val;
+  }, z.string().min(1, "Role targeted is required")),
   contacts: z.array(z.object(CONTACT_FIELDS)).min(1, "At least one contact is required"),
-  status: z.enum(STATUSES).optional().default("DRAFT"),
+  status: z.enum(STATUSES).optional().default("SENT"),
   notes: z.string().optional(),
 });
 

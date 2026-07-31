@@ -17,9 +17,9 @@ import {
 import { DatePicker } from "@/components/ui/date-picker";
 import { Sidebar } from "@/components/sidebar";
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { FiArrowLeft, FiSave, FiBriefcase, FiUser, FiFileText, FiCalendar, FiPlus, FiTrash2 } from "react-icons/fi";
+import { FiArrowLeft, FiSave, FiBriefcase, FiUser, FiFileText, FiCalendar, FiPlus, FiTrash2, FiChevronDown } from "react-icons/fi";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -36,16 +36,19 @@ export default function NewOutreachPage() {
     const [contacts, setContacts] = useState(() => [{ 
         id: Date.now(), 
         personName: "",
-        personRole: "", 
-        contactMethod: "",
+        personRole: "RECRUITER",
+        contactMethod: "EMAIL",
         emailAddress: "",
         linkedinProfileUrl: ""
     }]);
     const [customRoles, setCustomRoles] = useState<Record<number, string>>({});
     const [sentDate, setSentDate] = useState<Date | undefined>(() => new Date());
+    const [showMoreDetails, setShowMoreDetails] = useState(false);
     const formRef = useRef<HTMLFormElement>(null);
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { toast } = useToast();
+    const initialCompanyName = searchParams.get("company") || "";
 
     useEffect(() => {
         if (state.success && state.outreachId) {
@@ -99,12 +102,14 @@ export default function NewOutreachPage() {
         setContacts([{ 
             id: Date.now(), 
             personName: "",
-            personRole: "", 
-            contactMethod: "",
+            personRole: "RECRUITER",
+            contactMethod: "EMAIL",
             emailAddress: "",
             linkedinProfileUrl: ""
         }]);
         setCustomRoles({});
+        setSentDate(new Date());
+        setShowMoreDetails(false);
     };
 
   return (
@@ -118,7 +123,7 @@ export default function NewOutreachPage() {
               <div className="space-y-1">
                 <h1 className="text-3xl md:text-4xl font-bold tracking-tight">New Outreach</h1>
                 <p className="text-muted-foreground text-base md:text-lg">
-                  Log a new contact or application
+                  Add the basics now. Details can be filled in later.
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -156,25 +161,27 @@ export default function NewOutreachPage() {
                     <section className="space-y-4">
                       <div className="flex items-center gap-3 pb-2 border-b border-border/30">
                         <FiBriefcase className="w-5 h-5 text-primary" />
-                        <h2 className="text-xl font-bold tracking-tight">Company Details</h2>
+                        <h2 className="text-xl font-bold tracking-tight">Required</h2>
                       </div>
 
                       <div className="grid gap-3">
                         <div className="space-y-1">
                           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1" htmlFor="companyName">Company Name<span className="text-destructive ml-1">*</span></label>
-                          <Input id="companyName" name="companyName" placeholder="e.g., Google" required className="h-11" />
+                          <Input id="companyName" name="companyName" placeholder="e.g., Google" required className="h-11" defaultValue={initialCompanyName} />
                           {state.details?.companyName && <p className="text-destructive text-[10px] ml-1">{state.details.companyName[0]}</p>}
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1" htmlFor="roleTargeted">Position<span className="text-destructive ml-1">*</span></label>
-                          <Input id="roleTargeted" name="roleTargeted" placeholder="e.g., Software Engineer" required className="h-11" />
+                          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1" htmlFor="roleTargeted">Position</label>
+                          <Input id="roleTargeted" name="roleTargeted" placeholder="Job inquiry" className="h-11" />
                           {state.details?.roleTargeted && <p className="text-destructive text-[10px] ml-1">{state.details.roleTargeted[0]}</p>}
                         </div>
-                        <div className="space-y-1">
-                          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1" htmlFor="companyLink">Company URL (Optional)</label>
-                          <Input id="companyLink" name="companyLink" placeholder="example.com" type="text" className="h-11" />
-                          {state.details?.companyLink && <p className="text-destructive text-[10px] ml-1">{state.details.companyLink[0]}</p>}
-                        </div>
+                        {showMoreDetails && (
+                          <div className="space-y-1 animate-in fade-in slide-in-from-top-1">
+                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1" htmlFor="companyLink">Company URL</label>
+                            <Input id="companyLink" name="companyLink" placeholder="example.com" type="text" className="h-11" />
+                            {state.details?.companyLink && <p className="text-destructive text-[10px] ml-1">{state.details.companyLink[0]}</p>}
+                          </div>
+                        )}
                       </div>
                     </section>
 
@@ -183,18 +190,20 @@ export default function NewOutreachPage() {
                       <div className="flex items-center justify-between pb-2 border-b border-border/30">
                         <div className="flex items-center gap-3">
                           <FiUser className="w-5 h-5 text-primary" />
-                          <h2 className="text-xl font-bold tracking-tight">Contacts</h2>
+                          <h2 className="text-xl font-bold tracking-tight">Contact</h2>
                         </div>
-                        <Button type="button" onClick={addContact} variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg border-primary/20 hover:bg-primary/5 text-primary font-bold">
-                          <FiPlus className="w-3.5 h-3.5" />
-                          Add Person
-                        </Button>
+                        {showMoreDetails && (
+                          <Button type="button" onClick={addContact} variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg border-primary/20 hover:bg-primary/5 text-primary font-bold">
+                            <FiPlus className="w-3.5 h-3.5" />
+                            Add Person
+                          </Button>
+                        )}
                       </div>
 
                       <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                         {contacts.map((contact, index) => (
                           <div key={contact.id} className="relative p-3 rounded-xl border border-border/40 bg-background/40 hover:bg-background/60 transition-colors space-y-3 animate-in fade-in slide-in-from-top-2">
-                            {contacts.length > 1 && (
+                            {showMoreDetails && contacts.length > 1 && (
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -207,19 +216,22 @@ export default function NewOutreachPage() {
                             )}
                             <div className="grid gap-3 md:grid-cols-2">
                               <div className="space-y-1">
-                                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Name<span className="text-destructive ml-1">*</span></label>
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Name</label>
                                 <Input
                                   name={`contacts.${index}.personName`}
-                                  placeholder="e.g., Name"
+                                  placeholder="Optional"
                                   value={contact.personName}
                                   onChange={(e) => {
                                     setContacts(prev => prev.map(c => c.id === contact.id ? { ...c, personName: e.target.value } : c));
                                   }}
-                                  required
                                   className="h-9 text-sm"
                                 />
                                 {state.details?.[`contacts.${index}.personName`] && <p className="text-destructive text-[9px] ml-1">{state.details[`contacts.${index}.personName`][0]}</p>}
                               </div>
+                              {!showMoreDetails && (
+                                <input type="hidden" name={`contacts.${index}.personRole`} value={contact.personRole} />
+                              )}
+                              {showMoreDetails && (
                               <div className="space-y-1">
                                 <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Role<span className="text-destructive ml-1">*</span></label>
                                 <div className="space-y-2">
@@ -264,6 +276,7 @@ export default function NewOutreachPage() {
                                   )}
                                 </div>
                               </div>
+                              )}
                               <div className="space-y-1">
                                 <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Method<span className="text-destructive ml-1">*</span></label>
                                 <Select 
@@ -283,6 +296,7 @@ export default function NewOutreachPage() {
                                   </SelectContent>
                                 </Select>
                               </div>
+                              {showMoreDetails && (
                               <div className="space-y-1">
                                 <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Email</label>
                                 <Input
@@ -299,6 +313,8 @@ export default function NewOutreachPage() {
                                 {state.details?.[`contacts.${index}.emailAddress`] && <p className="text-destructive text-[9px] ml-1">{state.details[`contacts.${index}.emailAddress`][0]}</p>}
                                 <p className="text-[9px] text-muted-foreground ml-1 italic">Comma separated for multiple</p>
                               </div>
+                              )}
+                              {showMoreDetails && (
                               <div className="space-y-1 md:col-span-2">
                                 <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">LinkedIn URL</label>
                                 <Input
@@ -313,6 +329,7 @@ export default function NewOutreachPage() {
                                 />
                                 {state.details?.[`contacts.${index}.linkedinProfileUrl`] && <p className="text-destructive text-[9px] ml-1">{state.details[`contacts.${index}.linkedinProfileUrl`][0]}</p>}
                               </div>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -320,8 +337,20 @@ export default function NewOutreachPage() {
                     </section>
                   </div>
 
+                  <div className="flex justify-center border-t border-border/30 pt-5">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowMoreDetails((value) => !value)}
+                      className="gap-2"
+                    >
+                      <FiChevronDown className={`h-4 w-4 transition-transform ${showMoreDetails ? "rotate-180" : ""}`} />
+                      {showMoreDetails ? "Hide details" : "More details"}
+                    </Button>
+                  </div>
+
                   {/* Bottom Row: Timing & Notes Parallel */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-border/30">
+                  <div className={showMoreDetails ? "grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-border/30 animate-in fade-in slide-in-from-top-2" : "hidden"}>
                     {/* Timing Section */}
                     <section className="space-y-4">
                       <div className="flex items-center justify-between pb-2 border-b border-border/30">

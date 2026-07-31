@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,9 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
-import { format } from "date-fns";
 import { PromoteLeadValues, promoteLeadSchema } from "@/lib/validations";
 import { promoteLeadToOutreachAction, updateExtensionLeadAction } from "@/actions/extension-leads";
 import { useState } from "react";
@@ -59,14 +57,14 @@ interface PromoteLeadDialogProps {
   onSaveSuccess?: () => void;
 }
 
-export function PromoteLeadDialog({ lead, open, setOpen, onSuccess, onSaveSuccess }: PromoteLeadDialogProps) {
+export function PromoteLeadDialog({ lead, open, setOpen, onSaveSuccess }: PromoteLeadDialogProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const form = useForm<PromoteLeadValues>({
-    resolver: zodResolver(promoteLeadSchema) as any,
+    resolver: zodResolver(promoteLeadSchema) as unknown as Resolver<PromoteLeadValues>,
     defaultValues: {
       id: lead.id,
       companyName: lead.companyName || "",
@@ -74,7 +72,7 @@ export function PromoteLeadDialog({ lead, open, setOpen, onSuccess, onSaveSucces
       roleTargeted: lead.position || "",
       contacts: [{
         personName: lead.personName,
-        personRole: (lead.personRole as any) || "RECRUITER",
+        personRole: lead.personRole || "RECRUITER",
         contactMethod: "LINKEDIN",
         emailAddress: lead.emailAddress || "",
         linkedinProfileUrl: lead.profileUrl,
@@ -108,7 +106,7 @@ export function PromoteLeadDialog({ lead, open, setOpen, onSuccess, onSaveSucces
           description: "This lead has been moved to your outreach tracker.",
         });
         setOpen(false);
-        router.push(`/dashboard/outreach/${res.outreachId}`);
+        router.push(`/outreach/${res.outreachId}`);
       } else {
         toast({
           title: "Error",
@@ -129,7 +127,7 @@ export function PromoteLeadDialog({ lead, open, setOpen, onSuccess, onSaveSucces
         companyName: values.companyName,
         companyUrl: values.companyLink || "",
         position: values.roleTargeted,
-        personRole: primary.personRole as any,
+        personRole: primary.personRole,
         emailAddress: primary.emailAddress === "" ? null : primary.emailAddress,
         profileUrl: primary.linkedinProfileUrl || "",
         outreachDate: primary.messageSentAt ? new Date(primary.messageSentAt) : undefined,
@@ -227,7 +225,21 @@ export function PromoteLeadDialog({ lead, open, setOpen, onSuccess, onSaveSucces
             <section className="space-y-4 pt-4 border-t border-border/30">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold">Contacts</h3>
-                <Button type="button" variant="outline" size="sm" onClick={() => append({ personName: "", personRole: "HR", contactMethod: "LINKEDIN", emailAddress: "", linkedinProfileUrl: "", messageSentAt: new Date(), followUpDueAt: undefined } as any)} className="gap-1 font-bold">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => append({
+                    personName: "",
+                    personRole: "HR",
+                    contactMethod: "LINKEDIN",
+                    emailAddress: "",
+                    linkedinProfileUrl: "",
+                    messageSentAt: new Date(),
+                    followUpDueAt: undefined,
+                  })}
+                  className="gap-1 font-bold"
+                >
                    <FiArrowRight className="w-4 h-4" /> Add Person
                 </Button>
               </div>
