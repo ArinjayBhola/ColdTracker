@@ -2,24 +2,16 @@
 
 import { motion } from "framer-motion";
 
-import { format } from "date-fns";
-import { FiCheckCircle, FiCircle, FiExternalLink, FiMoreVertical, FiLinkedin, FiMail } from "react-icons/fi";
+import { FiCheckCircle, FiCircle, FiExternalLink, FiLinkedin, FiMail, FiEye } from "react-icons/fi";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { TableShell, TableContent } from "@/components/ui/data-table/table-shell";
 import { TableHeader } from "@/components/ui/data-table/table-header";
 import { TablePagination } from "@/components/ui/data-table/table-pagination";
 import { cn } from "@/lib/utils";
-import { DatePicker } from "@/components/ui/date-picker";
-import { toggleStartupOutreachAction, updateStartupFollowUpAction } from "@/actions/startups";
+import { toggleStartupOutreachAction } from "@/actions/startups";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 type StartupItem = {
@@ -48,17 +40,17 @@ type StartupsTableProps = {
   items: StartupItem[];
   totalCount: number;
   currentPage: number;
-  searchQuery: string;
-  onSearchChange: (value: string) => void;
 };
 
-export function StartupsTable({ items, totalCount, currentPage, searchQuery, onSearchChange }: StartupsTableProps) {
+export function StartupsTable({ items, totalCount, currentPage }: StartupsTableProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const itemsPerPage = 20;
+  const itemsPerPage = 21;
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
-  const filteredItems = items;
+  const filteredItems = items.slice(0, itemsPerPage);
+  const rangeStart = filteredItems.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
+  const rangeEnd = filteredItems.length > 0 ? rangeStart + filteredItems.length - 1 : 0;
 
   const handleToggleOutreach = async (startupId: string, currentStatus: boolean) => {
     try {
@@ -77,35 +69,20 @@ export function StartupsTable({ items, totalCount, currentPage, searchQuery, onS
     }
   };
 
-  const handleDateChange = async (startupId: string, date: Date | undefined) => {
-    try {
-      await updateStartupFollowUpAction(startupId, date || null);
-      toast({
-        title: "Follow-up date updated",
-        description: date ? `Set to ${format(date, "MMM d, yyyy")}` : "Date cleared",
-      });
-      router.refresh();
-    } catch {
-      toast({
-        title: "Error",
-        description: "Failed to update follow-up date.",
-        variant: "destructive",
-      });
-    }
-  };
-
   const handlePageChange = (newPage: number) => {
-    router.push(`/startups?page=${newPage}`);
+    const params = new URLSearchParams(window.location.search);
+    params.set("page", String(newPage));
+    router.push(`/startups?${params.toString()}`);
   };
 
   return (
     <TableShell>
       <TableHeader
         title="Startups Ecosystem"
-        subtitle={`Showing ${items.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-${Math.min(currentPage * itemsPerPage, totalCount)} of ${totalCount} startups`}
-        searchQuery={searchQuery}
-        onSearchChange={onSearchChange}
-        placeholder="Search startups or sectors..."
+        subtitle={`Showing ${rangeStart}-${rangeEnd} of ${totalCount} startups`}
+        searchQuery=""
+        onSearchChange={() => undefined}
+        showSearch={false}
       />
 
       <TableContent>
@@ -114,7 +91,6 @@ export function StartupsTable({ items, totalCount, currentPage, searchQuery, onS
             <th className="h-12 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Startup</th>
             <th className="h-12 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Founders</th>
             <th className="h-12 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Status</th>
-            <th className="h-12 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Follow Up</th>
             <th className="h-12 px-6 text-right align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Actions</th>
           </tr>
         </thead>
@@ -131,7 +107,7 @@ export function StartupsTable({ items, totalCount, currentPage, searchQuery, onS
         >
           {filteredItems.length === 0 ? (
             <tr>
-              <td colSpan={5} className="p-12 text-center text-muted-foreground italic">
+              <td colSpan={4} className="p-12 text-center text-muted-foreground italic">
                 No startups found.
               </td>
             </tr>
@@ -160,7 +136,7 @@ export function StartupsTable({ items, totalCount, currentPage, searchQuery, onS
                             {item.sector || "N/A"}
                           </span>
                         </div>
-                        <span className="text-xs text-muted-foreground line-clamp-1 max-w-[200px]">{item.description}</span>
+                        <span className="text-xs text-muted-foreground line-clamp-2 max-w-[360px]">{item.description}</span>
                       </div>
                     </div>
                   </td>
@@ -203,16 +179,13 @@ export function StartupsTable({ items, totalCount, currentPage, searchQuery, onS
                       {tracking.outreachDone ? "Contacted" : "To Outreach"}
                     </button>
                   </td>
-                  <td className="p-6 align-middle">
-                    <DatePicker
-                      value={tracking.followUpDate ? new Date(tracking.followUpDate) : undefined}
-                      onChange={(date) => handleDateChange(item.id, date)}
-                      placeholder="Set Date"
-                      className="w-[130px]"
-                    />
-                  </td>
                   <td className="p-6 align-middle text-right">
                     <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="icon" asChild title="View startup" className="h-8 w-8">
+                        <Link href={`/startups/${item.id}`}>
+                          <FiEye className="w-4 h-4" />
+                        </Link>
+                      </Button>
                       {item.website && (
                         <Button variant="ghost" size="icon" asChild title="Visit Website" className="h-8 w-8">
                           <a href={item.website} target="_blank" rel="noopener noreferrer">
@@ -220,20 +193,6 @@ export function StartupsTable({ items, totalCount, currentPage, searchQuery, onS
                           </a>
                         </Button>
                       )}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <FiMoreVertical className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="rounded-xl border-2">
-                          <DropdownMenuItem asChild>
-                            <Link href={`/outreach/new?company=${encodeURIComponent(item.name)}`}>
-                              Create Outreach entry
-                            </Link>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
                     </div>
                   </td>
                 </motion.tr>

@@ -1,7 +1,6 @@
 "use client";
 
 import { FiSearch, FiXCircle } from "react-icons/fi";
-import { cn } from "@/lib/utils";
 
 interface TableHeaderProps {
   title: string;
@@ -9,6 +8,7 @@ interface TableHeaderProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   placeholder?: string;
+  showSearch?: boolean;
   children?: React.ReactNode;
 }
 
@@ -18,6 +18,7 @@ export function TableHeader({
   searchQuery,
   onSearchChange,
   placeholder = "Search...",
+  showSearch = true,
   children,
 }: TableHeaderProps) {
   return (
@@ -32,7 +33,7 @@ export function TableHeader({
         </div>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <div className="relative w-full sm:w-64 lg:w-80">
+          {showSearch && <div className="relative w-full sm:w-64 lg:w-80">
             <input
               type="text"
               placeholder={placeholder}
@@ -49,7 +50,7 @@ export function TableHeader({
                 <FiXCircle className="w-4 h-4" />
               </button>
             )}
-          </div>
+          </div>}
           {children}
         </div>
       </div>

@@ -5,13 +5,14 @@ import { getStartupsAction } from "@/actions/startups";
 
 export default async function StartupsPage(
   props: {
-    searchParams: Promise<{ page?: string; q?: string }>;
+    searchParams: Promise<{ page?: string; q?: string; sort?: string }>;
   }
 ) {
   const searchParams = await props.searchParams;
   const page = Math.max(1, Number(searchParams.page) || 1);
   const search = searchParams.q || "";
-  const { items, totalCount } = await getStartupsAction(page, 20, search);
+  const sort = searchParams.sort || "NOT_OUTREACHED";
+  const { items, totalCount } = await getStartupsAction(page, 21, search, sort);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -34,6 +35,7 @@ export default async function StartupsPage(
             totalCount={totalCount} 
             currentPage={page} 
             initialSearch={search}
+            initialSort={sort}
           />
         </div>
       </main>

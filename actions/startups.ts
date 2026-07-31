@@ -1,15 +1,14 @@
 "use server";
 
 import { db } from "@/db";
-import { startups, startupTracking } from "@/db/schema";
+import { startups, startupEmployees, startupTracking } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { eq, and, sql, inArray, ilike, or } from "drizzle-orm";
 import { revalidatePath, unstable_cache as cache } from "next/cache";
 
 // Cache for 24 hours for static startup data
 const getCachedStartups = cache(
-  async (page: number, pageSize: number, search: string) => {
-    const offset = (page - 1) * pageSize;
+  async (search: string) => {
     const searchTerm = search.trim();
     const searchWhere = searchTerm
       ? or(
@@ -20,12 +19,7 @@ const getCachedStartups = cache(
       : undefined;
     const [items, countResult] = await Promise.all([
       db.query.startups.findMany({
-        limit: pageSize,
-        offset: offset,
         where: searchWhere,
-        with: {
-          employees: true,
-        },
         orderBy: (startups, { desc }) => [desc(startups.createdAt)],
       }),
       db.select({ count: sql<number>`count(*)` }).from(startups).where(searchWhere),
@@ -39,7 +33,7 @@ const getCachedStartups = cache(
   { revalidate: 86400, tags: ["startups"] }
 );
 
-export async function getStartupsAction(page: number = 1, pageSize: number = 20, search: string = "") {
+export async function getStartupsAction(page: number = 1, pageSize: number = 20, search: string = "", sort: string = "NOT_OUTREACHED") {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
@@ -47,10 +41,10 @@ export async function getStartupsAction(page: number = 1, pageSize: number = 20,
   const safePageSize = Math.min(50, Math.max(1, Math.floor(pageSize)));
 
   // Fetch static data from cache
-  const { items, totalCount } = await getCachedStartups(safePage, safePageSize, search);
+  const { items: allItems, totalCount } = await getCachedStartups(search);
 
   // Fetch dynamic tracking data for this user
-  const startupIds = items.map(i => i.id);
+  const startupIds = allItems.map(i => i.id);
   const trackingData = startupIds.length > 0 ? await db.query.startupTracking.findMany({
     where: and(
       eq(startupTracking.userId, session.user.id),
@@ -60,23 +54,49 @@ export async function getStartupsAction(page: number = 1, pageSize: number = 20,
 
   // Merge tracking data into items
   const trackingByStartup = new Map(trackingData.map((tracking) => [tracking.startupId, tracking]));
-  const itemsWithTracking = items.map(item => ({
+  const itemsWithTracking = allItems.map(item => ({
     ...item,
     tracking: trackingByStartup.has(item.id) ? [trackingByStartup.get(item.id)!] : []
   }));
 
-  // Sort items to push outreached startups to the end
+  const normalizedSort = ["NOT_OUTREACHED", "OUTREACHED", "A_Z", "Z_A"].includes(sort)
+    ? sort
+    : "NOT_OUTREACHED";
+
   itemsWithTracking.sort((a, b) => {
     const aOutreached = a.tracking.some(t => t.outreachDone);
     const bOutreached = b.tracking.some(t => t.outreachDone);
 
-    if (aOutreached && !bOutreached) return 1;
-    if (!aOutreached && bOutreached) return -1;
-    return 0;
+    if (normalizedSort === "NOT_OUTREACHED" && aOutreached !== bOutreached) {
+      return aOutreached ? 1 : -1;
+    }
+    if (normalizedSort === "OUTREACHED" && aOutreached !== bOutreached) {
+      return aOutreached ? -1 : 1;
+    }
+
+    const nameOrder = a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    return normalizedSort === "Z_A" ? -nameOrder : nameOrder;
   });
 
+  const offset = (safePage - 1) * safePageSize;
+  const pageItems = itemsWithTracking.slice(offset, offset + safePageSize);
+  const pageIds = pageItems.map((item) => item.id);
+  const employees = pageIds.length > 0
+    ? await db.query.startupEmployees.findMany({ where: inArray(startupEmployees.startupId, pageIds) })
+    : [];
+  const employeesByStartup = new Map<string, typeof employees>();
+  for (const employee of employees) {
+    const existing = employeesByStartup.get(employee.startupId) || [];
+    existing.push(employee);
+    employeesByStartup.set(employee.startupId, existing);
+  }
+  const items = pageItems.map((item) => ({
+    ...item,
+    employees: employeesByStartup.get(item.id) || [],
+  }));
+
   return {
-    items: itemsWithTracking,
+    items,
     totalCount,
   };
 }
