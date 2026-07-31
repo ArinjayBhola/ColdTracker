@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { FiGrid, FiList, FiSearch, FiChevronDown } from "react-icons/fi";
+import { useEffect, useRef, useState } from "react";
+import { FiGrid, FiList, FiSearch } from "react-icons/fi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StartupsGrid } from "./startups-grid";
@@ -10,28 +10,52 @@ import { TablePagination } from "@/components/ui/data-table/table-pagination";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
-type StartupItem = any; // Simplified for now
+type StartupItem = {
+  id: string;
+  name: string;
+  sector: string | null;
+  description: string | null;
+  website: string | null;
+  logoUrl: string | null;
+  location: string | null;
+  teamSize: string | null;
+  fundingAmount: string | null;
+  isHiring: boolean | null;
+  isTrending: boolean | null;
+  tracking: { outreachDone: boolean; followUpDate: Date | null; notes: string | null }[];
+  employees: { id: string; name: string; role: string | null; email: string | null; linkedinUrl: string | null }[];
+};
 
 type StartupsExplorerProps = {
   items: StartupItem[];
   totalCount: number;
   currentPage: number;
-  sectorCounts: Record<string, number>;
+  initialSearch: string;
 };
 
-export function StartupsExplorer({ items, totalCount, currentPage, sectorCounts }: StartupsExplorerProps) {
+export function StartupsExplorer({ items, totalCount, currentPage, initialSearch }: StartupsExplorerProps) {
   const [view, setView] = useState<"grid" | "list">("grid");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
+  const isFirstSearchEffect = useRef(true);
   const router = useRouter();
 
-
-  const pageSize = 50;
+  const pageSize = 20;
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  const filteredItems = items.filter(item => {
-    return item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-           item.description?.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  useEffect(() => {
+    if (isFirstSearchEffect.current) {
+      isFirstSearchEffect.current = false;
+      return;
+    }
+    const timeout = window.setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      if (searchQuery.trim()) params.set("q", searchQuery.trim());
+      else params.delete("q");
+      params.set("page", "1");
+      router.replace(`/startups?${params.toString()}`);
+    }, 350);
+    return () => window.clearTimeout(timeout);
+  }, [searchQuery, router]);
 
   const handlePageChange = (page: number) => {
     router.push(`/startups?page=${page}`);
@@ -75,9 +99,9 @@ export function StartupsExplorer({ items, totalCount, currentPage, sectorCounts 
       <div className="min-h-[400px]">
 
         {view === "grid" ? (
-          <StartupsGrid items={filteredItems} />
-        ) : (
-          <StartupsTable items={filteredItems} totalCount={totalCount} currentPage={currentPage} />
+        <StartupsGrid items={items} />
+      ) : (
+          <StartupsTable items={items} totalCount={totalCount} currentPage={currentPage} searchQuery={searchQuery} onSearchChange={setSearchQuery} />
         )}
       </div>
 
@@ -93,4 +117,3 @@ export function StartupsExplorer({ items, totalCount, currentPage, sectorCounts 
     </div>
   );
 }
-

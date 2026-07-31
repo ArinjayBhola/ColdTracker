@@ -3,48 +3,51 @@
 import { db } from "@/db";
 import { startups, startupTracking } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { eq, and, sql, inArray } from "drizzle-orm";
+import { eq, and, sql, inArray, ilike, or } from "drizzle-orm";
 import { revalidatePath, unstable_cache as cache } from "next/cache";
 
 // Cache for 24 hours for static startup data
 const getCachedStartups = cache(
-  async (page: number, pageSize: number) => {
+  async (page: number, pageSize: number, search: string) => {
     const offset = (page - 1) * pageSize;
-    const [items, countResult, sectorResults] = await Promise.all([
+    const searchTerm = search.trim();
+    const searchWhere = searchTerm
+      ? or(
+          ilike(startups.name, `%${searchTerm}%`),
+          ilike(startups.description, `%${searchTerm}%`),
+          ilike(startups.sector, `%${searchTerm}%`),
+        )
+      : undefined;
+    const [items, countResult] = await Promise.all([
       db.query.startups.findMany({
         limit: pageSize,
         offset: offset,
+        where: searchWhere,
         with: {
           employees: true,
         },
         orderBy: (startups, { desc }) => [desc(startups.createdAt)],
       }),
-      db.select({ count: sql<number>`count(*)` }).from(startups),
-      db.select({
-        sector: startups.sector,
-        count: sql<number>`count(*)`
-      }).from(startups).groupBy(startups.sector)
+      db.select({ count: sql<number>`count(*)` }).from(startups).where(searchWhere),
     ]);
 
     const count = countResult[0].count;
 
-    const sectorCounts: Record<string, number> = {};
-    sectorResults.forEach(r => {
-      if (r.sector) sectorCounts[r.sector] = r.count;
-    });
-
-    return { items, totalCount: Number(count), sectorCounts };
+    return { items, totalCount: Number(count) };
   },
   ["startups-list"],
   { revalidate: 86400, tags: ["startups"] }
 );
 
-export async function getStartupsAction(page: number = 1, pageSize: number = 20) {
+export async function getStartupsAction(page: number = 1, pageSize: number = 20, search: string = "") {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
+  const safePage = Math.max(1, Math.floor(page));
+  const safePageSize = Math.min(50, Math.max(1, Math.floor(pageSize)));
+
   // Fetch static data from cache
-  const { items, totalCount, sectorCounts } = await getCachedStartups(page, pageSize);
+  const { items, totalCount } = await getCachedStartups(safePage, safePageSize, search);
 
   // Fetch dynamic tracking data for this user
   const startupIds = items.map(i => i.id);
@@ -56,9 +59,10 @@ export async function getStartupsAction(page: number = 1, pageSize: number = 20)
   }) : [];
 
   // Merge tracking data into items
+  const trackingByStartup = new Map(trackingData.map((tracking) => [tracking.startupId, tracking]));
   const itemsWithTracking = items.map(item => ({
     ...item,
-    tracking: trackingData.filter(t => t.startupId === item.id)
+    tracking: trackingByStartup.has(item.id) ? [trackingByStartup.get(item.id)!] : []
   }));
 
   // Sort items to push outreached startups to the end
@@ -74,7 +78,6 @@ export async function getStartupsAction(page: number = 1, pageSize: number = 20)
   return {
     items: itemsWithTracking,
     totalCount,
-    sectorCounts,
   };
 }
 

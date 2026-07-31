@@ -1,12 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { FiExternalLink, FiMapPin, FiUsers, FiDollarSign, FiTrendingUp } from "react-icons/fi";
+import { FiMapPin, FiUsers, FiDollarSign, FiTrendingUp } from "react-icons/fi";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
 
 type StartupItem = {
   id: string;
@@ -18,8 +16,8 @@ type StartupItem = {
   location: string | null;
   teamSize: string | null;
   fundingAmount: string | null;
-  isHiring: boolean;
-  isTrending: boolean;
+  isHiring: boolean | null;
+  isTrending: boolean | null;
   tracking?: {
     outreachDone: boolean;
   }[];

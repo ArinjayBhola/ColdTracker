@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { toggleStartupOutreachAction } from "@/actions/startups";
 import { FiCheckCircle, FiCircle, FiLoader } from "react-icons/fi";
@@ -30,11 +29,12 @@ export function OutreachToggle({ startupId, initialStatus }: OutreachToggleProps
       const previousStartup = queryClient.getQueryData(["startup", startupId]);
       
       // Update cache optimistically if data exists
-      queryClient.setQueryData(["startup", startupId], (old: any) => {
-        if (!old) return old;
+      queryClient.setQueryData(["startup", startupId], (old: unknown) => {
+        if (!old || typeof old !== "object") return old;
+        const startup = old as { tracking?: { outreachDone?: boolean }[] };
         return {
-          ...old,
-          tracking: [{ ...old.tracking?.[0], outreachDone: newStatus }]
+          ...startup,
+          tracking: [{ ...startup.tracking?.[0], outreachDone: newStatus }]
         };
       });
 
@@ -86,4 +86,3 @@ export function OutreachToggle({ startupId, initialStatus }: OutreachToggleProps
     </Button>
   );
 }
-

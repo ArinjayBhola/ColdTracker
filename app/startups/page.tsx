@@ -1,17 +1,17 @@
 import { Sidebar } from "@/components/sidebar";
 import { StartupsExplorer } from "@/components/startups-explorer";
 import { getStartupsAction } from "@/actions/startups";
-import { FiTrendingUp, FiGlobe } from "react-icons/fi";
 
 
 export default async function StartupsPage(
   props: {
-    searchParams: Promise<{ page?: string }>;
+    searchParams: Promise<{ page?: string; q?: string }>;
   }
 ) {
   const searchParams = await props.searchParams;
-  const page = Number(searchParams.page) || 1;
-  const { items, totalCount, sectorCounts } = await getStartupsAction(page, 50); // Increased page size for grid view
+  const page = Math.max(1, Number(searchParams.page) || 1);
+  const search = searchParams.q || "";
+  const { items, totalCount } = await getStartupsAction(page, 20, search);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -33,11 +33,10 @@ export default async function StartupsPage(
             items={items} 
             totalCount={totalCount} 
             currentPage={page} 
-            sectorCounts={sectorCounts}
+            initialSearch={search}
           />
         </div>
       </main>
     </div>
   );
 }
-

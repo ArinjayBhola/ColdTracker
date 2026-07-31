@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion";
 
-import { useState } from "react";
 import { format } from "date-fns";
 import { FiCheckCircle, FiCircle, FiExternalLink, FiMoreVertical, FiLinkedin, FiMail } from "react-icons/fi";
 import { Button } from "@/components/ui/button";
@@ -49,19 +48,17 @@ type StartupsTableProps = {
   items: StartupItem[];
   totalCount: number;
   currentPage: number;
+  searchQuery: string;
+  onSearchChange: (value: string) => void;
 };
 
-export function StartupsTable({ items, totalCount, currentPage }: StartupsTableProps) {
-  const [searchQuery, setSearchQuery] = useState("");
+export function StartupsTable({ items, totalCount, currentPage, searchQuery, onSearchChange }: StartupsTableProps) {
   const { toast } = useToast();
   const router = useRouter();
   const itemsPerPage = 20;
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
-  const filteredItems = items.filter((item) =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.sector?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredItems = items;
 
   const handleToggleOutreach = async (startupId: string, currentStatus: boolean) => {
     try {
@@ -107,7 +104,7 @@ export function StartupsTable({ items, totalCount, currentPage }: StartupsTableP
         title="Startups Ecosystem"
         subtitle={`Showing ${items.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-${Math.min(currentPage * itemsPerPage, totalCount)} of ${totalCount} startups`}
         searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        onSearchChange={onSearchChange}
         placeholder="Search startups or sectors..."
       />
 

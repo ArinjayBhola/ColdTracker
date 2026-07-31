@@ -57,11 +57,15 @@ function SubmitButton() {
 
 function NewOutreachPageContent() {
     const [state, formAction] = useActionState(createOutreachAction, { error: undefined, details: undefined, success: false });
+    const searchParams = useSearchParams();
+    const initialCompanyName = searchParams.get("company") || "";
+    const initialContactName = searchParams.get("contact") || "";
+    const initialContactMethod = searchParams.get("method") === "LINKEDIN" ? "LINKEDIN" : "EMAIL";
     const [contacts, setContacts] = useState(() => [{ 
         id: Date.now(), 
-        personName: "",
+        personName: initialContactName,
         personRole: "RECRUITER",
-        contactMethod: "EMAIL",
+        contactMethod: initialContactMethod,
         emailAddress: "",
         linkedinProfileUrl: ""
     }]);
@@ -70,9 +74,7 @@ function NewOutreachPageContent() {
     const [showMoreDetails, setShowMoreDetails] = useState(false);
     const formRef = useRef<HTMLFormElement>(null);
     const router = useRouter();
-    const searchParams = useSearchParams();
     const { toast } = useToast();
-    const initialCompanyName = searchParams.get("company") || "";
 
     useEffect(() => {
         if (state.success && state.outreachId) {

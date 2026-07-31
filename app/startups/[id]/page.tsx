@@ -1,7 +1,7 @@
 import { Sidebar } from "@/components/sidebar";
 import { getStartupByIdAction } from "@/actions/startups";
 import { notFound } from "next/navigation";
-import { FiArrowLeft, FiGlobe, FiMapPin, FiUsers, FiDollarSign, FiBriefcase, FiCheckCircle, FiLinkedin, FiMail } from "react-icons/fi";
+import { FiArrowLeft, FiGlobe, FiMapPin, FiUsers, FiDollarSign, FiBriefcase, FiLinkedin } from "react-icons/fi";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -153,8 +153,10 @@ export default async function StartupDetailPage({ params }: { params: Promise<{ 
                 <FiUsers className="w-5 h-5 text-primary" />
                 Team Members ({startup.employees.length})
               </CardTitle>
-              <Button variant="outline" size="sm" className="rounded-xl h-9 px-4 font-bold text-xs border-2 hover:bg-primary/5 hover:text-primary transition-all">
-                Send to all
+              <Button variant="outline" size="sm" className="rounded-xl h-9 px-4 font-bold text-xs border-2 hover:bg-primary/5 hover:text-primary transition-all" asChild>
+                <Link href={`/outreach/new?company=${encodeURIComponent(startup.name)}`}>
+                  Send to all
+                </Link>
               </Button>
             </CardHeader>
             <CardContent className="p-0">
@@ -191,14 +193,20 @@ export default async function StartupDetailPage({ params }: { params: Promise<{ 
                           </td>
                           <td className="px-8 py-5 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <Button variant="outline" size="sm" className="rounded-xl h-9 px-4 font-bold text-xs border-2 hover:bg-primary/5 hover:text-primary transition-all">
-                                Cold DM
-                              </Button>
                               <Button variant="outline" size="sm" className="rounded-xl h-9 px-4 font-bold text-xs border-2 hover:bg-primary/5 hover:text-primary transition-all" asChild>
-                                <a href={emp.email ? `mailto:${emp.email}` : "#"}>
-                                  Send Email
-                                </a>
+                                <Link href={`/outreach/new?company=${encodeURIComponent(startup.name)}&contact=${encodeURIComponent(emp.name)}&method=LINKEDIN`}>
+                                  Cold DM
+                                </Link>
                               </Button>
+                              {emp.email ? (
+                                <Button variant="outline" size="sm" className="rounded-xl h-9 px-4 font-bold text-xs border-2 hover:bg-primary/5 hover:text-primary transition-all" asChild>
+                                  <a href={`mailto:${emp.email}`}>Send Email</a>
+                                </Button>
+                              ) : (
+                                <Button variant="outline" size="sm" disabled className="rounded-xl h-9 px-4 font-bold text-xs">
+                                  No Email
+                                </Button>
+                              )}
                             </div>
                           </td>
                         </tr>
