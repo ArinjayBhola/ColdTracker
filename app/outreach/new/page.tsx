@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Sidebar } from "@/components/sidebar";
-import { useState, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { FiArrowLeft, FiSave, FiBriefcase, FiUser, FiFileText, FiCalendar, FiPlus, FiTrash2, FiChevronDown } from "react-icons/fi";
@@ -31,7 +31,7 @@ function SubmitButton() {
   );
 }
 
-export default function NewOutreachPage() {
+function NewOutreachPageContent() {
     const [state, formAction] = useActionState(createOutreachAction, { error: undefined, details: undefined, success: false });
     const [contacts, setContacts] = useState(() => [{ 
         id: Date.now(), 
@@ -422,4 +422,12 @@ export default function NewOutreachPage() {
     </div>
   );
 
+}
+
+export default function NewOutreachPage() {
+  return (
+    <Suspense fallback={null}>
+      <NewOutreachPageContent />
+    </Suspense>
+  );
 }
