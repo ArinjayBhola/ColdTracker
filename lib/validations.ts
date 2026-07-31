@@ -11,6 +11,27 @@ export const STATUSES = [
   "OFFER",
   "CLOSED",
 ] as const;
+export const APPLICATION_SOURCES = [
+  "DIRECT_EMAIL",
+  "DIRECT_LINKEDIN",
+  "COMPANY_WEBSITE",
+  "INDEED",
+  "GLASSDOOR",
+  "NAUKRI",
+  "LINKEDIN_JOB",
+  "REFERRAL",
+  "OTHER",
+] as const;
+export const APPLICATION_STATUSES = [
+  "SENT",
+  "SAVED",
+  "APPLIED",
+  "SCREENING",
+  "INTERVIEW",
+  "OFFER",
+  "REJECTED",
+  "WITHDRAWN",
+] as const;
 
 const CONTACT_FIELDS = {
   personName: z.string().optional().default(""),
@@ -53,6 +74,19 @@ export const outreachFormSchema = z.object({
     if (typeof val !== "string" || !val.trim()) return "Job inquiry";
     return val;
   }, z.string().min(1, "Role targeted is required")),
+  applicationSource: z.preprocess((val) => {
+    if (typeof val !== "string" || !val.trim()) return "DIRECT_EMAIL";
+    return val;
+  }, z.enum(APPLICATION_SOURCES)),
+  applicationUrl: z.preprocess((val) => {
+    if (typeof val !== "string" || !val.trim()) return undefined;
+    const str = val.trim();
+    return /^https?:\/\//i.test(str) ? str : `https://${str}`;
+  }, z.string().url("Invalid application URL").optional().or(z.literal(""))),
+  applicationStatus: z.preprocess((val) => {
+    if (typeof val !== "string" || !val.trim()) return "SENT";
+    return val;
+  }, z.enum(APPLICATION_STATUSES)),
   contacts: z.array(z.object(CONTACT_FIELDS)).min(1, "At least one contact is required"),
   status: z.enum(STATUSES).optional().default("SENT"),
   notes: z.string().optional(),

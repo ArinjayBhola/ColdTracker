@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { accounts, users } from "@/db/schema";
+import { and } from "drizzle-orm";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { ChangePasswordForm } from "@/components/settings/change-password-form";
@@ -9,12 +10,17 @@ import { DeleteAccountButton } from "@/components/settings/delete-account-button
 import { DataManagement } from "@/components/settings/data-management";
 import { NotificationSettings } from "@/components/settings/notification-settings";
 import { AppearanceSettings } from "@/components/settings/appearance-settings";
+import { AccountConnections } from "@/components/settings/account-connections";
 import { FiSettings } from "react-icons/fi";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sidebar } from "@/components/sidebar";
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ error?: string }>;
+}) {
   const session = await auth();
 
   if (!session?.user) {
@@ -22,10 +28,15 @@ export default async function SettingsPage() {
   }
 
   const { user } = session;
+  const params = searchParams ? await searchParams : {};
 
   // Fetch full user data to get notification settings
   const fullUser = await db.query.users.findFirst({
     where: eq(users.id, user.id as string),
+  });
+  const googleAccount = await db.query.accounts.findFirst({
+    where: and(eq(accounts.userId, user.id as string), eq(accounts.provider, "google")),
+    columns: { provider: true },
   });
 
 
@@ -51,6 +62,12 @@ export default async function SettingsPage() {
               </p>
             </div>
           </header>
+
+          {params.error === "google_email_mismatch" && (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive">
+              Google account was not connected. Use the same email address as this ColdTrack account.
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left Column: Profile Overlay & Stats */}
@@ -87,7 +104,9 @@ export default async function SettingsPage() {
             <div className="lg:col-span-2 space-y-8">
               <AppearanceSettings />
 
-              <ChangePasswordForm />
+              <AccountConnections googleConnected={Boolean(googleAccount)} />
+
+              <ChangePasswordForm hasPassword={typeof fullUser?.password === "string" && fullUser.password.trim().length > 0} />
 
               <NotificationSettings
                 initialEmail={fullUser?.notificationEmail || null}

@@ -20,6 +20,30 @@ import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { FiArrowLeft, FiSave, FiBriefcase, FiUser, FiFileText, FiCalendar, FiPlus, FiTrash2, FiChevronDown } from "react-icons/fi";
+import { APPLICATION_SOURCES, APPLICATION_STATUSES } from "@/lib/validations";
+
+const APPLICATION_SOURCE_LABELS: Record<string, string> = {
+  DIRECT_EMAIL: "Direct email",
+  DIRECT_LINKEDIN: "Direct LinkedIn message",
+  COMPANY_WEBSITE: "Company website",
+  INDEED: "Indeed",
+  GLASSDOOR: "Glassdoor",
+  NAUKRI: "Naukri",
+  LINKEDIN_JOB: "LinkedIn job",
+  REFERRAL: "Referral",
+  OTHER: "Other",
+};
+
+const APPLICATION_STATUS_LABELS: Record<string, string> = {
+  SENT: "Sent",
+  SAVED: "Saved",
+  APPLIED: "Applied",
+  SCREENING: "Screening",
+  INTERVIEW: "Interview",
+  OFFER: "Offer",
+  REJECTED: "Rejected",
+  WITHDRAWN: "Withdrawn",
+};
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -175,11 +199,31 @@ function NewOutreachPageContent() {
                           <Input id="roleTargeted" name="roleTargeted" placeholder="Job inquiry" className="h-11" />
                           {state.details?.roleTargeted && <p className="text-destructive text-[10px] ml-1">{state.details.roleTargeted[0]}</p>}
                         </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Applied via</label>
+                          <Select name="applicationSource" defaultValue="DIRECT_EMAIL">
+                            <SelectTrigger className="h-11">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {APPLICATION_SOURCES.map((source) => (
+                                <SelectItem key={source} value={source}>{APPLICATION_SOURCE_LABELS[source]}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                         {showMoreDetails && (
                           <div className="space-y-1 animate-in fade-in slide-in-from-top-1">
                             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1" htmlFor="companyLink">Company URL</label>
                             <Input id="companyLink" name="companyLink" placeholder="example.com" type="text" className="h-11" />
                             {state.details?.companyLink && <p className="text-destructive text-[10px] ml-1">{state.details.companyLink[0]}</p>}
+                          </div>
+                        )}
+                        {showMoreDetails && (
+                          <div className="space-y-1 animate-in fade-in slide-in-from-top-1">
+                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1" htmlFor="applicationUrl">Application URL</label>
+                            <Input id="applicationUrl" name="applicationUrl" placeholder="indeed.com/viewjob/..." type="text" className="h-11" />
+                            {state.details?.applicationUrl && <p className="text-destructive text-[10px] ml-1">{state.details.applicationUrl[0]}</p>}
                           </div>
                         )}
                       </div>
@@ -367,6 +411,18 @@ function NewOutreachPageContent() {
                               <SelectItem value="DRAFT">Draft</SelectItem>
                               <SelectItem value="SENT">Sent</SelectItem>
                               <SelectItem value="REPLIED">Replied</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="w-32">
+                          <Select name="applicationStatus" defaultValue="SENT">
+                            <SelectTrigger className="h-8 text-xs rounded-lg bg-background/50 border-border/50">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {APPLICATION_STATUSES.map((status) => (
+                                <SelectItem key={status} value={status}>{APPLICATION_STATUS_LABELS[status]}</SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>

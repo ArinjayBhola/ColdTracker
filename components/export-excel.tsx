@@ -36,11 +36,14 @@ export function ExportExcel({ fileName = "outreach-data" }: ExportExcelProps) {
           ? item.contacts 
           : [];
 
-        return contacts.map((contact: any) => ({
+        return contacts.map((contact) => ({
           Company: item.companyName,
           "Contact Count": item.contacts?.length || 1,
           Role: item.roleTargeted,
           Website: item.companyLink || "",
+          "Application Source": item.applicationSource || "Direct email",
+          "Application URL": item.applicationUrl || "",
+          "Application Status": item.applicationStatus || "",
           "Person Name": contact.personName || "",
           "Person Role": contact.personRole || "",
           Status: item.status,

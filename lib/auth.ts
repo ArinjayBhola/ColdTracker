@@ -60,7 +60,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!parsed.success) return null;
 
-        const { email, password } = parsed.data;
+        const { password } = parsed.data;
+        const email = parsed.data.email.trim().toLowerCase();
 
         const user = await db.query.users.findFirst({
           where: eq(schema.users.email, email),
@@ -77,8 +78,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    signIn: async ({ account }) => {
+    signIn: async ({ account, user }) => {
       if (account && account.provider !== "credentials") {
+        if (account.provider === "google") {
+          const currentSession = await auth();
+          if (currentSession?.user?.id && currentSession.user.id !== user.id) {
+            const currentUser = await db.query.users.findFirst({
+              where: eq(schema.users.id, currentSession.user.id),
+              columns: { email: true },
+            });
+            const currentEmail = currentUser?.email?.trim().toLowerCase();
+            const providerEmail = user.email?.trim().toLowerCase();
+            if (!currentEmail || !providerEmail || currentEmail !== providerEmail) {
+              return "/settings?error=google_email_mismatch";
+            }
+          }
+        }
+
         await db
           .update(schema.accounts)
           .set({

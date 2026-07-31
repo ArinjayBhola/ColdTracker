@@ -13,10 +13,11 @@ const signUpSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
 });
+type AuthActionState = { error?: string } | null | undefined;
 
-export async function signUpAction(prevState: any, formData: FormData) {
+export async function signUpAction(_prevState: AuthActionState, formData: FormData) {
   const name = formData.get("name") as string;
-  const email = formData.get("email") as string;
+  const email = (formData.get("email") as string).trim().toLowerCase();
   const password = formData.get("password") as string;
 
   const parsed = signUpSchema.safeParse({ name, email, password });
@@ -53,11 +54,11 @@ export async function signOutAction() {
   await signOut({ redirectTo: "/signin" });
 }
 
-export async function credentialsSignIn(prevState: any, formData: FormData) {
+export async function credentialsSignIn(_prevState: AuthActionState, formData: FormData) {
     try {
         await signIn("credentials", formData);
     } catch (error) {
-        if ((error as any)?.type === "CredentialsSignin") {
+        if (error && typeof error === "object" && "type" in error && error.type === "CredentialsSignin") {
              return { error: "Invalid credentials." };
         }
         throw error;

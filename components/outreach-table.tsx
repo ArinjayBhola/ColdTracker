@@ -38,6 +38,9 @@ type OutreachItem = {
   roleTargeted: string;
   personName: string;
   personRole: string;
+  applicationSource?: string;
+  applicationStatus?: string;
+  applicationUrl?: string | null;
   status: string;
   messageSentAt: Date | string;
   followUpDueAt: Date | string;
@@ -59,6 +62,18 @@ type OutreachTableProps = {
   items: OutreachItem[];
   totalCount: number;
   currentPage: number;
+};
+
+const SOURCE_LABELS: Record<string, string> = {
+  DIRECT_EMAIL: "Direct email",
+  DIRECT_LINKEDIN: "Direct LinkedIn",
+  COMPANY_WEBSITE: "Company site",
+  INDEED: "Indeed",
+  GLASSDOOR: "Glassdoor",
+  NAUKRI: "Naukri",
+  LINKEDIN_JOB: "LinkedIn job",
+  REFERRAL: "Referral",
+  OTHER: "Other",
 };
 
 export function OutreachTable({ items, totalCount, currentPage }: OutreachTableProps) {
@@ -355,9 +370,14 @@ export function OutreachTable({ items, totalCount, currentPage }: OutreachTableP
                           <><FiLinkedin className="w-2.5 h-2.5 md:w-3 md:h-3" /> <span className="hidden md:inline">LinkedIn</span></>
                         )}
                       </span>
+                      {item.applicationSource && item.applicationSource !== "DIRECT_EMAIL" && (
+                        <span className="inline-flex w-fit items-center rounded-md border border-border px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                          {SOURCE_LABELS[item.applicationSource] || item.applicationSource}
+                        </span>
+                      )}
                     </div>
                     <div className="md:hidden text-[10px] text-muted-foreground truncate max-w-[120px]">
-                      {item.roleTargeted}
+                      {item.roleTargeted}{item.applicationStatus ? ` · ${item.applicationStatus}` : ""}
                     </div>
                   </div>
                 </td>
