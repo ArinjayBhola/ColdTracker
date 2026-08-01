@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { startups, startupEmployees, startupTracking } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { eq, and, sql, inArray, ilike, or } from "drizzle-orm";
-import { revalidatePath, unstable_cache as cache } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache as cache } from "next/cache";
 
 // Cache for 24 hours for static startup data
 const getCachedStartups = cache(
@@ -212,6 +212,18 @@ export async function getStartupByIdAction(id: string) {
   });
 
   return { ...startup, tracking };
+}
+
+export async function deleteStartupAction(startupId: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  await db.delete(startups).where(eq(startups.id, startupId));
+  revalidateTag("startups", "max");
+  revalidatePath("/startups");
+  revalidatePath(`/startups/${startupId}`);
+
+  return { success: true };
 }
 
 

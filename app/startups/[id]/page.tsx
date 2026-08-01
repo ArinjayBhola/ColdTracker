@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { OutreachToggle } from "@/components/outreach-toggle";
+import { DeleteStartupButton } from "@/components/delete-startup-button";
 
 
 export default async function StartupDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -64,6 +65,12 @@ export default async function StartupDetailPage({ params }: { params: Promise<{ 
                           </a>
                         </Button>
                       )}
+                      <DeleteStartupButton
+                        startupId={startup.id}
+                        startupName={startup.name}
+                        redirectTo="/startups"
+                        className="rounded-full h-12 w-12 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      />
                     </div>
 
                   </div>

@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import Link from "next/link";
+import { DeleteStartupButton } from "@/components/delete-startup-button";
 
 type StartupItem = {
   id: string;
@@ -32,9 +33,10 @@ export function StartupsGrid({ items }: StartupsGridProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {items.map((item) => (
-        <Link key={item.id} href={`/startups/${item.id}`} className="block group">
+        <div key={item.id} className="group">
           <Card className="h-full border-border/50 bg-card hover:bg-muted/30 hover:border-primary/20 transition-all duration-300 rounded-2xl overflow-hidden relative group-hover:shadow-xl group-hover:shadow-primary/5">
-            <CardHeader className="p-6 pb-2 flex flex-row items-start justify-between space-y-0">
+            <Link href={`/startups/${item.id}`} className="block">
+            <CardHeader className="p-6 pb-2 pr-16 flex flex-row items-start justify-between space-y-0">
               <div className="flex items-center gap-4">
                 <Avatar className="h-12 w-12 border-2 border-muted shrink-0 rounded-xl">
                   <AvatarImage src={item.logoUrl || ""} alt={item.name} className="object-cover" />
@@ -95,8 +97,14 @@ export function StartupsGrid({ items }: StartupsGridProps) {
               </div>
 
             </CardContent>
+            </Link>
+            <DeleteStartupButton
+              startupId={item.id}
+              startupName={item.name}
+              className="absolute right-4 top-4 h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            />
           </Card>
-        </Link>
+        </div>
       ))}
     </div>
   );
