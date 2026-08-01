@@ -15,7 +15,7 @@ export async function sendDailyOutreachReminder(to: string, name: string) {
             You haven't uploaded any outreach activity today. Consistency is key to landing your dream role!
           </p>
           <div style="margin-top: 30px;">
-            <a href="${process.env.NEXTAUTH_URL}/outreach/new" 
+            <a href="cold-track.arinjay.dev/outreach/new" 
                style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
               Log Today's Outreach
             </a>
