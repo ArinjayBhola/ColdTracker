@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { useAppearance } from "@/components/appearance-provider";
 import { useTheme } from "next-themes";
 import { FiSun, FiMoon } from "react-icons/fi";
-import { FONT_OPTIONS, FONT_WEIGHTS, HANDWRITING_FONTS, availableFontWeights, type FontId } from "@/lib/appearance";
-import { Select, SelectContent, SelectGroup, SelectLabel, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FONT_OPTIONS, FONT_WEIGHTS, availableFontWeights, type FontId } from "@/lib/appearance";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -53,7 +53,7 @@ export function AppearanceSettings() {
             <Label htmlFor="appearance-font">App font</Label>
             <Select value={preferences.font} onValueChange={value => updateAppearance({ font: value as FontId })}>
               <SelectTrigger id="appearance-font"><SelectValue /></SelectTrigger>
-              <SelectContent>{[false, true].map(handwriting => <SelectGroup key={String(handwriting)}><SelectLabel>{handwriting ? "Handwriting" : "Classic & modern"}</SelectLabel>{FONT_OPTIONS.filter(font => HANDWRITING_FONTS.includes(font.id) === handwriting).map(font => <SelectItem key={font.id} value={font.id}><span style={{ fontFamily: font.family }}>{font.label}</span></SelectItem>)}</SelectGroup>)}</SelectContent>
+              <SelectContent>{FONT_OPTIONS.map(font => <SelectItem key={font.id} value={font.id}><span style={{ fontFamily: font.family }}>{font.label}</span></SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="min-w-0 space-y-2">

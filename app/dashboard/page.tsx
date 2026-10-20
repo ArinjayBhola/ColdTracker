@@ -1,103 +1,15 @@
 import { Suspense } from "react";
-import { getGroupedOutreachByCompany, getStats } from "@/actions/outreach";
+import { getGroupedOutreachByCompany } from "@/actions/outreach";
 import { Sidebar } from "@/components/sidebar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FiPlus, FiSend, FiMessageCircle, FiVideo, FiAward, FiTrendingUp, FiLinkedin } from "react-icons/fi";
+import { FiPlus, FiTrendingUp } from "react-icons/fi";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
 import { ExportExcel } from "@/components/export-excel";
 import { OutreachTable } from "@/components/outreach-table";
 import { DashboardRefreshButton } from "@/components/dashboard-refresh-button";
-import { getExtensionLeadsAction } from "@/actions/extension-leads";
 import { getDashboardGoalsData } from "@/actions/goals";
 import { GoalsStreaksCard } from "@/components/goals-streaks-card";
-import { StaggerContainer, StaggerItem } from "@/components/motion-wrapper";
 
-async function DashboardStatsCards() {
-  const [stats, { totalCount: leadsCount }] = await Promise.all([
-    getStats(),
-    getExtensionLeadsAction(1, 1),
-  ]);
-
-  const statCards = [
-    {
-      title: "Total Sent",
-      value: stats.sent,
-      icon: FiSend,
-      iconColor: "text-primary",
-    },
-    {
-      title: "Replies",
-      value: stats.replies,
-      icon: FiMessageCircle,
-      iconColor: "text-violet-600 dark:text-violet-400",
-    },
-    {
-      title: "Interviews",
-      value: stats.interviews,
-      icon: FiVideo,
-      iconColor: "text-amber-600 dark:text-amber-400",
-    },
-    {
-      title: "Offers",
-      value: stats.offers,
-      icon: FiAward,
-      iconColor: "text-emerald-600 dark:text-emerald-400",
-    },
-    {
-      title: "Ext. Leads",
-      value: leadsCount,
-      icon: FiLinkedin,
-      iconColor: "text-sky-600 dark:text-sky-400",
-    },
-  ];
-
-  return (
-    <StaggerContainer className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,max(180px,calc(var(--app-text-size,16px)*11))),1fr))] gap-4 md:gap-6">
-      {statCards.map((stat) => (
-        <StaggerItem key={stat.title}>
-          <Card
-            className="h-full min-h-[154px] flex flex-col justify-between hover-lift"
-          >
-            <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 p-4 pb-2">
-              <CardTitle className="min-w-0 font-sans text-sm uppercase leading-snug tracking-wide [overflow-wrap:normal]">
-                {stat.title}
-              </CardTitle>
-
-              <div
-                className={cn(
-                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40",
-                  stat.iconColor
-                )}
-              >
-                <stat.icon className="h-[18px] w-[18px]" />
-              </div>
-            </CardHeader>
-
-            <CardContent className="px-4 pb-4 flex flex-col justify-end flex-1">
-              <div className="num-display text-4xl md:text-[2.75rem] font-semibold leading-none">
-                {stat.value}
-              </div>
-
-              {/* Reserve a text-sized row without clipping larger fonts. */}
-              <div className="min-h-[1.5em] mt-2 text-xs md:mt-3">
-                {stats.sent > 0 &&
-                  stat.title !== "Total Sent" &&
-                  stat.title !== "Ext. Leads" && (
-                    <p className="whitespace-nowrap text-xs text-muted-foreground flex items-center gap-1">
-                      <FiTrendingUp className="w-3 h-3 shrink-0 text-success" />
-                      {((stat.value / stats.sent) * 100).toFixed(1)}% of sent
-                    </p>
-                  )}
-              </div>
-            </CardContent>
-          </Card>
-        </StaggerItem>
-      ))}
-    </StaggerContainer>
-  );
-}
 
 async function DashboardGoalsSection() {
   const { daily, weekly, streak, last7Days } = await getDashboardGoalsData();
@@ -158,11 +70,6 @@ export default async function DashboardPage(
                     </Button>
                 </div>
             </div>
-
-            {/* Stats Section */}
-            <Suspense fallback={<div className="w-full h-[150px] md:h-[170px] bg-muted/50 animate-pulse rounded-xl" />}>
-              <DashboardStatsCards />
-            </Suspense>
 
             {/* Goals & Streaks */}
             <Suspense fallback={<div className="w-full h-[300px] bg-muted/50 animate-pulse rounded-xl" />}>
