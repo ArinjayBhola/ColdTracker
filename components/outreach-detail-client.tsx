@@ -36,7 +36,7 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
     staleTime: 60 * 1000,
   });
 
-  const { data: companyContacts = [], refetch: refetchContacts } = useQuery({
+  const { refetch: refetchContacts } = useQuery({
     queryKey: ["company-contacts", item?.companyName],
     queryFn: () => getCompanyContacts(item?.companyName || ""),
     initialData: initialContacts,
@@ -108,13 +108,9 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
         title: "Details updated",
         description: "The outreach information has been saved.",
       });
-      await refetchItem();
+      await Promise.all([refetchItem(), refetchContacts()]);
     } else {
-      toast({
-        title: "Error",
-        description: res.error || "Failed to update details",
-        variant: "destructive",
-      });
+      throw new Error(res.error || "Failed to update details");
     }
   };
 
@@ -174,6 +170,13 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
       <div className="grid gap-6 md:gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6 md:space-y-8">
           <OutreachDetailsCard
+            key={`${item.id}-${activeContactIndex}`}
+            companyName={item.companyName}
+            personName={activeContact.personName}
+            personRole={activeContact.personRole}
+            applicationSource={item.applicationSource}
+            applicationStatus={item.applicationStatus}
+            applicationUrl={item.applicationUrl}
             roleTargeted={item.roleTargeted}
             companyLink={item.companyLink}
             contactMethod={item.contacts?.[activeContactIndex]?.contactMethod || (item as unknown as {contactMethod?: string}).contactMethod}
@@ -240,7 +243,7 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
           />
 
           <OutreachContactsCard
-            contacts={companyContacts[0]?.contacts || item.contacts || []}
+            contacts={item.contacts || []}
             activeIndex={activeContactIndex}
             onSelect={setActiveContactIndex}
             onDelete={handleDeleteContact}

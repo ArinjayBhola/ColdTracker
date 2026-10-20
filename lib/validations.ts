@@ -109,4 +109,18 @@ export const promoteLeadSchema = z.object({
 });
 
 export type OutreachFormValues = z.infer<typeof outreachFormSchema>;
+export const outreachInlineSchema = z.object({
+  applicationSource: z.enum(APPLICATION_SOURCES).optional(),
+  applicationStatus: z.enum(APPLICATION_STATUSES).optional(),
+  applicationUrl: outreachFormSchema.shape.applicationUrl,
+  companyName: z.string().trim().min(1, "Company name is required").max(255).optional(),
+  roleTargeted: z.string().trim().min(1, "Target role is required").max(255).optional(),
+  personName: z.string().trim().max(255).optional(),
+  personRole: z.string().trim().min(1, "Contact position is required").max(255).optional(),
+  contactMethod: z.enum(CONTACT_METHODS).optional(),
+  email: CONTACT_FIELDS.emailAddress,
+  linkedin: CONTACT_FIELDS.linkedinProfileUrl,
+  companyLink: outreachFormSchema.shape.companyLink,
+  emailThreadUrl: outreachFormSchema.shape.companyLink,
+});
 export type PromoteLeadValues = z.infer<typeof promoteLeadSchema>;

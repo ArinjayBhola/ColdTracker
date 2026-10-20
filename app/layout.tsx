@@ -3,6 +3,7 @@ import { Inter, Fraunces, JetBrains_Mono } from "next/font/google";
 import ToastProvider from "@/components/toast-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppearanceProvider } from "@/components/appearance-provider";
+import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import NextTopLoader from "nextjs-toploader";
 import "./globals.css";
 
@@ -70,6 +71,7 @@ export default function RootLayout({
                 showSpinner={false}
               />
               <ToastProvider />
+              <KeyboardShortcuts />
               {children}
             </AppearanceProvider>
           </ThemeProvider>

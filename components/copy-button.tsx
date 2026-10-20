@@ -12,8 +12,9 @@ export function CopyButton({
   return (
     <button
       onClick={onClick}
-      aria-label="Copy"
-      className="relative h-6 w-6"
+      type="button"
+      aria-label={copied ? label : "Copy"}
+      className="relative h-6 w-6 shrink-0"
     >
       {/* Copy icon */}
       <FiCopy
@@ -37,7 +38,7 @@ export function CopyButton({
 
       {/* Tooltip */}
       <span
-        className={`absolute -top-7 left-1/2 -translate-x-1/2 rounded-md bg-black px-2 py-0.5 text-[10px] text-white
+        className={`pointer-events-none absolute -top-5 right-0 whitespace-nowrap rounded-md bg-black px-2 py-0.5 text-[10px] text-white
         transition-all duration-300
         ${
           copied

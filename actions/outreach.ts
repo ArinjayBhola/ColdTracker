@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { outreach, users } from "@/db/schema";
-import { outreachFormSchema, STATUSES } from "@/lib/validations";
+import { outreachFormSchema, outreachInlineSchema, STATUSES } from "@/lib/validations";
 import { auth } from "@/lib/auth";
 import { eq, desc, and, sql, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -400,6 +400,10 @@ export async function addContactToCompanyAction(outreachId: string, formData: Fo
 export async function updateOutreachInlineAction(outreachId: string, contactIndex: number, data: Record<string, string>) {
     const session = await auth();
     if (!session?.user?.id) return { error: "Unauthorized" };
+    const parsed = outreachInlineSchema.safeParse(data);
+    if (!parsed.success) return { error: parsed.error.issues[0].message };
+    const values = parsed.data;
+    if (!Number.isInteger(contactIndex) || contactIndex < 0) return { error: "Invalid contact selection" };
 
     try {
         const existing = await db.query.outreach.findFirst({
@@ -415,23 +419,32 @@ export async function updateOutreachInlineAction(outreachId: string, contactInde
         if (updatedContacts[contactIndex]) {
             updatedContacts[contactIndex] = {
                 ...updatedContacts[contactIndex],
-                contactMethod: (data.contactMethod as string) || updatedContacts[contactIndex].contactMethod,
-                emailAddress: data.email || (data.email === "" ? null : updatedContacts[contactIndex].emailAddress),
-                linkedinProfileUrl: data.linkedin || (data.linkedin === "" ? null : updatedContacts[contactIndex].linkedinProfileUrl),
-                emailThreadUrl: data.emailThreadUrl === "" ? null : (data.emailThreadUrl ?? updatedContacts[contactIndex].emailThreadUrl),
+                personName: values.personName ?? updatedContacts[contactIndex].personName,
+                personRole: values.personRole ?? updatedContacts[contactIndex].personRole,
+                contactMethod: values.contactMethod ?? updatedContacts[contactIndex].contactMethod,
+                emailAddress: data.email !== undefined ? values.email || null : updatedContacts[contactIndex].emailAddress,
+                linkedinProfileUrl: data.linkedin !== undefined ? values.linkedin || null : updatedContacts[contactIndex].linkedinProfileUrl,
+                emailThreadUrl: data.emailThreadUrl !== undefined ? values.emailThreadUrl || null : updatedContacts[contactIndex].emailThreadUrl,
             };
+        } else {
+            return { error: "Contact not found. Refresh the page and try again." };
         }
 
         await db.update(outreach)
             .set({
-                roleTargeted: data.roleTargeted || existing.roleTargeted,
-                companyLink: data.companyLink || (data.companyLink === "" ? null : existing.companyLink),
+                companyName: values.companyName ?? existing.companyName,
+                applicationSource: values.applicationSource ?? existing.applicationSource,
+                applicationStatus: values.applicationStatus ?? existing.applicationStatus,
+                applicationUrl: data.applicationUrl !== undefined ? values.applicationUrl || null : existing.applicationUrl,
+                roleTargeted: values.roleTargeted ?? existing.roleTargeted,
+                companyLink: data.companyLink !== undefined ? values.companyLink || null : existing.companyLink,
                 contacts: updatedContacts,
                 updatedAt: new Date(),
             })
-            .where(eq(outreach.id, outreachId));
+            .where(and(eq(outreach.id, outreachId), eq(outreach.userId, session.user.id)));
 
         revalidatePath("/dashboard");
+        revalidatePath("/follow-ups");
         revalidatePath(`/outreach/${outreachId}`);
         return { success: true };
     } catch (error) {

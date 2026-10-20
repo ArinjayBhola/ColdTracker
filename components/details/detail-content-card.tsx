@@ -55,8 +55,10 @@ export function DetailContentCard({
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
+  const [saveError, setSaveError] = useState("");
 
   const handleEditStart = () => {
+    setSaveError("");
     const initialValues: Record<string, string> = {};
     items.forEach(item => {
       // Use copyValue (even if empty string) or raw string as the editable source
@@ -67,12 +69,18 @@ export function DetailContentCard({
   };
 
   const handleSave = async () => {
-    if (onSave) {
-      setIsSaving(true);
-      await onSave(editValues);
+    const missing = items.find(item => item.required && !editValues[item.id]?.trim());
+    if (missing) { setSaveError(`${missing.label} is required.`); return; }
+    setSaveError("");
+    setIsSaving(true);
+    try {
+      await onSave?.(editValues);
+      setIsEditing(false);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Could not save. Please try again.");
+    } finally {
       setIsSaving(false);
     }
-    setIsEditing(false);
   };
 
   const copyToClipboard = async (value: string, label: string) => {
@@ -130,6 +138,7 @@ export function DetailContentCard({
       </CardHeader>
 
       <CardContent className="pt-3 px-4 pb-4">
+        {saveError && <p role="alert" className="mb-3 text-sm text-destructive">{saveError}</p>}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {items.map((item, index) => {
             const isHighlighted = highlightIds.includes(item.id);
@@ -205,6 +214,7 @@ export function DetailContentCard({
                     </div>
                   ) : (
                     <Input 
+                      aria-label={item.label}
                       value={editValues[item.id] || ""}
                       onChange={(e) => setEditValues({ ...editValues, [item.id]: e.target.value })}
                       className="h-8 w-full text-sm bg-muted/50 focus-visible:bg-background"

@@ -10,6 +10,7 @@ import { DeleteAccountButton } from "@/components/settings/delete-account-button
 import { DataManagement } from "@/components/settings/data-management";
 import { NotificationSettings } from "@/components/settings/notification-settings";
 import { AppearanceSettings } from "@/components/settings/appearance-settings";
+import { KeyboardShortcutSettings } from "@/components/keyboard-shortcuts";
 import { AccountConnections } from "@/components/settings/account-connections";
 import { FiSettings } from "react-icons/fi";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -103,6 +104,7 @@ export default async function SettingsPage({
             {/* Right Column: Forms & Danger Zone */}
             <div className="lg:col-span-2 space-y-8">
               <AppearanceSettings />
+              <KeyboardShortcutSettings />
 
               <AccountConnections googleConnected={Boolean(googleAccount)} />
 
