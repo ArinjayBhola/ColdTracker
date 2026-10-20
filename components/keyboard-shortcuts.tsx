@@ -4,9 +4,9 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { CircleHelp } from "lucide-react";
+import { CircleHelp, Plus, X } from "lucide-react";
 import { getKeyboardShortcuts, saveKeyboardShortcuts } from "@/actions/keyboard-shortcuts";
-import { defaultShortcutPreferences, formatBinding, keyboardStroke, shortcutActions, shortcutPreferencesSchema, type ShortcutPreferences } from "@/lib/keyboard-shortcuts";
+import { defaultShortcutPreferences, formatBinding, keyboardStroke, normalizeBinding, shortcutActions, shortcutPreferencesSchema, type ShortcutPreferences } from "@/lib/keyboard-shortcuts";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,13 +32,42 @@ function ShortcutList({ preferences }: { preferences: ShortcutPreferences }) {
   return <dl className="space-y-3">{shortcutActions.map(action => <div key={action.id} className="flex items-center justify-between gap-4 text-sm"><dt>{action.label}</dt><dd className="shrink-0 rounded-md border bg-muted px-2 py-1 font-mono text-xs">{formatBinding(preferences.bindings[action.id])}</dd></div>)}</dl>;
 }
 
+function ShortcutKeyInputs({ id, label, value, onChange }: { id: string; label: string; value: string; onChange: (value: string) => void }) {
+  const [captureError, setCaptureError] = useState("");
+  const steps = value.split(" ");
+  const hasSecond = steps.length > 1;
+  return <div className="space-y-1">
+    <div className="flex flex-wrap items-center gap-2">
+      {steps.map((step, index) => <div key={index} className="flex items-center gap-2">
+        {index > 0 && <span className="text-xs text-muted-foreground">then</span>}
+        <Input id={index === 0 ? id : `${id}-second`} className="w-32 text-center text-sm" aria-label={`${label}: ${index === 0 ? "first" : "second"} key`} aria-describedby={`${id}-hint`} readOnly autoFocus={index === 1 && !step} value={step ? formatBinding(step) : ""} placeholder="Press key" onKeyDown={event => {
+          if (event.key === "Tab") return;
+          if (event.key === "Escape") { event.currentTarget.blur(); return; }
+          event.preventDefault(); event.stopPropagation();
+          if (["Control", "Alt", "Meta", "Shift"].includes(event.key) || event.repeat || event.nativeEvent.isComposing) return;
+          const stroke = ["Backspace", "Delete"].includes(event.key) ? "" : keyboardStroke(event);
+          if (normalizeBinding(stroke) === null) { setCaptureError("Choose a letter, number, or symbol. Browser-reserved keys are unavailable."); return; }
+          setCaptureError("");
+          const updated = [...steps]; updated[index] = stroke;
+          onChange(updated.join(" "));
+        }} />
+      </div>)}
+      {hasSecond ? <Button type="button" size="icon" variant="ghost" title="Remove second key" aria-label={`Remove second key for ${label}`} onClick={() => { setCaptureError(""); onChange(steps[0]); }}><X className="h-4 w-4" /></Button> : <Button type="button" size="sm" variant="outline" disabled={!steps[0]} onClick={() => { setCaptureError(""); onChange(`${steps[0]} `); }}><Plus className="mr-1 h-3 w-3" />Add second key</Button>}
+      {value && <Button type="button" size="sm" variant="ghost" onClick={() => { setCaptureError(""); onChange(""); }}>Clear</Button>}
+    </div>
+    <p id={`${id}-hint`} className="text-xs text-muted-foreground">{captureError || (hasSecond ? "Press the first key, then the second key." : "Click the box and press a key or combination.")}</p>
+  </div>;
+}
+
 function ShortcutEditor({ initial }: { initial: ShortcutPreferences }) {
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState(initial);
   const [message, setMessage] = useState("");
   const [pending, startTransition] = useTransition();
   const validation = shortcutPreferencesSchema.safeParse(draft);
+  const incomplete = Object.values(draft.bindings).some(binding => binding.includes(" ") && binding.split(" ").some(step => !step));
   function save() {
+    if (incomplete) { setMessage("Capture both keys, or remove the empty second key."); return; }
     if (!validation.success) { setMessage(validation.error.issues[0].message); return; }
     setMessage("");
     startTransition(async () => {
@@ -60,17 +89,18 @@ function ShortcutEditor({ initial }: { initial: ShortcutPreferences }) {
   return <form className="space-y-5" onSubmit={event => { event.preventDefault(); save(); }}>
     <fieldset disabled={pending} className="space-y-5">
       <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={draft.enabled} onChange={event => setDraft({ ...draft, enabled: event.target.checked })} />Enable keyboard shortcuts</label>
-      <p id="shortcut-format" className="text-sm text-muted-foreground">Enter a key (such as x), a sequence (g t), or a combination (Ctrl+Shift+K). Leave a field blank to unassign it. Shortcuts pause while typing or using a dialog.</p>
-      <div className="space-y-3">{shortcutActions.map(action => <div key={action.id} className="grid items-center gap-2 sm:grid-cols-[1fr_200px]">
+      <p id="shortcut-format" className="text-sm text-muted-foreground">Click a key box and press your shortcut, including modifiers such as Ctrl or Shift. Use Add second key for a sequence. Clear unassigns the action.</p>
+      <div className="space-y-4">{shortcutActions.map(action => <div key={action.id} className="space-y-2 border-b border-border/40 pb-4 last:border-0">
         <Label htmlFor={`shortcut-${action.id}`}>{action.label}</Label>
-        <Input id={`shortcut-${action.id}`} aria-describedby="shortcut-format" autoComplete="off" spellCheck={false} maxLength={80} value={draft.bindings[action.id]} placeholder="Not assigned" onChange={event => { setMessage(""); setDraft({ ...draft, bindings: { ...draft.bindings, [action.id]: event.target.value } }); }} />
+        <ShortcutKeyInputs id={`shortcut-${action.id}`} label={action.label} value={draft.bindings[action.id]} onChange={value => { setMessage(""); setDraft({ ...draft, bindings: { ...draft.bindings, [action.id]: value } }); }} />
       </div>)}</div>
     </fieldset>
     {!validation.success && <p role="alert" className="text-sm text-destructive">{validation.error.issues[0].message}</p>}
+    {incomplete && <p role="alert" className="text-sm text-destructive">Capture both keys, or remove the empty second key.</p>}
     <p role="status" className="text-sm text-muted-foreground">{message}</p>
     <div className="flex flex-wrap justify-end gap-2">
       <Button type="button" variant="outline" disabled={pending} onClick={() => { setDraft({ enabled: initial.enabled, bindings: { ...defaultShortcutPreferences.bindings } }); setMessage("Default keys restored. Save to apply."); }}>Reset keys</Button>
-      <Button type="submit" disabled={pending || !validation.success}>{pending ? "Saving…" : "Save shortcuts"}</Button>
+      <Button type="submit" disabled={pending || !validation.success || incomplete}>{pending ? "Saving…" : "Save shortcuts"}</Button>
     </div>
   </form>;
 }
