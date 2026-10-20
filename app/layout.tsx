@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Fraunces, JetBrains_Mono, Roboto, Open_Sans, Lato, Montserrat, Poppins, Nunito, Source_Sans_3 } from "next/font/google";
+import { Inter, Fraunces, JetBrains_Mono, Roboto, Open_Sans, Lato, Montserrat, Poppins, Nunito, Source_Sans_3, Caveat, Kalam, Patrick_Hand, Handlee, Indie_Flower, Architects_Daughter } from "next/font/google";
 import { APPEARANCE_KEY, FONT_OPTIONS } from "@/lib/appearance";
 import ToastProvider from "@/components/toast-provider";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -20,6 +20,12 @@ const montserrat = Montserrat({ subsets: ["latin"], variable: "--font-montserrat
 const poppins = Poppins({ subsets: ["latin"], weight: ["200", "300", "400", "500", "600", "700", "800"], variable: "--font-poppins", display: "swap", preload: false });
 const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito", display: "swap", preload: false });
 const sourceSans = Source_Sans_3({ subsets: ["latin"], variable: "--font-source-sans", display: "swap", preload: false });
+const caveat = Caveat({ subsets: ["latin"], variable: "--font-caveat", display: "swap", preload: false });
+const kalam = Kalam({ subsets: ["latin"], weight: ["300", "400", "700"], variable: "--font-kalam", display: "swap", preload: false });
+const patrickHand = Patrick_Hand({ subsets: ["latin"], weight: "400", variable: "--font-patrick-hand", display: "swap", preload: false });
+const handlee = Handlee({ subsets: ["latin"], weight: "400", variable: "--font-handlee", display: "swap", preload: false });
+const indieFlower = Indie_Flower({ subsets: ["latin"], weight: "400", variable: "--font-indie-flower", display: "swap", preload: false });
+const architectsDaughter = Architects_Daughter({ subsets: ["latin"], weight: "400", variable: "--font-architects-daughter", display: "swap", preload: false });
 
 export const metadata: Metadata = {
   title: "ColdTrack | Professional Outreach CRM",
@@ -63,7 +69,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${fraunces.variable} ${jetbrainsMono.variable} ${roboto.variable} ${openSans.variable} ${lato.variable} ${montserrat.variable} ${poppins.variable} ${nunito.variable} ${sourceSans.variable}`}
+      className={`${inter.variable} ${fraunces.variable} ${jetbrainsMono.variable} ${roboto.variable} ${openSans.variable} ${lato.variable} ${montserrat.variable} ${poppins.variable} ${nunito.variable} ${sourceSans.variable} ${caveat.variable} ${kalam.variable} ${patrickHand.variable} ${handlee.variable} ${indieFlower.variable} ${architectsDaughter.variable}`}
       suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: appearanceScript }} />

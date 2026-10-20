@@ -121,7 +121,8 @@ feature, or use `npm run db:push` for schema-managed setups.
 
 ## Appearance controls
 
-Settings offers ten app-wide font families, available weights from Extra Light
+Settings offers sixteen app-wide font families, including six handwriting fonts,
+and available weights from Extra Light
 to Extra Bold, a text size slider and custom 12–24 px values, light/dark/system modes,
 reduced motion, and a live typography preview. Appearance changes apply
 immediately, persist in this browser, and can be reset to defaults.

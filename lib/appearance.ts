@@ -9,7 +9,14 @@ export const FONT_OPTIONS = [
   { id: "source-sans", label: "Source Sans 3", family: "var(--font-source-sans), sans-serif" },
   { id: "fraunces", label: "Fraunces", family: "var(--font-fraunces), Georgia, serif" },
   { id: "jetbrains", label: "JetBrains Mono", family: "var(--font-jetbrains), monospace" },
+  { id: "caveat", label: "Caveat", family: "var(--font-caveat), cursive" },
+  { id: "kalam", label: "Kalam", family: "var(--font-kalam), cursive" },
+  { id: "patrick-hand", label: "Patrick Hand", family: "var(--font-patrick-hand), cursive" },
+  { id: "handlee", label: "Handlee", family: "var(--font-handlee), cursive" },
+  { id: "indie-flower", label: "Indie Flower", family: "var(--font-indie-flower), cursive" },
+  { id: "architects-daughter", label: "Architects Daughter", family: "var(--font-architects-daughter), cursive" },
 ] as const;
+export const HANDWRITING_FONTS: readonly string[] = ["caveat", "kalam", "patrick-hand", "handlee", "indie-flower", "architects-daughter"];
 export type FontId = typeof FONT_OPTIONS[number]["id"];
 export const FONT_WEIGHTS = [
   { value: 200, label: "Extra Light" }, { value: 300, label: "Light" },
@@ -18,6 +25,9 @@ export const FONT_WEIGHTS = [
   { value: 800, label: "Extra Bold" },
 ] as const;
 export function availableFontWeights(font: FontId) {
+  if (font === "caveat") return [400, 500, 600, 700];
+  if (font === "kalam") return [300, 400, 700];
+  if (HANDWRITING_FONTS.includes(font)) return [400];
   if (font === "lato") return [300, 400, 700];
   if (font === "open-sans") return [300, 400, 500, 600, 700, 800];
   return FONT_WEIGHTS.map(weight => weight.value);
