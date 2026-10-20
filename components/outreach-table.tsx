@@ -290,7 +290,7 @@ export function OutreachTable({ items, totalCount, currentPage }: OutreachTableP
               />
             </th>
             <th className="h-12 px-4 md:px-6 text-left align-middle font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">Company</th>
-            <th className="hidden md:table-cell h-12 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Role</th>
+            <th className="hidden md:table-cell h-12 min-w-[240px] px-4 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Role</th>
             <th className="h-12 px-4 md:px-6 text-left align-middle font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground">Status</th>
             <th className="hidden lg:table-cell h-12 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Date</th>
             <th className="hidden sm:table-cell h-12 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Follow Up</th>
@@ -336,8 +336,8 @@ export function OutreachTable({ items, totalCount, currentPage }: OutreachTableP
                 </td>
                 <td className="p-3 md:p-6 align-middle">
                   <div className="flex flex-col gap-1 md:gap-2">
-                    <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
-                      <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-start md:items-center gap-1 md:gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
                         {!["REPLIED", "REJECTED", "OFFER", "CLOSED"].includes(item.status) && !item.followUpSentAt && (
                           <div className={cn(
                             "w-2.5 h-2.5 rounded-full flex-shrink-0 animate-pulse",
@@ -351,7 +351,7 @@ export function OutreachTable({ items, totalCount, currentPage }: OutreachTableP
                         {item.followUpSentAt && (
                           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0" title="Follow-up Sent" />
                         )}
-                        <span className="text-sm md:text-base font-semibold tracking-tight group-hover:text-primary transition-colors truncate max-w-[120px] md:max-w-none">{item.companyName}</span>
+                        <span title={item.companyName} className="text-sm md:text-base font-semibold tracking-tight group-hover:text-primary transition-colors truncate max-w-[120px] md:max-w-[220px]">{item.companyName}</span>
                         {item.contactCount && item.contactCount > 1 && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
                             {item.contactCount}
@@ -381,8 +381,8 @@ export function OutreachTable({ items, totalCount, currentPage }: OutreachTableP
                     </div>
                   </div>
                 </td>
-                <td className="hidden md:table-cell p-6 align-middle">
-                  <span className="font-semibold text-foreground">{item.roleTargeted}</span>
+                <td className="hidden md:table-cell min-w-[240px] px-4 py-4 align-middle">
+                  <span title={item.roleTargeted} className="line-clamp-2 min-w-[208px] max-w-[280px] break-words font-semibold leading-6 text-foreground">{item.roleTargeted}</span>
                 </td>
                 <td className="p-3 md:p-6 align-middle">
                   <div className="scale-90 md:scale-100 origin-left">
