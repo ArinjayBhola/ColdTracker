@@ -94,3 +94,17 @@ The ColdTrack Lead Capture extension allows you to save LinkedIn profiles direct
 - `db/`: Database schema definitions (Drizzle) and connection setup.
 - `hooks/`: Custom React hooks.
 - `lib/`: Utility functions and shared library configurations.
+
+## Message templates
+
+Open `/templates` from the sidebar to create a private message library. Templates
+support an optional email subject, custom categories and tags with searchable
+create-or-select dropdowns, separate favorites and pins, search and filters,
+duplication, and copying the message or subject. Switch between grid and
+single-column views and sort by creation date in either direction; pinned
+templates stay at the top.
+Optional character limits show live warnings for the message body; over-limit
+drafts can still be saved. The library starts empty with no fixed template types.
+
+For an existing database, run `npm run db:migrate:templates` to apply only the
+additive templates migration. New schema setups can also use `npm run db:push`.

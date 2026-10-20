@@ -139,6 +139,24 @@ export const outreach = pgTable("outreach", {
   userIdStatusCreatedAtIdx: index("outreach_user_id_status_created_at_idx").on(table.userId, table.status, table.createdAt),
 }));
 
+// --- Personal message templates ---
+export const messageTemplates = pgTable("message_templates", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 200 }).notNull(),
+  subject: varchar("subject", { length: 500 }).notNull().default(""),
+  body: text("body").notNull(),
+  category: varchar("category", { length: 80 }).notNull().default(""),
+  tags: jsonb("tags").$type<string[]>().notNull().default([]),
+  characterLimit: integer("character_limit"),
+  favorite: boolean("favorite").notNull().default(false),
+  pinned: boolean("pinned").notNull().default(false),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("message_templates_user_id_idx").on(table.userId),
+}));
+
 // --- Extension Schema ---
 export const extensionLeads = pgTable("extension_leads", {
   id: uuid("id").defaultRandom().primaryKey(),
