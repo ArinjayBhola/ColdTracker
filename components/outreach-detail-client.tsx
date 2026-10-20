@@ -174,15 +174,11 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
             companyName={item.companyName}
             personName={activeContact.personName}
             personRole={activeContact.personRole}
-            applicationSource={item.applicationSource}
-            applicationStatus={item.applicationStatus}
-            applicationUrl={item.applicationUrl}
             roleTargeted={item.roleTargeted}
             companyLink={item.companyLink}
             contactMethod={item.contacts?.[activeContactIndex]?.contactMethod || (item as unknown as {contactMethod?: string}).contactMethod}
             emailAddress={item.contacts?.[activeContactIndex]?.emailAddress || (item as unknown as {emailAddress?: string}).emailAddress}
             linkedinProfileUrl={item.contacts?.[activeContactIndex]?.linkedinProfileUrl || (item as unknown as {linkedinProfileUrl?: string}).linkedinProfileUrl}
-            emailThreadUrl={item.contacts?.[activeContactIndex]?.emailThreadUrl}
             editable={true}
             onSave={handleSaveDetails}
           />

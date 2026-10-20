@@ -2,7 +2,8 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FiUsers, FiMail, FiTrash2, FiLink, FiAlertTriangle } from "react-icons/fi";
+import { FiUsers, FiUser, FiMail, FiLinkedin, FiTrash2, FiLink, FiAlertTriangle } from "react-icons/fi";
+import { contactDisplayName } from "@/lib/contact-display";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import {
@@ -58,6 +59,8 @@ export function OutreachContactsCard({ contacts, activeIndex, onSelect, onDelete
         <CardContent className="space-y-3 px-4 pb-6">
           {contacts.map((contact, idx) => {
             const isActive = idx === activeIndex;
+            const name = contact.personName?.trim();
+            const displayName = contactDisplayName(contact);
             return (
               <div 
                 key={idx} 
@@ -75,40 +78,33 @@ export function OutreachContactsCard({ contacts, activeIndex, onSelect, onDelete
                     ? "bg-[#A65E32] text-white" 
                     : "bg-[#E6D5C3] text-[#8B5A2B]"
                 )}>
-                  {contact.personName.charAt(0).toUpperCase()}
+                  {name ? Array.from(name)[0].toUpperCase() : <FiUser className="h-5 w-5" aria-label="Unnamed contact" />}
                 </div>
                 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1 mb-0.5">
-                    <p className="font-extrabold truncate text-base text-[#3D2B1F]">
-                      {contact.personName}
+                    <p className="font-extrabold truncate text-base text-[#3D2B1F]" title={displayName}>
+                      {displayName}
                     </p>
-                    {isActive && (
-                      <div className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tighter bg-[#E6D5C3] text-[#A65E32] border border-[#A65E32]/20">
-                        ACTIVE
-                      </div>
-                    )}
+                    {isActive && <span className="shrink-0 rounded-md border border-[#A65E32]/20 bg-[#E6D5C3] px-2 py-0.5 text-[9px] font-black uppercase text-[#A65E32]">Active</span>}
                   </div>
                   
                   <div className="flex items-center gap-1.5 text-xs text-[#8B572A]/70 font-bold">
-                    <span className="truncate">{contact.personRole}</span>
+                    <span className="truncate">{contact.personRole?.trim() || "Position not added"}</span>
                     <span className="text-[#8B572A]/30">•</span>
-                    <div className="flex items-center gap-1 text-[10px] uppercase font-black tracking-wider text-[#A65E32]/80">
-                      <FiMail className="w-2.5 h-2.5" />
+                    <div className="flex shrink-0 items-center gap-1 text-[10px] uppercase font-black tracking-wider text-[#A65E32]/80">
+                      {contact.contactMethod === "LINKEDIN" ? <FiLinkedin className="w-2.5 h-2.5" /> : <FiMail className="w-2.5 h-2.5" />}
                       {contact.contactMethod}
                     </div>
                   </div>
                 </div>
-
-                <div className={cn(
-                  "flex items-center gap-1 transition-opacity pr-1",
-                  isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                )}>
+                <div className="flex shrink-0 items-center gap-1">
                   {contacts.length > 1 && (
                     <Button 
                       variant="ghost" 
                       size="icon" 
                       onClick={(e) => handleDelete(e, idx)}
+                      aria-label={`Delete ${displayName}`}
                       className="h-8 w-8 rounded-full hover:bg-red-50 hover:text-red-500"
                     >
                       <FiTrash2 className="w-3.5 h-3.5" />
@@ -135,8 +131,8 @@ export function OutreachContactsCard({ contacts, activeIndex, onSelect, onDelete
             </div>
             <AlertDialogDescription className="text-base text-muted-foreground">
               Are you sure you want to remove <span className="font-bold text-foreground">
-                {deleteIdx !== null ? contacts[deleteIdx]?.personName : "this contact"}
-              </span>? This will only remove them from this company's list.
+                {deleteIdx !== null && contacts[deleteIdx] ? contactDisplayName(contacts[deleteIdx]) : "this contact"}
+              </span>? This will only remove them from this company&apos;s list.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

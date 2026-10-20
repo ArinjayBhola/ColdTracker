@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { OutreachActions } from "@/components/outreach-actions";
 import { DeleteArchiveActions } from "@/components/delete-archive-actions";
 import { DetailHeader } from "@/components/details/detail-header";
+import { contactDisplayName } from "@/lib/contact-display";
 
 interface OutreachHeaderProps {
   id: string;
@@ -34,7 +35,7 @@ export function OutreachHeader({
 }: OutreachHeaderProps) {
   const activeContact = contacts[activeContactIndex] || contacts[0] || {};
   const contactMethod = activeContact.contactMethod || "EMAIL";
-  const personName = activeContact.personName || "No Contact";
+  const personName = contactDisplayName(activeContact);
   const personRole = activeContact.personRole || "N/A";
 
   return (

@@ -6,21 +6,16 @@ import {
   FiUser,
 } from "react-icons/fi";
 import { DetailContentCard, DetailItem } from "@/components/details/detail-content-card";
-import { APPLICATION_SOURCES, APPLICATION_STATUSES } from "@/lib/validations";
 
 interface OutreachDetailsCardProps {
   companyName: string;
   personName?: string;
   personRole?: string;
-  applicationSource: string;
-  applicationStatus: string;
-  applicationUrl?: string | null;
   roleTargeted: string;
   companyLink?: string | null;
   contactMethod?: string | null;
   emailAddress?: string | null;
   linkedinProfileUrl?: string | null;
-  emailThreadUrl?: string | null;
   editable?: boolean;
   onSave?: (data: Record<string, string>) => Promise<void>;
 }
@@ -29,15 +24,11 @@ export function OutreachDetailsCard({
   companyName,
   personName,
   personRole,
-  applicationSource,
-  applicationStatus,
-  applicationUrl,
   roleTargeted,
   companyLink,
   contactMethod,
   emailAddress,
   linkedinProfileUrl,
-  emailThreadUrl,
   editable,
   onSave,
 }: OutreachDetailsCardProps) {
@@ -48,9 +39,6 @@ export function OutreachDetailsCard({
     ? `https://mail.google.com/mail/#search/${encodeURIComponent(emailAddress)}`
     : null;
   const detailItems: DetailItem[] = [
-    { id: "applicationSource", label: "Application source", value: applicationSource, copyValue: applicationSource, inputType: "select", options: APPLICATION_SOURCES.map(value => ({ value, label: value.replaceAll("_", " ") })) },
-    { id: "applicationStatus", label: "Application status", value: applicationStatus, copyValue: applicationStatus, inputType: "select", options: APPLICATION_STATUSES.map(value => ({ value, label: value })) },
-    { id: "applicationUrl", label: "Application link", value: applicationUrl ? "Open application" : "", copyValue: applicationUrl || "", inputType: "text", isLink: !!applicationUrl, href: applicationUrl || undefined },
     { id: "companyName", label: "Company name", value: companyName, copyValue: companyName, inputType: "text", required: true, icon: <FiBriefcase className="h-3.5 w-3.5" /> },
     { id: "personName", label: "Contact name", value: personName || "", copyValue: personName || "", inputType: "text", icon: <FiUser className="h-3.5 w-3.5" /> },
     { id: "personRole", label: "Contact position", value: personRole || "", copyValue: personRole || "", inputType: "text", required: true, icon: <FiBriefcase className="h-3.5 w-3.5" /> },
@@ -104,18 +92,6 @@ export function OutreachDetailsCard({
       copyValue: linkedinProfileUrl || "",
       inputType: "text",
     },
-    {
-      id: "emailThreadUrl",
-      label: "Email Thread",
-      // Empty value (not "-") so the edit input prefills blank, not a dash.
-      value: emailThreadUrl ? "Open saved thread" : "",
-      icon: <FiExternalLink className="w-3.5 h-3.5" />,
-      isLink: !!emailThreadUrl,
-      href: emailThreadUrl || undefined,
-      copyValue: emailThreadUrl || "",
-      inputType: "text",
-      fullWidth: true,
-    },
   ];
 
   const gmailAction = gmailSearchUrl ? (
@@ -130,5 +106,11 @@ export function OutreachDetailsCard({
     </a>
   ) : undefined;
 
-  return <DetailContentCard items={detailItems} editable={editable} onSave={onSave} action={gmailAction} />;
+  const fieldOrder = ["companyName", "roleTargeted", "companyLink", "personName", "personRole", "contactMethod", "email", "linkedin"];
+  const orderedItems = fieldOrder.flatMap(id => {
+    const item = detailItems.find(item => item.id === id);
+    return item ? [{ ...item, fullWidth: id === "companyLink" }] : [];
+  });
+
+  return <DetailContentCard items={orderedItems} editable={editable} onSave={onSave} action={gmailAction} />;
 }
