@@ -119,3 +119,10 @@ Shortcuts pause while typing and while dialogs are open.
 
 Run `npm run db:migrate:shortcuts` on existing databases before deploying this
 feature, or use `npm run db:push` for schema-managed setups.
+
+## Appearance controls
+
+Settings offers ten font families, independent body and heading fonts, a base
+text size slider and custom 12–24 px values, density, light/dark/system modes,
+reduced motion, and a live typography preview. Appearance changes apply
+immediately, persist in this browser, and can be reset to defaults.

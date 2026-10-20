@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useSyncExternalStore } from "react";
+import { APPEARANCE_KEY, DEFAULT_APPEARANCE, applyAppearance, parseAppearance, type AppearancePreferences } from "@/lib/appearance";
 
 type Theme = "default" | "blue" | "purple" | "green" | "orange" | "rose" | "teal";
 type Density = "comfortable" | "compact";
@@ -10,6 +11,9 @@ type AppearanceContextType = {
   density: Density;
   setColorTheme: (theme: Theme) => void;
   setDensity: (density: Density) => void;
+  preferences: AppearancePreferences;
+  updateAppearance: (value: Partial<AppearancePreferences>) => void;
+  resetAppearance: () => void;
 };
 
 const AppearanceContext = createContext<AppearanceContextType>({
@@ -17,6 +21,9 @@ const AppearanceContext = createContext<AppearanceContextType>({
   density: "comfortable",
   setColorTheme: () => {},
   setDensity: () => {},
+  preferences: DEFAULT_APPEARANCE,
+  updateAppearance: () => {},
+  resetAppearance: () => {},
 });
 
 export function useAppearance() {
@@ -24,65 +31,36 @@ export function useAppearance() {
 }
 
 export function AppearanceProvider({ children }: { children: React.ReactNode }) {
-  const [colorTheme, setColorThemeState] = useState<Theme>("default");
-  const [density, setDensityState] = useState<Density>("comfortable");
-  const [mounted, setMounted] = useState(false);
+  const raw = useSyncExternalStore(subscribe, snapshot, () => null);
+  const preferences = parseAppearance(raw);
+  useEffect(() => { applyAppearance(parseAppearance(raw)); }, [raw]);
 
-  useEffect(() => {
-    // Read from localStorage on mount
-    const savedTheme = localStorage.getItem("color-theme") as Theme | null;
-    const savedDensity = localStorage.getItem("density") as Density | null;
-
-    if (savedTheme) {
-      setColorThemeState(savedTheme);
-      applyTheme(savedTheme);
-    }
-    if (savedDensity) {
-      setDensityState(savedDensity);
-      applyDensity(savedDensity);
-    }
-    setMounted(true);
-  }, []);
-
-  const applyTheme = (theme: Theme) => {
-    const html = document.documentElement;
-    if (theme === "default") {
-      html.removeAttribute("data-theme");
-    } else {
-      html.setAttribute("data-theme", theme);
-    }
+  const updateAppearance = (value: Partial<AppearancePreferences>) => {
+    const next = parseAppearance(JSON.stringify({ ...parseAppearance(snapshot()), ...value }));
+    try {
+      localStorage.setItem(APPEARANCE_KEY, JSON.stringify(next));
+      localStorage.setItem("density", next.density);
+      localStorage.setItem("color-theme", next.colorTheme);
+    } catch { /* Changes can still apply for this page when storage is unavailable. */ }
+    applyAppearance(next);
+    window.dispatchEvent(new Event("coldtrack-appearance-changed"));
   };
-
-  const applyDensity = (d: Density) => {
-    const html = document.documentElement;
-    if (d === "comfortable") {
-      html.removeAttribute("data-density");
-    } else {
-      html.setAttribute("data-density", d);
-    }
-  };
-
-  const setColorTheme = (theme: Theme) => {
-    setColorThemeState(theme);
-    localStorage.setItem("color-theme", theme);
-    applyTheme(theme);
-  };
-
-  const setDensity = (d: Density) => {
-    setDensityState(d);
-    localStorage.setItem("density", d);
-    applyDensity(d);
-  };
-
-  // Prevent flash by not rendering children until mounted
-  // (the inline script in layout handles the initial state)
-  if (!mounted) {
-    return <>{children}</>;
-  }
 
   return (
-    <AppearanceContext.Provider value={{ colorTheme, density, setColorTheme, setDensity }}>
+    <AppearanceContext.Provider value={{ colorTheme: preferences.colorTheme, density: preferences.density, setColorTheme: colorTheme => updateAppearance({ colorTheme }), setDensity: density => updateAppearance({ density }), preferences, updateAppearance, resetAppearance: () => updateAppearance(DEFAULT_APPEARANCE) }}>
       {children}
     </AppearanceContext.Provider>
   );
+}
+
+function subscribe(callback: () => void) {
+  window.addEventListener("storage", callback);
+  window.addEventListener("coldtrack-appearance-changed", callback);
+  return () => { window.removeEventListener("storage", callback); window.removeEventListener("coldtrack-appearance-changed", callback); };
+}
+
+function snapshot() {
+  try {
+    return localStorage.getItem(APPEARANCE_KEY) || JSON.stringify({ ...DEFAULT_APPEARANCE, density: localStorage.getItem("density") || "comfortable", colorTheme: localStorage.getItem("color-theme") || "default", fontSize: localStorage.getItem("density") === "compact" ? 14 : 16 });
+  } catch { return null; }
 }

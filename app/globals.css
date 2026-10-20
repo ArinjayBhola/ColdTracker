@@ -37,8 +37,8 @@
   --color-warning: var(--warning);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
-  --font-sans: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-serif: var(--font-fraunces), 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+  --font-sans: var(--app-body-font, var(--font-inter)), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-serif: var(--app-heading-font, var(--font-fraunces)), 'Iowan Old Style', Georgia, 'Times New Roman', serif;
   --font-mono: var(--font-jetbrains), "SFMono-Regular", Consolas, monospace;
 }
 
@@ -300,4 +300,18 @@
 
 [data-density="compact"] {
   font-size: 14px;
+}
+
+[data-density="compact"] :where(td, th) {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+html[data-reduced-motion="true"] *,
+html[data-reduced-motion="true"] *::before,
+html[data-reduced-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }
