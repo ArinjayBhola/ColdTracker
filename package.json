@@ -11,7 +11,8 @@
     "db:studio": "drizzle-kit studio",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:migrate:templates": "node scripts/migrate-templates.mjs"
+    "db:migrate:templates": "node scripts/migrate-templates.mjs",
+    "db:migrate:shortcuts": "node scripts/migrate-shortcuts.mjs"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",

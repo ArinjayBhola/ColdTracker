@@ -108,3 +108,14 @@ drafts can still be saved. The library starts empty with no fixed template types
 
 For an existing database, run `npm run db:migrate:templates` to apply only the
 additive templates migration. New schema setups can also use `npm run db:push`.
+
+## Keyboard shortcuts
+
+Settings lets each user change, unassign, reset, or disable keyboard shortcuts.
+Bindings support individual keys, two-key sequences, and modifier combinations
+such as `Ctrl+Shift+K`. Conflicting shortcuts are rejected. Saved bindings are
+stored per account and drive both navigation and the top-right help button.
+Shortcuts pause while typing and while dialogs are open.
+
+Run `npm run db:migrate:shortcuts` on existing databases before deploying this
+feature, or use `npm run db:push` for schema-managed setups.

@@ -36,6 +36,13 @@
       "when": 1792454400001,
       "tag": "0007_template_pins",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792454400002,
+      "tag": "0008_keyboard_shortcuts",
+      "breakpoints": true
     }
   ]
 }

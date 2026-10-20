@@ -49,6 +49,7 @@ export const users = pgTable("user", {
   password: text("password"), // For Credentials provider
   notificationEmail: text("notification_email"),
   receiveNotifications: boolean("receive_notifications").default(true),
+  keyboardShortcuts: jsonb("keyboard_shortcuts").$type<import("@/lib/keyboard-shortcuts").ShortcutPreferences>(),
 });
 
 export const accounts = pgTable(
