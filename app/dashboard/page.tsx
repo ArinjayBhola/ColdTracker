@@ -54,20 +54,20 @@ async function DashboardStatsCards() {
   ];
 
   return (
-    <StaggerContainer className="grid gap-4 md:gap-6 grid-cols-2 lg:grid-cols-5">
+    <StaggerContainer className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,max(180px,calc(var(--app-text-size,16px)*11))),1fr))] gap-4 md:gap-6">
       {statCards.map((stat) => (
         <StaggerItem key={stat.title}>
           <Card
-            className="h-[142px] md:h-[154px] flex flex-col justify-between hover-lift"
+            className="h-full min-h-[154px] flex flex-col justify-between hover-lift"
           >
-            <CardHeader className="flex flex-row items-center justify-between p-4 pb-2">
-              <CardTitle className="eyebrow font-sans">
+            <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 p-4 pb-2">
+              <CardTitle className="min-w-0 font-sans text-sm uppercase leading-snug tracking-wide [overflow-wrap:normal]">
                 {stat.title}
               </CardTitle>
 
               <div
                 className={cn(
-                  "hidden md:flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-muted/40",
+                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40",
                   stat.iconColor
                 )}
               >
@@ -80,13 +80,13 @@ async function DashboardStatsCards() {
                 {stat.value}
               </div>
 
-              {/* Always reserve space for percentage row */}
-              <div className="h-5 mt-2 md:mt-3">
+              {/* Reserve a text-sized row without clipping larger fonts. */}
+              <div className="min-h-[1.5em] mt-2 text-xs md:mt-3">
                 {stats.sent > 0 &&
                   stat.title !== "Total Sent" &&
                   stat.title !== "Ext. Leads" && (
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <FiTrendingUp className="w-3 h-3 text-success" />
+                    <p className="whitespace-nowrap text-xs text-muted-foreground flex items-center gap-1">
+                      <FiTrendingUp className="w-3 h-3 shrink-0 text-success" />
                       {((stat.value / stats.sent) * 100).toFixed(1)}% of sent
                     </p>
                   )}

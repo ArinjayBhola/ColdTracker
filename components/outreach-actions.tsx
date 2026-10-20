@@ -52,10 +52,10 @@ export function OutreachActions({ id, currentStatus }: { id: string; currentStat
     };
 
     return (
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
             <Select value={currentStatus} onValueChange={handleStatusChange} disabled={isPending}>
                 <SelectTrigger className={cn(
-                    "h-9 min-w-[140px] px-3 py-2 rounded-lg border-2 border-border bg-background",
+                    "h-auto min-h-9 w-auto min-w-[10em] shrink-0 px-3 py-2 rounded-lg border-2 border-border bg-background",
                     "text-sm font-semibold",
                     STATUS_OPTIONS.find(opt => opt.value === currentStatus)?.color
                 )}>

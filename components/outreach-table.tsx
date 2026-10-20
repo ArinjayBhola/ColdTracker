@@ -409,7 +409,7 @@ export function OutreachTable({ items, totalCount, currentPage }: OutreachTableP
                   )}
                 </td>
                 <td className="p-3 md:p-6 align-middle text-right">
-                  <div className="flex items-center justify-end gap-1 md:gap-2">
+                  <div className="flex w-max items-center justify-end gap-1 md:gap-2">
                      <div className="hidden md:block">
                           <OutreachActions id={item.id} currentStatus={item.status} />
                      </div>
