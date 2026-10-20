@@ -15,9 +15,9 @@ const fraunces = Fraunces({ subsets: ["latin"], variable: "--font-fraunces", dis
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains", display: "swap" });
 const roboto = Roboto({ subsets: ["latin"], variable: "--font-roboto", display: "swap", preload: false });
 const openSans = Open_Sans({ subsets: ["latin"], variable: "--font-open-sans", display: "swap", preload: false });
-const lato = Lato({ subsets: ["latin"], weight: ["400", "700", "900"], variable: "--font-lato", display: "swap", preload: false });
+const lato = Lato({ subsets: ["latin"], weight: ["300", "400", "700"], variable: "--font-lato", display: "swap", preload: false });
 const montserrat = Montserrat({ subsets: ["latin"], variable: "--font-montserrat", display: "swap", preload: false });
-const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-poppins", display: "swap", preload: false });
+const poppins = Poppins({ subsets: ["latin"], weight: ["200", "300", "400", "500", "600", "700", "800"], variable: "--font-poppins", display: "swap", preload: false });
 const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito", display: "swap", preload: false });
 const sourceSans = Source_Sans_3({ subsets: ["latin"], variable: "--font-source-sans", display: "swap", preload: false });
 
@@ -38,21 +38,18 @@ export const viewport: Viewport = {
 
 import { Providers } from "@/components/providers";
 
-// Anti-FOUC script to apply density from localStorage before hydration
+// Apply saved typography before hydration.
 const appearanceScript = `
 (function() {
   try {
-    var d = localStorage.getItem('density');
-    if (d && d !== 'comfortable') document.documentElement.setAttribute('data-density', d);
     var p = JSON.parse(localStorage.getItem('${APPEARANCE_KEY}') || '{}');
     var fonts = ${JSON.stringify(FONT_OPTIONS)};
-    var body = fonts.find(function(f) { return f.id === p.bodyFont; });
-    var heading = fonts.find(function(f) { return f.id === p.headingFont; });
+    var font = fonts.find(function(f) { return f.id === (p.font || p.bodyFont); });
     var html = document.documentElement;
-    if (body) html.style.setProperty('--app-body-font', body.family);
-    if (heading) html.style.setProperty('--app-heading-font', heading.family);
-    if (typeof p.fontSize === 'number' && p.fontSize >= 12 && p.fontSize <= 24) html.style.fontSize = p.fontSize + 'px';
-    if (p.density === 'compact' || p.density === 'comfortable') html.dataset.density = p.density;
+    if (font) html.style.setProperty('--app-font', font.family);
+    if ([200,300,400,500,600,700,800].includes(p.fontWeight)) html.style.setProperty('--app-font-weight', p.fontWeight);
+    html.style.removeProperty('font-size');
+    if (typeof p.fontSize === 'number' && p.fontSize >= 12 && p.fontSize <= 24) html.style.setProperty('--app-text-size', p.fontSize + 'px');
     if (p.reducedMotion === true) html.dataset.reducedMotion = 'true';
   } catch(e) {}
 })();

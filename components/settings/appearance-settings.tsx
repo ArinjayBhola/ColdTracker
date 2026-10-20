@@ -5,18 +5,13 @@ import { Button } from "@/components/ui/button";
 import { useAppearance } from "@/components/appearance-provider";
 import { useTheme } from "next-themes";
 import { FiSun, FiMoon } from "react-icons/fi";
-import { FONT_OPTIONS, type FontId } from "@/lib/appearance";
+import { FONT_OPTIONS, FONT_WEIGHTS, availableFontWeights, type FontId } from "@/lib/appearance";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-const DENSITY_OPTIONS = [
-  { id: "comfortable" as const, label: "Comfortable" },
-  { id: "compact" as const, label: "Compact" },
-];
-
 export function AppearanceSettings() {
-  const { density, setDensity, preferences, updateAppearance, resetAppearance } = useAppearance();
+  const { preferences, updateAppearance, resetAppearance } = useAppearance();
   const { theme, setTheme } = useTheme();
 
   return (
@@ -28,31 +23,12 @@ export function AppearanceSettings() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Density */}
-        <div className="space-y-3">
-          <label className="text-sm font-semibold text-foreground">
-            Density
-          </label>
-          <div className="flex gap-2">
-            {DENSITY_OPTIONS.map((d) => (
-              <Button
-                key={d.id}
-                variant={density === d.id ? "default" : "outline"}
-                size="sm"
-                onClick={() => setDensity(d.id)}
-              >
-                {d.label}
-              </Button>
-            ))}
-          </div>
-        </div>
-
         {/* Dark Mode */}
         <div className="space-y-3">
           <label className="text-sm font-semibold text-foreground">
             Mode
           </label>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant={theme === "system" ? "default" : "outline"} size="sm" onClick={() => setTheme("system")}>System</Button>
             <Button
               variant={theme === "light" ? "default" : "outline"}
@@ -72,14 +48,22 @@ export function AppearanceSettings() {
             </Button>
           </div>
         </div>
-        <div className="grid gap-5 sm:grid-cols-2">
-          {([{ key: "bodyFont", label: "Body font" }, { key: "headingFont", label: "Heading font" }] as const).map(({ key, label }) => <div key={key} className="space-y-2">
-            <Label htmlFor={`appearance-${key}`}>{label}</Label>
-            <Select value={preferences[key]} onValueChange={value => updateAppearance({ [key]: value as FontId })}>
-              <SelectTrigger id={`appearance-${key}`}><SelectValue /></SelectTrigger>
+        <div className="grid min-w-0 gap-5">
+          <div className="min-w-0 space-y-2">
+            <Label htmlFor="appearance-font">App font</Label>
+            <Select value={preferences.font} onValueChange={value => updateAppearance({ font: value as FontId })}>
+              <SelectTrigger id="appearance-font"><SelectValue /></SelectTrigger>
               <SelectContent>{FONT_OPTIONS.map(font => <SelectItem key={font.id} value={font.id}><span style={{ fontFamily: font.family }}>{font.label}</span></SelectItem>)}</SelectContent>
             </Select>
-          </div>)}
+          </div>
+          <div className="min-w-0 space-y-2">
+            <Label htmlFor="appearance-weight">Font weight</Label>
+            <Select value={String(preferences.fontWeight)} onValueChange={value => updateAppearance({ fontWeight: Number(value) })}>
+              <SelectTrigger id="appearance-weight"><SelectValue /></SelectTrigger>
+              <SelectContent>{FONT_WEIGHTS.map(weight => <SelectItem key={weight.value} value={String(weight.value)} disabled={!availableFontWeights(preferences.font).includes(weight.value)}>{weight.label}</SelectItem>)}</SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">One font and weight for the whole app. Unavailable weights are disabled for the selected font.</p>
+          </div>
         </div>
         <div className="space-y-3">
           <Label htmlFor="appearance-font-size">Base text size</Label>
@@ -92,14 +76,14 @@ export function AppearanceSettings() {
             }} onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); event.currentTarget.blur(); } }} />
             <span className="text-sm text-muted-foreground">px</span>
           </div>
-          <p className="text-xs text-muted-foreground">Choose any size from 12–24 px. Type a custom value and press Enter or leave the field to apply it.</p>
+          <p className="text-xs text-muted-foreground">Choose any size from 12–24 px. Text wraps and controls adapt without widening the sidebar or page. Press Enter or leave the field to apply a custom value.</p>
           <div className="flex flex-wrap gap-2">{[14, 16, 18, 20].map(size => <Button key={size} size="sm" variant={preferences.fontSize === size ? "default" : "outline"} onClick={() => updateAppearance({ fontSize: size })}>{size} px</Button>)}</div>
         </div>
         <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={preferences.reducedMotion} onChange={event => updateAppearance({ reducedMotion: event.target.checked })} />Reduce animations and transitions</label>
         <div className="space-y-2 rounded-xl border bg-muted/20 p-4" aria-label="Typography preview">
           <h3 className="font-display text-xl">Make ColdTrack feel like yours</h3>
           <p className="text-base">Preview your fonts and text size. Your outreach, notes, and templates stay easy to read.</p>
-          <p className="text-sm text-muted-foreground">Body: {FONT_OPTIONS.find(font => font.id === preferences.bodyFont)?.label} · Headings: {FONT_OPTIONS.find(font => font.id === preferences.headingFont)?.label} · {preferences.fontSize} px</p>
+          <p className="text-sm text-muted-foreground">{FONT_OPTIONS.find(font => font.id === preferences.font)?.label} · {FONT_WEIGHTS.find(weight => weight.value === preferences.fontWeight)?.label} · {preferences.fontSize} px</p>
         </div>
         <Button variant="outline" onClick={() => { resetAppearance(); setTheme("light"); }}>Reset appearance</Button>
       </CardContent>

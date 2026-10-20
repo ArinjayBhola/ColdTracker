@@ -23,7 +23,6 @@ const links = [
 export function Sidebar() {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   // Load state from localStorage on mount
@@ -31,9 +30,8 @@ export function Sidebar() {
     const saved = localStorage.getItem("sidebar-collapsed");
     if (saved !== null && window.innerWidth > 768) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIsCollapsed(JSON.parse(saved));
+      setIsCollapsed(saved === "true");
     }
-    setMounted(true);
   }, []);
 
   // Close mobile sidebar on route change
@@ -48,14 +46,6 @@ export function Sidebar() {
     setIsCollapsed(newState);
     localStorage.setItem("sidebar-collapsed", JSON.stringify(newState));
   };
-
-  if (!mounted) {
-    return (
-        <div className={cn(
-            "hidden md:flex h-screen flex-col border-r bg-sidebar py-5 transition-all duration-300 ease-in-out relative w-72 px-4 opacity-0"
-        )} />
-    );
-  }
 
   return (
     <>
@@ -76,10 +66,10 @@ export function Sidebar() {
       )}
 
       <div className={cn(
-        "fixed inset-y-0 left-0 z-[36] md:relative flex h-screen flex-col border-r border-border bg-sidebar py-6 transition-all duration-300 ease-in-out",
-        isCollapsed ? "w-20 px-3" : "w-72 px-4",
+        "fixed inset-y-0 left-0 z-[36] md:relative flex h-screen shrink-0 flex-col border-r border-border bg-sidebar py-6 transition-colors duration-300",
+        isCollapsed && !isMobileOpen ? "w-20 px-3" : "w-max max-w-[calc(100vw-2rem)] px-4",
         isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-      )}>
+      )} style={isCollapsed && !isMobileOpen ? undefined : { minWidth: "calc(168px + var(--app-text-size, 16px) * 4)" }}>
         {/* Collapse Toggle Button (Desktop) */}
         <button
           onClick={toggleSidebar}
@@ -90,11 +80,11 @@ export function Sidebar() {
 
         {/* Logo & Theme Toggle */}
         <div className={cn(
-          "mb-8 flex items-center justify-between pb-6 px-1.5",
+          "mb-8 flex w-0 min-w-full shrink-0 items-center justify-between gap-3 pb-6 px-1.5",
           isCollapsed && "flex-col gap-4"
         )}>
-          <div className="flex items-center gap-2.5 group cursor-pointer">
-            <Link href="/dashboard" className="relative h-10 w-10 flex items-center justify-center shrink-0 rounded-xl border border-border bg-card shadow-soft">
+          <div className="flex min-w-0 items-center gap-2.5 group cursor-pointer">
+            <Link href="/dashboard" className="relative h-8 w-8 flex items-center justify-center shrink-0 rounded-xl border border-border bg-card shadow-soft">
               <Image
                 src="/logo.png"
                 alt="ColdTrack Logo"
@@ -104,13 +94,13 @@ export function Sidebar() {
               />
             </Link>
             {(!isCollapsed || isMobileOpen) && (
-              <div>
+              <div className="min-w-0">
                 <Link href="/dashboard">
-                  <h1 className="font-display text-lg font-semibold text-foreground leading-none mb-1 tracking-tight">
+                  <h1 className="truncate font-display text-lg font-semibold text-foreground leading-none mb-1 tracking-tight">
                     ColdTrack
                   </h1>
                 </Link>
-                <p className="eyebrow">Outreach CRM</p>
+                <p className="eyebrow truncate">Outreach CRM</p>
               </div>
             )}
           </div>
@@ -118,7 +108,7 @@ export function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-0.5">
+        <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto">
           {links.map((link) => {
             const Icon = link.icon;
             // Precise matching for the root dashboard to avoid matching sub-routes
@@ -144,17 +134,17 @@ export function Sidebar() {
                   <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full bg-primary" />
                 )}
                 <Icon className={cn(
-                  "h-[18px] w-[18px] transition-colors duration-200 relative z-10",
+                  "h-[18px] w-[18px] shrink-0 transition-colors duration-200 relative z-10",
                   isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
                 )} />
-                {showLabel && <span className="relative z-10">{link.label}</span>}
+                {showLabel && <span className="relative z-10 whitespace-nowrap">{link.label}</span>}
               </Link>
             );
           })}
         </nav>
 
         {/* Bottom Actions */}
-        <div className="mt-auto pt-4 border-t border-border flex flex-col gap-0.5">
+        <div className="mt-auto shrink-0 pt-4 border-t border-border flex flex-col gap-0.5">
           <Link
             href="/settings"
             className={cn(

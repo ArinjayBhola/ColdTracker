@@ -37,9 +37,40 @@
   --color-warning: var(--warning);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
-  --font-sans: var(--app-body-font, var(--font-inter)), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-serif: var(--app-heading-font, var(--font-fraunces)), 'Iowan Old Style', Georgia, 'Times New Roman', serif;
-  --font-mono: var(--font-jetbrains), "SFMono-Regular", Consolas, monospace;
+  --font-sans: var(--app-font, var(--font-inter)), system-ui, sans-serif;
+  --font-serif: var(--app-font, var(--font-inter)), system-ui, sans-serif;
+  --font-mono: var(--app-font, var(--font-inter)), system-ui, sans-serif;
+  --font-weight-thin: var(--app-font-weight, 400);
+  --font-weight-extralight: var(--app-font-weight, 400);
+  --font-weight-light: var(--app-font-weight, 400);
+  --font-weight-normal: var(--app-font-weight, 400);
+  --font-weight-medium: var(--app-font-weight, 400);
+  --font-weight-semibold: var(--app-font-weight, 400);
+  --font-weight-bold: var(--app-font-weight, 400);
+  --font-weight-extrabold: var(--app-font-weight, 400);
+  --font-weight-black: var(--app-font-weight, 400);
+  /* Text scales independently of rem-based widths, padding, and icon sizes. */
+  --text-xs: calc(var(--app-text-size, 16px) * 0.75);
+  --text-xs--line-height: 1.333333;
+  --text-sm: calc(var(--app-text-size, 16px) * 0.875);
+  --text-sm--line-height: 1.428571;
+  --text-base: var(--app-text-size, 16px);
+  --text-base--line-height: 1.5;
+  --text-lg: calc(var(--app-text-size, 16px) * 1.125);
+  --text-lg--line-height: 1.555556;
+  --text-xl: calc(var(--app-text-size, 16px) * 1.25);
+  --text-xl--line-height: 1.4;
+  --text-2xl: calc(var(--app-text-size, 16px) * 1.5);
+  --text-2xl--line-height: 1.333333;
+  --text-3xl: calc(var(--app-text-size, 16px) * 1.875);
+  --text-3xl--line-height: 1.2;
+  --text-4xl: calc(var(--app-text-size, 16px) * 2.25);
+  --text-4xl--line-height: 1.111111;
+  --text-5xl: calc(var(--app-text-size, 16px) * 3);
+  --text-6xl: calc(var(--app-text-size, 16px) * 3.75);
+  --text-7xl: calc(var(--app-text-size, 16px) * 4.5);
+  --text-8xl: calc(var(--app-text-size, 16px) * 6);
+  --text-9xl: calc(var(--app-text-size, 16px) * 8);
 }
 
 :root {
@@ -129,9 +160,16 @@
     background: var(--background);
   }
 
+  main {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-sans);
+    font-size: var(--app-text-size, 16px);
+    font-weight: var(--app-font-weight, 400);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
   }
 
@@ -296,15 +334,6 @@
 
 .animate-spin-slow {
   animation: spin-slow 8s linear infinite;
-}
-
-[data-density="compact"] {
-  font-size: 14px;
-}
-
-[data-density="compact"] :where(td, th) {
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
 }
 
 html[data-reduced-motion="true"] *,

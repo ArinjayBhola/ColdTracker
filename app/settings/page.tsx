@@ -44,7 +44,7 @@ export default async function SettingsPage({
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto">
+      <main className="min-w-0 flex-1 overflow-y-auto">
         <div className="container max-w-6xl mx-auto py-12 px-6 space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-16 md:pt-0">
             <div className="space-y-2">
@@ -70,9 +70,9 @@ export default async function SettingsPage({
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
             {/* Left Column: Profile Overlay & Stats */}
-            <div className="lg:col-span-1 space-y-8">
+            <div className="min-w-0 space-y-6">
               {/* Profile Card */}
               <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-premium overflow-hidden group">
                 <div className="h-20 bg-gradient-to-r from-primary/20 via-primary/10 to-transparent group-hover:from-primary/30 transition-all duration-500" />
@@ -88,7 +88,7 @@ export default async function SettingsPage({
                   </div>
                   <div className="text-center space-y-1">
                     <CardTitle className="text-xl font-bold tracking-tight">{user.name || "User"}</CardTitle>
-                    <CardDescription className="text-xs font-semibold text-muted-foreground tracking-widest">
+                    <CardDescription className="break-words text-xs font-semibold text-muted-foreground tracking-widest">
                       {user.email}
                     </CardDescription>
                   </div>
@@ -102,7 +102,7 @@ export default async function SettingsPage({
             </div>
 
             {/* Right Column: Forms & Danger Zone */}
-            <div className="lg:col-span-2 space-y-8">
+            <div className="min-w-0 space-y-6">
               <AppearanceSettings />
               <KeyboardShortcutSettings />
 

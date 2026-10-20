@@ -46,7 +46,6 @@ export function TemplatesLibrary({ initialTemplates }: { initialTemplates: Templ
   const [tag, setTag] = useState("");
   const [favorites, setFavorites] = useState(false);
   const [view, setView] = useState<"grid" | "column">("grid");
-  const [sort, setSort] = useState("newest");
   const [editor, setEditor] = useState<{ id?: string; value: TemplateInput } | null>(null);
   const [limitText, setLimitText] = useState("");
   const [deleting, setDeleting] = useState<Template | null>(null);
@@ -59,7 +58,7 @@ export function TemplatesLibrary({ initialTemplates }: { initialTemplates: Templ
     (!favorites || t.favorite) && (!category || t.category === category) && (!tag || t.tags.includes(tag)) &&
     [t.title, t.subject, t.body, t.category, ...t.tags].join(" ").toLowerCase().includes(search.toLowerCase())
   ).sort((a, b) => Number(b.pinned) - Number(a.pinned) ||
-    (sort === "newest" ? -1 : 1) * (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) || a.id.localeCompare(b.id));
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() || a.id.localeCompare(b.id));
 
   function openEditor(template?: Template, duplicate = false) {
     setError("");
@@ -134,13 +133,7 @@ export function TemplatesLibrary({ initialTemplates }: { initialTemplates: Templ
         </Select>
         <Button variant={favorites ? "default" : "outline"} aria-pressed={favorites} onClick={() => setFavorites(!favorites)}><Star className="mr-2 h-4 w-4" />Favorites</Button>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="space-y-1">
-          <Select value={sort} onValueChange={setSort}>
-            <SelectTrigger aria-label="Sort templates by creation date" className="h-10 w-[200px]"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="newest">Latest to oldest</SelectItem><SelectItem value="oldest">Oldest to latest</SelectItem></SelectContent>
-          </Select>
-        </div>
+      <div className="flex flex-wrap items-center justify-end gap-3">
         <div className="flex gap-1 rounded-xl border p-1" role="group" aria-label="Template layout">
           <Button size="sm" variant={view === "grid" ? "default" : "ghost"} aria-pressed={view === "grid"} onClick={() => setView("grid")}><LayoutGrid className="mr-2 h-4 w-4" />Grid</Button>
           <Button size="sm" variant={view === "column" ? "default" : "ghost"} aria-pressed={view === "column"} onClick={() => setView("column")}><Rows3 className="mr-2 h-4 w-4" />Column</Button>

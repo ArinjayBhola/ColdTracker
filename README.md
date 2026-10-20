@@ -101,8 +101,7 @@ Open `/templates` from the sidebar to create a private message library. Template
 support an optional email subject, custom categories and tags with searchable
 create-or-select dropdowns, separate favorites and pins, search and filters,
 duplication, and copying the message or subject. Switch between grid and
-single-column views and sort by creation date in either direction; pinned
-templates stay at the top.
+single-column views. Templates show newest first, with pinned templates at the top.
 Optional character limits show live warnings for the message body; over-limit
 drafts can still be saved. The library starts empty with no fixed template types.
 
@@ -122,7 +121,10 @@ feature, or use `npm run db:push` for schema-managed setups.
 
 ## Appearance controls
 
-Settings offers ten font families, independent body and heading fonts, a base
-text size slider and custom 12–24 px values, density, light/dark/system modes,
+Settings offers ten app-wide font families, available weights from Extra Light
+to Extra Bold, a text size slider and custom 12–24 px values, light/dark/system modes,
 reduced motion, and a live typography preview. Appearance changes apply
 immediately, persist in this browser, and can be reset to defaults.
+Text sizing is independent of layout widths. Controls wrap or grow vertically
+and the settings grid stacks when needed to accommodate larger text.
+The expanded sidebar fits its content and follows the selected font and text size.
