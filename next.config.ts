@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
   // actually used end up in each route's bundle. Cuts first-load JS and
   // speeds up dev/prod compiles.
   experimental: {
+    serverActions: { bodySizeLimit: "6mb" },
     optimizePackageImports: [
       "react-icons",
       "lucide-react",

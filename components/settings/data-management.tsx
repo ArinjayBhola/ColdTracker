@@ -1,12 +1,13 @@
 "use client";
 
+import { BackupRestore } from "@/components/settings/backup-restore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ExportExcel } from "@/components/export-excel";
 import { FiDatabase, FiDownload } from "react-icons/fi";
 
 export function DataManagement() {
   return (
-    <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-premium overflow-hidden group">
+    <><BackupRestore /><Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-premium overflow-hidden group">
       <CardHeader className="pb-4">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-primary/10 text-primary group-hover:scale-110 transition-transform">
@@ -30,6 +31,6 @@ export function DataManagement() {
           <ExportExcel fileName="cold-track-full-export" />
         </div>
       </CardContent>
-    </Card>
+    </Card></>
   );
 }
