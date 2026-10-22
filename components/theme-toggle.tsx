@@ -1,5 +1,6 @@
 "use client";
 
+import { usePreferences } from "@/components/preferences-provider";
 import * as React from "react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { FiMoon, FiSun } from "react-icons/fi";
 
 export function ThemeToggle() {
   const { setTheme, theme } = useTheme();
+  const { update } = usePreferences();
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -26,7 +28,7 @@ export function ThemeToggle() {
     <Button
       variant="ghost"
       size="icon"
-      onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+      onClick={() => { const mode = theme === "light" ? "dark" : "light"; setTheme(mode); update("mode", mode); }}
     >
       {theme === "light" ? (
         <FiSun className="h-[1.2rem] w-[1.2rem]" />

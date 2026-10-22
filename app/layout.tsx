@@ -1,3 +1,4 @@
+import { PreferencesProvider } from "@/components/preferences-provider";
 import { UserClock } from "@/components/user-clock";
 import type { Metadata, Viewport } from "next";
 import { Inter, Fraunces, JetBrains_Mono, Roboto, Open_Sans, Lato, Montserrat, Poppins, Nunito, Source_Sans_3, Caveat, Kalam, Patrick_Hand, Handlee, Indie_Flower, Architects_Daughter } from "next/font/google";
@@ -87,6 +88,7 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange>
             <AppearanceProvider>
+            <PreferencesProvider>
               <NextTopLoader
                 color="#1f6f9f"
                 showSpinner={false}
@@ -95,6 +97,7 @@ export default function RootLayout({
               <KeyboardShortcuts />
               <UserClock />
               {children}
+            </PreferencesProvider>
             </AppearanceProvider>
           </ThemeProvider>
         </Providers>

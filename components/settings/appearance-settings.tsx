@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { usePreferences } from "@/components/preferences-provider";
 import { useAppearance } from "@/components/appearance-provider";
 import { useTheme } from "next-themes";
 import { FiSun, FiMoon } from "react-icons/fi";
@@ -13,27 +14,31 @@ import { Label } from "@/components/ui/label";
 export function AppearanceSettings() {
   const { preferences, updateAppearance, resetAppearance } = useAppearance();
   const { theme, setTheme } = useTheme();
+  const { ready, update } = usePreferences();
+  const changeMode = (mode: "light" | "dark" | "system") => { setTheme(mode); update("mode", mode); };
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Appearance</CardTitle>
         <CardDescription>
-          Customize the look and feel of ColdTrack. Changes apply immediately and are saved in this browser.
+          Customize the look and feel of ColdTrack. Changes apply immediately and sync to your account.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {!ready && <p role="status" className="text-sm text-muted-foreground">Loading account preferences...</p>}
+        <fieldset disabled={!ready} className="min-w-0 space-y-6">
         {/* Dark Mode */}
         <div className="space-y-3">
           <label className="text-sm font-semibold text-foreground">
             Mode
           </label>
           <div className="flex flex-wrap gap-2">
-            <Button variant={theme === "system" ? "default" : "outline"} size="sm" onClick={() => setTheme("system")}>System</Button>
+            <Button variant={theme === "system" ? "default" : "outline"} size="sm" onClick={() => changeMode("system")}>System</Button>
             <Button
               variant={theme === "light" ? "default" : "outline"}
               size="sm"
-              onClick={() => setTheme("light")}
+              onClick={() => changeMode("light")}
             >
               <FiSun className="mr-1.5" />
               Light
@@ -41,7 +46,7 @@ export function AppearanceSettings() {
             <Button
               variant={theme === "dark" ? "default" : "outline"}
               size="sm"
-              onClick={() => setTheme("dark")}
+              onClick={() => changeMode("dark")}
             >
               <FiMoon className="mr-1.5" />
               Dark
@@ -85,7 +90,8 @@ export function AppearanceSettings() {
           <p className="text-base">Preview your fonts and text size. Your outreach, notes, and templates stay easy to read.</p>
           <p className="text-sm text-muted-foreground">{FONT_OPTIONS.find(font => font.id === preferences.font)?.label} · {FONT_WEIGHTS.find(weight => weight.value === preferences.fontWeight)?.label} · {preferences.fontSize} px</p>
         </div>
-        <Button variant="outline" onClick={() => { resetAppearance(); setTheme("light"); }}>Reset appearance</Button>
+        <Button variant="outline" onClick={() => { resetAppearance(); changeMode("light"); }}>Reset appearance</Button>
+      </fieldset>
       </CardContent>
     </Card>
   );

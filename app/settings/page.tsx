@@ -1,3 +1,4 @@
+import { AccountSync } from "@/components/settings/account-sync";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
@@ -99,7 +100,7 @@ export default async function SettingsPage({
             { id: "appearance", label: "Appearance", content: <AppearanceSettings /> },
             { id: "shortcuts", label: "Shortcuts", content: <KeyboardShortcutSettings /> },
             { id: "notifications", label: "Notifications", content: <NotificationSettings initialEmail={fullUser?.notificationEmail || null} initialReceiveNotifications={fullUser?.receiveNotifications ?? true} /> },
-            { id: "data", label: "Data", content: <DataManagement /> },
+            { id: "data", label: "Data", content: <><AccountSync /><DataManagement /></> },
           ]} />
         </div>
       </main>

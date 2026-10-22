@@ -50,6 +50,13 @@
       "when": 1792454400003,
       "tag": "0009_user_time_zone",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792454400004,
+      "tag": "0010_account_preferences",
+      "breakpoints": true
     }
   ]
 }
