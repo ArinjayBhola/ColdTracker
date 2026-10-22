@@ -1,5 +1,6 @@
 "use client";
 
+import { PALETTES } from "@/lib/palettes";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { usePreferences } from "@/components/preferences-provider";
@@ -28,6 +29,7 @@ export function AppearanceSettings() {
       <CardContent className="space-y-6">
         {!ready && <p role="status" className="text-sm text-muted-foreground">Loading account preferences...</p>}
         <fieldset disabled={!ready} className="min-w-0 space-y-6">
+        <div className="space-y-3"><Label>Theme palette</Label><div role="group" aria-label="Theme palette" className="flex flex-wrap gap-2">{PALETTES.map(palette => <Button key={palette.id} type="button" variant={preferences.colorTheme === palette.id ? "default" : "outline"} aria-pressed={preferences.colorTheme === palette.id} onClick={() => updateAppearance({ colorTheme: palette.id })}><span className="h-3 w-3 shrink-0 rounded-full border border-current" style={{ backgroundColor: `oklch(0.55 0.12 ${palette.hue})` }} />{palette.label}</Button>)}</div><p className="text-xs text-muted-foreground">Every palette supports light, dark, and system mode.</p></div>
         {/* Dark Mode */}
         <div className="space-y-3">
           <label className="text-sm font-semibold text-foreground">

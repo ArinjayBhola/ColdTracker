@@ -49,10 +49,10 @@ export function OutreachContactsCard({ contacts, activeIndex, onSelect, onDelete
 
   return (
     <>
-      <Card className="border-2 shadow-sm rounded-3xl overflow-hidden bg-[#FAF6F1]">
+      <Card className="border-2 shadow-sm rounded-3xl overflow-hidden bg-card">
         <CardHeader className="pb-3 px-6 pt-6">
-          <CardTitle className="flex items-center gap-2 text-xl font-bold text-[#3D2B1F]">
-            <FiUsers className="w-5 h-5 text-[#8B5A2B]" />
+          <CardTitle className="flex items-center gap-2 text-xl font-bold text-foreground">
+            <FiUsers className="w-5 h-5 text-primary" />
             Company Contacts
           </CardTitle>
         </CardHeader>
@@ -68,31 +68,31 @@ export function OutreachContactsCard({ contacts, activeIndex, onSelect, onDelete
                 className={cn(
                   "flex items-center gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer group relative",
                   isActive 
-                    ? "bg-[#FFF9F3] border-[#D4A373] shadow-md shadow-[#D4A373]/10" 
-                    : "bg-white/50 border-transparent hover:border-[#D4A373]/30 hover:bg-white/80"
+                    ? "bg-primary/5 border-primary/50 shadow-sm" 
+                    : "bg-muted/20 border-transparent hover:border-primary/30 hover:bg-muted/50"
                 )}
               >
                 <div className={cn(
                   "w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg shrink-0 transition-colors",
                   isActive 
-                    ? "bg-[#A65E32] text-white" 
-                    : "bg-[#E6D5C3] text-[#8B5A2B]"
+                    ? "bg-primary text-primary-foreground" 
+                    : "bg-primary/10 text-primary"
                 )}>
                   {name ? Array.from(name)[0].toUpperCase() : <FiUser className="h-5 w-5" aria-label="Unnamed contact" />}
                 </div>
                 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1 mb-0.5">
-                    <p className="font-extrabold truncate text-base text-[#3D2B1F]" title={displayName}>
+                    <p className="font-extrabold truncate text-base text-foreground" title={displayName}>
                       {displayName}
                     </p>
-                    {isActive && <span className="shrink-0 rounded-md border border-[#A65E32]/20 bg-[#E6D5C3] px-2 py-0.5 text-[9px] font-black uppercase text-[#A65E32]">Active</span>}
+                    {isActive && <span className="shrink-0 rounded-md border border-primary/20 bg-primary/10 px-2 py-0.5 text-[9px] font-black uppercase text-primary">Active</span>}
                   </div>
                   
-                  <div className="flex items-center gap-1.5 text-xs text-[#8B572A]/70 font-bold">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-bold">
                     <span className="truncate">{contact.personRole?.trim() || "Position not added"}</span>
-                    <span className="text-[#8B572A]/30">•</span>
-                    <div className="flex shrink-0 items-center gap-1 text-[10px] uppercase font-black tracking-wider text-[#A65E32]/80">
+                    <span className="text-muted-foreground/50">•</span>
+                    <div className="flex shrink-0 items-center gap-1 text-[10px] uppercase font-black tracking-wider text-primary">
                       {contact.contactMethod === "LINKEDIN" ? <FiLinkedin className="w-2.5 h-2.5" /> : <FiMail className="w-2.5 h-2.5" />}
                       {contact.contactMethod}
                     </div>
@@ -110,7 +110,7 @@ export function OutreachContactsCard({ contacts, activeIndex, onSelect, onDelete
                       <FiTrash2 className="w-3.5 h-3.5" />
                     </Button>
                   )}
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-[#D4A373]/10 hover:text-[#A65E32]">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
                     <FiLink className="w-3.5 h-3.5" />
                   </Button>
                 </div>

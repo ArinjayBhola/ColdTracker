@@ -344,3 +344,47 @@ html[data-reduced-motion="true"] *::after {
   transition-duration: 0.01ms !important;
   scroll-behavior: auto !important;
 }
+
+/* Palettes share semantic tokens so surfaces, dialogs, navigation and charts agree. */
+html[data-theme="blue"] { --palette-hue: 255; }
+html[data-theme="purple"] { --palette-hue: 300; }
+html[data-theme="green"] { --palette-hue: 150; }
+html[data-theme="orange"] { --palette-hue: 65; }
+html[data-theme="rose"] { --palette-hue: 15; }
+html[data-theme="teal"] { --palette-hue: 190; }
+html[data-theme]:not([data-theme="default"]) {
+  --background: oklch(0.985 0.005 var(--palette-hue));
+  --foreground: oklch(0.22 0.015 var(--palette-hue));
+  --card: oklch(0.998 0.002 var(--palette-hue));
+  --card-foreground: var(--foreground);
+  --popover: var(--card);
+  --popover-foreground: var(--foreground);
+  --primary: oklch(0.48 0.11 var(--palette-hue));
+  --primary-foreground: oklch(0.995 0 0);
+  --secondary: oklch(0.95 0.012 var(--palette-hue));
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(0.955 0.008 var(--palette-hue));
+  --muted-foreground: oklch(0.47 0.02 var(--palette-hue));
+  --accent: oklch(0.93 0.025 var(--palette-hue));
+  --accent-foreground: oklch(0.32 0.06 var(--palette-hue));
+  --border: oklch(0.89 0.012 var(--palette-hue));
+  --input: var(--border);
+  --ring: var(--primary);
+  --sidebar: oklch(0.967 0.012 var(--palette-hue));
+  --sidebar-foreground: oklch(0.33 0.02 var(--palette-hue));
+}
+html.dark[data-theme]:not([data-theme="default"]) {
+  --background: oklch(0.18 0.01 var(--palette-hue));
+  --foreground: oklch(0.94 0.008 var(--palette-hue));
+  --card: oklch(0.225 0.012 var(--palette-hue));
+  --primary: oklch(0.78 0.10 var(--palette-hue));
+  --primary-foreground: oklch(0.18 0.015 var(--palette-hue));
+  --secondary: oklch(0.27 0.015 var(--palette-hue));
+  --muted: oklch(0.265 0.015 var(--palette-hue));
+  --muted-foreground: oklch(0.73 0.015 var(--palette-hue));
+  --accent: oklch(0.32 0.035 var(--palette-hue));
+  --accent-foreground: oklch(0.9 0.025 var(--palette-hue));
+  --border: oklch(0.32 0.018 var(--palette-hue));
+  --sidebar: oklch(0.16 0.01 var(--palette-hue));
+  --sidebar-foreground: oklch(0.84 0.012 var(--palette-hue));
+}
