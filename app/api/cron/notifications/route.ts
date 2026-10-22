@@ -1,12 +1,11 @@
+import { userDayBounds, validTimeZone } from "@/lib/user-calendar";
 import { db } from "@/db";
 import { outreach, users } from "@/db/schema";
 import { sendDailyOutreachReminder, sendFollowUpReminder } from "@/lib/resend";
-import { eq, and, sql, gte, lt, not, exists } from "drizzle-orm";
+import { eq, and, sql, gte, lt, not } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
-// IST is UTC+5:30
-// To run at 5 PM IST, the cron should trigger at 11:30 AM UTC.
-// This route handles the logic when triggered.
+// Each recipient uses their browser-reported timezone. The scheduler controls delivery time.
 
 export async function GET(request: Request) {
   // Optional: Add security check (e.g., CRON_SECRET)
@@ -20,23 +19,10 @@ export async function GET(request: Request) {
       where: eq(users.receiveNotifications, true),
     });
 
-    const now = new Date();
-    // IST adjustment (not needed for logic if we just check "today" in IST)
-    // However, the database usually stores in UTC.
-    // We need "start of today" and "end of today" in IST but converted to UTC.
-    
-    // IST start of today: 00:00:00 IST = Yesterday 18:30:00 UTC
-    // IST end of today: 23:59:59 IST = Today 18:29:59 UTC
-    
-    const istOffset = 5.5 * 60 * 60 * 1000;
-    const todayIST = new Date(now.getTime() + istOffset);
-    todayIST.setUTCHours(0, 0, 0, 0);
-    const startOfTodayUTC = new Date(todayIST.getTime() - istOffset);
-    
-    const tomorrowIST = new Date(todayIST.getTime() + 24 * 60 * 60 * 1000);
-    const endOfTodayUTC = new Date(tomorrowIST.getTime() - istOffset);
-
     for (const user of activeUsers) {
+      // The last browser-reported timezone lets reminders work while the app is closed.
+      if (!validTimeZone(user.timeZone)) continue;
+      const { start: startOfTodayUTC, end: endOfTodayUTC } = userDayBounds(user.timeZone);
       const emailTo = user.notificationEmail || user.email;
       if (!emailTo) continue;
 
@@ -58,8 +44,9 @@ export async function GET(request: Request) {
       const pendingFollowUps = await db.query.outreach.findMany({
         where: and(
           eq(outreach.userId, user.id),
-          lt(sql`(${outreach.contacts}->0->>'followUpDueAt')::timestamp`, endOfTodayUTC),
-          sql`${outreach.followUpSentAt} IS NULL`,
+          lt(sql`CASE WHEN ${outreach.followUpSentAt} IS NOT NULL THEN (${outreach.followUp2DueAt} AT TIME ZONE 'UTC')
+            ELSE (SELECT MIN((contact->>'followUpDueAt')::timestamptz) FROM jsonb_array_elements(${outreach.contacts}) contact WHERE NULLIF(contact->>'followUpDueAt', '') IS NOT NULL) END`, endOfTodayUTC.toISOString()),
+          sql`${outreach.followUp2SentAt} IS NULL`,
           not(sql`${outreach.status} IN ('REPLIED', 'REJECTED', 'OFFER', 'CLOSED')`)
         ),
       });

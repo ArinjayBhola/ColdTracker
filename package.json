@@ -12,7 +12,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:migrate:templates": "node scripts/migrate-templates.mjs",
-    "db:migrate:shortcuts": "node scripts/migrate-shortcuts.mjs"
+    "db:migrate:shortcuts": "node scripts/migrate-shortcuts.mjs",
+    "db:migrate:time-zone": "node scripts/migrate-time-zone.mjs"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",

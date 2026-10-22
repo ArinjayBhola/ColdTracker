@@ -1,3 +1,4 @@
+import { UserClock } from "@/components/user-clock";
 import type { Metadata, Viewport } from "next";
 import { Inter, Fraunces, JetBrains_Mono, Roboto, Open_Sans, Lato, Montserrat, Poppins, Nunito, Source_Sans_3, Caveat, Kalam, Patrick_Hand, Handlee, Indie_Flower, Architects_Daughter } from "next/font/google";
 import { APPEARANCE_KEY, FONT_OPTIONS } from "@/lib/appearance";
@@ -92,6 +93,7 @@ export default function RootLayout({
               />
               <ToastProvider />
               <KeyboardShortcuts />
+              <UserClock />
               {children}
             </AppearanceProvider>
           </ThemeProvider>

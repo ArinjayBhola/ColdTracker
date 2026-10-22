@@ -6,7 +6,8 @@ import { outreachFormSchema, outreachInlineSchema, STATUSES } from "@/lib/valida
 import { auth } from "@/lib/auth";
 import { eq, desc, and, sql, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { addDays } from "date-fns";
+import { getUserTimeZone } from "@/lib/user-time-zone";
+import { addUserCalendarDays } from "@/lib/user-calendar";
 import { recordDailyActivity } from "@/actions/goals";
 export type ActionState = {
   error?: string;
@@ -87,12 +88,14 @@ export async function createOutreachAction(prevState: ActionState, formData: For
       contacts: validatedContacts,
     } = parsed.data;
 
+    const timeZone = await getUserTimeZone();
+    if (!timeZone) return { error: "Please reload so we can detect your device timezone." };
     const now = new Date();
     
     // Apply defaults to each contact if dates are missing
     const processedContacts = validatedContacts.map(contact => {
       const contactSentAt = contact.messageSentAt || now;
-      const contactFollowUpDueAt = contact.followUpDueAt || addDays(contactSentAt, 5);
+      const contactFollowUpDueAt = contact.followUpDueAt || addUserCalendarDays(contactSentAt, 5, timeZone);
       return {
         ...contact,
         messageSentAt: contactSentAt,
@@ -371,6 +374,8 @@ export async function addContactToCompanyAction(outreachId: string, formData: Fo
     if (!existing) return { error: "Outreach not found" };
 
     try {
+        const timeZone = await getUserTimeZone();
+        if (!timeZone) return { error: "Please reload so we can detect your device timezone." };
         const newContact = {
             personName,
             personRole,
@@ -378,7 +383,7 @@ export async function addContactToCompanyAction(outreachId: string, formData: Fo
             emailAddress,
             linkedinProfileUrl,
             messageSentAt: new Date(),
-            followUpDueAt: addDays(new Date(), 5),
+            followUpDueAt: addUserCalendarDays(new Date(), 5, timeZone),
         };
 
         await db.update(outreach)

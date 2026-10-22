@@ -5,7 +5,8 @@ import { extensionLeads, outreach, type OutreachContact } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { addDays } from "date-fns";
+import { getUserTimeZone } from "@/lib/user-time-zone";
+import { addUserCalendarDays } from "@/lib/user-calendar";
 import { PromoteLeadValues } from "@/lib/validations";
 
 export async function getExtensionLeadsAction(page: number = 1, limit: number = 10) {
@@ -56,6 +57,8 @@ export async function promoteLeadToOutreachAction(id: string, values: PromoteLea
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
 
+  const timeZone = await getUserTimeZone();
+  if (!timeZone) return { error: "Please reload so we can detect your device timezone." };
   const { companyName, companyLink, roleTargeted, contacts, notes } = values;
 
   try {
@@ -76,7 +79,7 @@ export async function promoteLeadToOutreachAction(id: string, values: PromoteLea
         return {
           ...c,
           messageSentAt: sentAt,
-          followUpDueAt: c.followUpDueAt || addDays(sentAt, 5),
+          followUpDueAt: c.followUpDueAt || addUserCalendarDays(sentAt, 5, timeZone),
           createdAt: new Date().toISOString(),
         };
       });

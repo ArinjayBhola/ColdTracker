@@ -47,6 +47,7 @@ export const users = pgTable("user", {
   emailVerified: timestamp("emailVerified", { mode: "date" }),
   image: text("image"),
   password: text("password"), // For Credentials provider
+  timeZone: text("time_zone"),
   notificationEmail: text("notification_email"),
   receiveNotifications: boolean("receive_notifications").default(true),
   keyboardShortcuts: jsonb("keyboard_shortcuts").$type<import("@/lib/keyboard-shortcuts").ShortcutPreferences>(),

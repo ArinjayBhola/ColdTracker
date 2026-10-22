@@ -13,7 +13,7 @@ export default async function StatsPage() {
       <Sidebar />
       <main className="min-w-0 flex-1 overflow-y-auto p-4 md:p-8">
         <div className="mx-auto max-w-7xl pt-16 md:pt-0">
-          <OutreachAnalyticsDashboard records={records} asOf={new Date().toISOString()} />
+          <OutreachAnalyticsDashboard records={records} />
         </div>
       </main>
     </div>

@@ -1,4 +1,5 @@
 "use client";
+import { isBeforeLocalToday } from "@/lib/user-calendar";
 
 import { motion } from "framer-motion";
 import { StatusBadge } from "@/components/status-badge";
@@ -249,7 +250,7 @@ export function OutreachTable({ items, totalCount, currentPage }: OutreachTableP
             <div className="relative">
               <span className="absolute -top-2 left-2 bg-card px-1 text-[10px] font-bold text-muted-foreground uppercase z-10">From</span>
               <DatePicker 
-                value={startDate ? new Date(startDate) : undefined}
+                value={startDate ? new Date(`${startDate}T00:00:00`) : undefined}
                 onChange={(date) => handleDateChange("start", date ? format(date, "yyyy-MM-dd") : "")}
                 placeholder="Start Date"
                 className="w-[180px]"
@@ -258,7 +259,7 @@ export function OutreachTable({ items, totalCount, currentPage }: OutreachTableP
             <div className="relative">
               <span className="absolute -top-2 left-2 bg-card px-1 text-[10px] font-bold text-muted-foreground uppercase z-10">To</span>
                <DatePicker 
-                value={endDate ? new Date(endDate) : undefined}
+                value={endDate ? new Date(`${endDate}T00:00:00`) : undefined}
                 onChange={(date) => handleDateChange("end", date ? format(date, "yyyy-MM-dd") : "")}
                 placeholder="End Date"
                 className="w-[180px]"
@@ -341,7 +342,7 @@ export function OutreachTable({ items, totalCount, currentPage }: OutreachTableP
                         {!["REPLIED", "REJECTED", "OFFER", "CLOSED"].includes(item.status) && !item.followUpSentAt && (
                           <div className={cn(
                             "w-2.5 h-2.5 rounded-full flex-shrink-0 animate-pulse",
-                            item.followUpDueAt && new Date(item.followUpDueAt) < new Date()
+                            item.followUpDueAt && isBeforeLocalToday(item.followUpDueAt)
                               ? "bg-destructive shadow-[0_0_8px_rgba(239,68,68,0.5)]"
                               : item.followUpDueAt && new Date(item.followUpDueAt).toDateString() === new Date().toDateString()
                               ? "bg-primary shadow-[0_0_8px_rgba(var(--primary),0.5)]"
@@ -398,7 +399,7 @@ export function OutreachTable({ items, totalCount, currentPage }: OutreachTableP
                   {item.status !== "REPLIED" && item.status !== "CLOSED" && item.status !== "REJECTED" ? (
                     <span className={cn(
                       "text-[10px] md:text-xs font-semibold px-2 md:px-3 py-1 md:py-1.5 rounded-full border whitespace-nowrap inline-block",
-                      item.followUpDueAt && new Date(item.followUpDueAt) < new Date() 
+                      item.followUpDueAt && isBeforeLocalToday(item.followUpDueAt)
                         ? "bg-destructive/10 text-destructive border-destructive/30" 
                         : "bg-background text-muted-foreground border-border"
                     )}>

@@ -1,4 +1,5 @@
 "use client";
+import { isBeforeLocalToday } from "@/lib/user-calendar";
 
 import { useQuery } from "@tanstack/react-query";
 import { getOutreachById } from "@/actions/get-outreach";
@@ -151,7 +152,8 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
   const messageSentAt = activeContact.messageSentAt;
   const followUpDueAt = activeContact.followUpDueAt;
   
-  const isOverdue = followUpDueAt && new Date(followUpDueAt) < new Date();
+  const pendingDue = item.followUpSentAt ? item.followUp2DueAt : followUpDueAt;
+  const isOverdue = !item.followUp2SentAt && pendingDue && isBeforeLocalToday(pendingDue);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 md:space-y-8 pt-16 md:pt-0">

@@ -1,11 +1,10 @@
-import { getPaginatedFollowUpItemsAction } from "@/actions/follow-ups";
 import { Sidebar } from "@/components/sidebar";
 import { FiCheckCircle } from "react-icons/fi";
 import { InfiniteOutreachList } from "@/components/infinite-outreach-list";
 
 export default async function FollowUpsPage() {
   const initialCategory = "ALL_ACTIVE";
-  const { items, hasMore } = await getPaginatedFollowUpItemsAction(initialCategory, 1);
+
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -23,8 +22,6 @@ export default async function FollowUpsPage() {
 
           {/* Paginated List with Tabs */}
           <InfiniteOutreachList 
-            initialItems={items as any} 
-            initialHasMore={hasMore} 
             initialCategory={initialCategory} 
           />
         </div>

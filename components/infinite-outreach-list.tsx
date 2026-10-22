@@ -3,6 +3,7 @@
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useCallback, useState } from "react";
 import { getPaginatedFollowUpItemsAction, toggleFollowUpSentAction } from "@/actions/follow-ups";
+import { userDayBounds } from "@/lib/user-calendar";
 import { cn } from "@/lib/utils";
 import { FiCalendar, FiClock, FiMail, FiLinkedin, FiRefreshCw, FiCheckCircle, FiSearch, FiFilter, FiX } from "react-icons/fi";
 import { format } from "date-fns";
@@ -15,30 +16,24 @@ import { OutreachActions } from "@/components/outreach-actions";
 import { DeleteArchiveActions } from "@/components/delete-archive-actions";
 import { useToast } from "@/hooks/use-toast";
 
-type OutreachItem = {
-  id: string;
-  companyName: string;
-  personName: string;
-  roleTargeted: string;
-  status: string;
-  followUpDueAt: Date | string | null | undefined;
-  contactMethod: string;
-  followUpSentAt?: Date | string | null;
-  followUp2SentAt?: Date | string | null;
-  contacts: unknown[];
-};
-
 type Category = "OVERDUE" | "TODAY" | "UPCOMING" | "SENT" | "ALL_ACTIVE";
 
 export function InfiniteOutreachList({ 
-  initialItems, 
-  initialHasMore,
   initialCategory
 }: { 
-  initialItems: OutreachItem[],
-  initialHasMore: boolean,
   initialCategory: Category
 }) {
+  const [localDate, setLocalDate] = useState("");
+  const [timeZone, setTimeZone] = useState<string | null>(null);
+  useEffect(() => {
+    const sync = () => {
+      setTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
+      setLocalDate(new Date().toDateString());
+    };
+    sync();
+    window.addEventListener("coldtrack-calendar-change", sync);
+    return () => window.removeEventListener("coldtrack-calendar-change", sync);
+  }, []);
   const [category, setCategory] = useState<Category>(initialCategory);
   const [stageFilter, setStageFilter] = useState<"ALL" | "1" | "2">("ALL");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -64,22 +59,21 @@ export function InfiniteOutreachList({
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-    isLoading
+    isLoading,
+    isError,
+    refetch
   } = useInfiniteQuery({
-    queryKey: ["follow-ups", category, stageFilter], 
+    enabled: !!timeZone,
+    queryKey: ["follow-ups", category, stageFilter, timeZone, localDate],
     queryFn: async ({ pageParam = 1 }) => {
-      const res = await getPaginatedFollowUpItemsAction(category, pageParam as number, 15, stageFilter);
+      const day = userDayBounds(timeZone!);
+      const res = await getPaginatedFollowUpItemsAction(category, pageParam as number, 15, stageFilter, timeZone!, { key: day.key, start: day.start.toISOString(), end: day.end.toISOString() });
       return res;
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage, allPages) => {
       return lastPage.hasMore ? allPages.length + 1 : undefined;
     },
-    // Only use initialData if we are on the initial category and no filter
-    initialData: (category === initialCategory && stageFilter === "ALL") ? {
-      pages: [{ items: initialItems, hasMore: initialHasMore }],
-      pageParams: [1]
-    } as { pages: { items: OutreachItem[], hasMore: boolean }[], pageParams: number[] } : undefined,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -259,9 +253,14 @@ export function InfiniteOutreachList({
 
       {/* List */}
       <div className="space-y-4">
-        {isLoading && allRawItems.length === 0 ? (
+        {(!timeZone || isLoading) && allRawItems.length === 0 ? (
           <div className="flex justify-center p-12">
             <FiRefreshCw className="w-8 h-8 animate-spin text-primary/40" />
+          </div>
+        ) : isError ? (
+          <div className="rounded-2xl border border-destructive/30 p-8 text-center">
+            <p>We could not load your follow-ups. Please try again.</p>
+            <Button variant="outline" className="mt-3" onClick={() => void refetch()}>Retry</Button>
           </div>
         ) : filteredItems.length === 0 ? (
           <div className="rounded-2xl border-2 border-dashed border-border/50 bg-muted/20 p-8 text-center">

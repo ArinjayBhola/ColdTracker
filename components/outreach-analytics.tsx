@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowUpRight, BarChart3, Download, MessageCircle, Send, Target, Trophy, Clock3 } from "lucide-react";
 import { buildOutreachAnalytics, percent, type AnalyticsRecord, type AnalyticsRange, type OutreachAnalytics } from "@/lib/outreach-analytics";
@@ -11,7 +11,7 @@ import { StatusBadge } from "@/components/status-badge";
 
 const number = (value: number) => value.toLocaleString("en-US");
 const rate = (value: number) => `${value.toFixed(1)}%`;
-const date = (value: string, full = false) => new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short", ...(full ? { year: "numeric" } : {}), timeZone: "UTC" });
+const date = (value: string, full = false) => new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short", ...(full ? { year: "numeric" } : {}) });
 const rangeLabels = { "7": "Last 7 days", "30": "Last 30 days", "90": "Last 90 days", all: "All time" };
 
 function ComparisonChart({ analytics }: { analytics: OutreachAnalytics }) {
@@ -40,7 +40,7 @@ function ComparisonChart({ analytics }: { analytics: OutreachAnalytics }) {
       </div>
       <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
         {mode === "count" ? <><span className="inline-flex items-center gap-2"><i className="h-2.5 w-2.5 rounded-sm bg-primary" />Sent</span><span className="inline-flex items-center gap-2"><i className="h-2.5 w-2.5 rounded-sm bg-emerald-600 dark:bg-emerald-400" />Recorded responses</span></> : <span>Recorded responses ÷ sent × 100</span>}
-        <span>{analytics.bucketDays}-day groups · UTC</span>
+        <span>{analytics.bucketDays}-day groups (local dates)</span>
       </div>
     </CardHeader>
     <CardContent className="space-y-4">
@@ -84,9 +84,22 @@ function ComparisonChart({ analytics }: { analytics: OutreachAnalytics }) {
   </Card>;
 }
 
-export function OutreachAnalyticsDashboard({ records, asOf }: { records: AnalyticsRecord[]; asOf: string }) {
+export function OutreachAnalyticsDashboard({ records }: { records: AnalyticsRecord[] }) {
+  const [asOf, setAsOf] = useState<string | null>(null);
+  useEffect(() => {
+    const sync = () => setAsOf(new Date().toISOString());
+    sync();
+    const timer = setInterval(sync, 30_000);
+    window.addEventListener("focus", sync);
+    return () => { clearInterval(timer); window.removeEventListener("focus", sync); };
+  }, []);
+  if (!asOf) return <p className="text-muted-foreground" role="status">Loading your local statistics...</p>;
+  return <LocalOutreachAnalytics records={records} asOf={asOf} />;
+}
+
+function LocalOutreachAnalytics({ records, asOf }: { records: AnalyticsRecord[]; asOf: string }) {
   const [range, setRange] = useState<AnalyticsRange>("30");
-  const analytics = useMemo(() => buildOutreachAnalytics(records, range, asOf), [records, range, asOf]);
+  const analytics = useMemo(() => buildOutreachAnalytics(records, range, asOf, Intl.DateTimeFormat().resolvedOptions().timeZone), [records, range, asOf]);
   const a = analytics;
   const previousRate = a.previous ? percent(a.previous.responded, a.previous.sent) : null;
   const change = previousRate !== null && a.previous!.sent > 0 && a.sent > 0 ? a.responseRate - previousRate : null;
@@ -98,7 +111,7 @@ export function OutreachAnalyticsDashboard({ records, asOf }: { records: Analyti
   ];
 
   function exportSummary() {
-    const rows: (string | number)[][] = [["Period", rangeLabels[range]], ["As of (UTC)", asOf], ["Metric", "Count"], ["Sent", a.sent], ["Recorded responses", a.responded], ["Interview or offer", a.interviews], ["Offers", a.offers], ["Response rate (%)", a.responseRate.toFixed(1)], [], ["Sent cohort start (UTC)", "Sent cohort end (UTC)", "Sent", "Current recorded responses", "Response rate (%)"], ...a.buckets.map(bucket => [bucket.start, bucket.end, bucket.sent, bucket.responded, bucket.responseRate.toFixed(1)])];
+    const rows: (string | number)[][] = [["Period", rangeLabels[range]], ["As of", asOf], ["Metric", "Count"], ["Sent", a.sent], ["Recorded responses", a.responded], ["Interview or offer", a.interviews], ["Offers", a.offers], ["Response rate (%)", a.responseRate.toFixed(1)], [], ["Sent cohort start", "Sent cohort end", "Sent", "Current recorded responses", "Response rate (%)"], ...a.buckets.map(bucket => [bucket.start, bucket.end, bucket.sent, bucket.responded, bucket.responseRate.toFixed(1)])];
     const csv = rows.map(row => row.map(value => `"${String(value).replaceAll('"', '""')}"`).join(",")).join("\r\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a"); link.href = url; link.download = `coldtrack-stats-${range}-${asOf.slice(0, 10)}.csv`; link.click();
@@ -132,6 +145,6 @@ export function OutreachAnalyticsDashboard({ records, asOf }: { records: Analyti
       {a.channels.length ? <div className="overflow-x-auto"><table className="w-full text-sm [overflow-wrap:normal]"><caption className="sr-only">Outreach conversion by contact channel</caption><thead><tr className="border-b text-left text-muted-foreground">{["Channel", "Sent", "Responses", "Response rate", "Interview / offer"].map(label => <th key={label} className="whitespace-nowrap px-3 py-3 font-normal">{label}</th>)}</tr></thead><tbody>{a.channels.map(channel => <tr key={channel.channel} className="border-b last:border-0"><th scope="row" className="whitespace-nowrap px-3 py-4 text-left font-normal">{channel.channel}</th><td className="px-3 py-4 tabular-nums">{number(channel.sent)}</td><td className="px-3 py-4 tabular-nums">{number(channel.responded)}</td><td className="whitespace-nowrap px-3 py-4 tabular-nums">{rate(channel.responseRate)}</td><td className="px-3 py-4 tabular-nums">{number(channel.interviews)}</td></tr>)}</tbody></table></div> : <p className="text-sm text-muted-foreground">Channel comparisons will appear after you send outreach.</p>}
     </CardContent></Card>
     <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-muted/20 p-4 text-sm"><p className="inline-flex items-center gap-2"><Clock3 className="h-4 w-4 shrink-0 text-primary" />{number(a.awaiting)} awaiting a response · {number(a.overdue)} with overdue follow-ups now</p><Button variant="outline" size="sm" asChild><Link href="/follow-ups">Open follow-ups</Link></Button></div>
-    <p className="text-xs text-muted-foreground">As of {date(asOf, true)} · Date filters use sent-date cohorts in UTC, with drafts grouped by creation date. Outcomes reflect today’s saved statuses; this app does not currently store reply timestamps or a full status history.</p>
+    <p className="text-xs text-muted-foreground">As of {date(asOf, true)} · Date filters use sent-date cohorts in your device timezone, with drafts grouped by creation date. Outcomes reflect today’s saved statuses; this app does not currently store reply timestamps or a full status history.</p>
   </div>;
 }

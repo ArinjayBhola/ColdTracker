@@ -171,7 +171,7 @@ export function TemplatesLibrary({ initialTemplates }: { initialTemplates: Templ
                 })}><Star className={`h-3.5 w-3.5 ${template.favorite ? "fill-amber-400 text-amber-500" : ""}`} /></Button>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">Created on {new Date(template.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}</p>
+            <p className="text-xs text-muted-foreground">Created on {new Date(template.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</p>
             {template.subject && <p className="truncate text-sm" title={template.subject}><span className="font-medium">Subject: </span>{template.subject}</p>}
             <p className="max-h-24 overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-muted/40 p-2 text-sm leading-relaxed">{template.body}</p>
             {template.tags.length > 0 && <div className="flex max-h-14 flex-wrap gap-1 overflow-y-auto">{template.tags.map(t => <button key={t} onClick={() => setTag(t)} className="max-w-full break-words rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">#{t}</button>)}</div>}
