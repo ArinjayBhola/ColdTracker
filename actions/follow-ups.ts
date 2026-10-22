@@ -7,7 +7,9 @@ import { outreach, type OutreachContact } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { eq, and, desc, asc, sql, notInArray, isNotNull, isNull, lt, gte, type SQL } from "drizzle-orm";
 import { getUserTimeZone } from "@/lib/user-time-zone";
-import { addUserCalendarDays } from "@/lib/user-calendar";
+import { scheduleFollowUp } from "@/lib/follow-up-rules";
+import { getAccountPreferences } from "@/actions/preferences";
+import { DEFAULT_PREFERENCES } from "@/lib/preferences";
 
 export async function toggleFollowUpSentAction(id: string, isSent: boolean, sentAt?: Date) {
   const session = await auth();
@@ -26,10 +28,11 @@ export async function toggleFollowUpSentAction(id: string, isSent: boolean, sent
         // Marking as SENT
         const timeZone = await getUserTimeZone();
         if (!timeZone) return { error: "Please reload so we can detect your device timezone." };
+    const rules = (await getAccountPreferences())?.preferences?.followUp ?? DEFAULT_PREFERENCES.followUp;
         const effectiveSentDate = sentAt || new Date();
         if (!existing.followUpSentAt) {
             updateData.followUpSentAt = effectiveSentDate;
-            updateData.followUp2DueAt = addUserCalendarDays(effectiveSentDate, 10, timeZone);
+            updateData.followUp2DueAt = scheduleFollowUp(effectiveSentDate, rules.secondDelay, timeZone, rules.skipWeekends);
         } else if (!existing.followUp2SentAt) {
             updateData.followUp2SentAt = effectiveSentDate;
         }

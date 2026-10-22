@@ -6,7 +6,9 @@ import { auth } from "@/lib/auth";
 import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getUserTimeZone } from "@/lib/user-time-zone";
-import { addUserCalendarDays } from "@/lib/user-calendar";
+import { scheduleFollowUp } from "@/lib/follow-up-rules";
+import { getAccountPreferences } from "@/actions/preferences";
+import { DEFAULT_PREFERENCES } from "@/lib/preferences";
 import { PromoteLeadValues } from "@/lib/validations";
 
 export async function getExtensionLeadsAction(page: number = 1, limit: number = 10) {
@@ -59,6 +61,7 @@ export async function promoteLeadToOutreachAction(id: string, values: PromoteLea
 
   const timeZone = await getUserTimeZone();
   if (!timeZone) return { error: "Please reload so we can detect your device timezone." };
+    const rules = (await getAccountPreferences())?.preferences?.followUp ?? DEFAULT_PREFERENCES.followUp;
   const { companyName, companyLink, roleTargeted, contacts, notes } = values;
 
   try {
@@ -79,7 +82,7 @@ export async function promoteLeadToOutreachAction(id: string, values: PromoteLea
         return {
           ...c,
           messageSentAt: sentAt,
-          followUpDueAt: c.followUpDueAt || addUserCalendarDays(sentAt, 5, timeZone),
+          followUpDueAt: c.followUpDueAt || scheduleFollowUp(sentAt, rules.firstDelay, timeZone, rules.skipWeekends),
           createdAt: new Date().toISOString(),
         };
       });

@@ -1,3 +1,4 @@
+import { FollowUpSettings } from "@/components/settings/follow-up-settings";
 import { TableSettings } from "@/components/settings/table-settings";
 import { StatsSettings } from "@/components/settings/stats-settings";
 import { NavigationSettings } from "@/components/settings/navigation-settings";
@@ -104,6 +105,7 @@ export default async function SettingsPage({
             { id: "navigation", label: "Navigation", content: <NavigationSettings /> },
             { id: "shortcuts", label: "Shortcuts", content: <KeyboardShortcutSettings /> },
             { id: "notifications", label: "Notifications", content: <NotificationSettings initialEmail={fullUser?.notificationEmail || null} initialReceiveNotifications={fullUser?.receiveNotifications ?? true} /> },
+            { id: "workflow", label: "Follow-up rules", content: <FollowUpSettings /> },
             { id: "tables", label: "Tables", content: <TableSettings /> },
             { id: "statistics", label: "Statistics", content: <StatsSettings /> },
             { id: "data", label: "Data", content: <><AccountSync /><DataManagement /></> },

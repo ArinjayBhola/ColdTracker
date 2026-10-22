@@ -7,7 +7,9 @@ import { auth } from "@/lib/auth";
 import { eq, desc, and, sql, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getUserTimeZone } from "@/lib/user-time-zone";
-import { addUserCalendarDays } from "@/lib/user-calendar";
+import { scheduleFollowUp } from "@/lib/follow-up-rules";
+import { getAccountPreferences } from "@/actions/preferences";
+import { DEFAULT_PREFERENCES } from "@/lib/preferences";
 import { recordDailyActivity } from "@/actions/goals";
 export type ActionState = {
   error?: string;
@@ -90,12 +92,13 @@ export async function createOutreachAction(prevState: ActionState, formData: For
 
     const timeZone = await getUserTimeZone();
     if (!timeZone) return { error: "Please reload so we can detect your device timezone." };
+    const rules = (await getAccountPreferences())?.preferences?.followUp ?? DEFAULT_PREFERENCES.followUp;
     const now = new Date();
     
     // Apply defaults to each contact if dates are missing
     const processedContacts = validatedContacts.map(contact => {
       const contactSentAt = contact.messageSentAt || now;
-      const contactFollowUpDueAt = contact.followUpDueAt || addUserCalendarDays(contactSentAt, 5, timeZone);
+      const contactFollowUpDueAt = contact.followUpDueAt || scheduleFollowUp(contactSentAt, rules.firstDelay, timeZone, rules.skipWeekends);
       return {
         ...contact,
         messageSentAt: contactSentAt,
@@ -376,6 +379,7 @@ export async function addContactToCompanyAction(outreachId: string, formData: Fo
     try {
         const timeZone = await getUserTimeZone();
         if (!timeZone) return { error: "Please reload so we can detect your device timezone." };
+    const rules = (await getAccountPreferences())?.preferences?.followUp ?? DEFAULT_PREFERENCES.followUp;
         const newContact = {
             personName,
             personRole,
@@ -383,7 +387,7 @@ export async function addContactToCompanyAction(outreachId: string, formData: Fo
             emailAddress,
             linkedinProfileUrl,
             messageSentAt: new Date(),
-            followUpDueAt: addUserCalendarDays(new Date(), 5, timeZone),
+            followUpDueAt: scheduleFollowUp(new Date(), rules.firstDelay, timeZone, rules.skipWeekends),
         };
 
         await db.update(outreach)
