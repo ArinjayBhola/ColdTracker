@@ -1,7 +1,7 @@
 import { calendarKey, shiftCalendarKey } from "@/lib/user-calendar";
 import type { AnalyticsRecord } from "@/lib/outreach-analytics";
 
-export function buildActivityHeatmap(records: AnalyticsRecord[], year: number, asOf: string, timeZone: string) {
+export function buildActivityHeatmap(records: AnalyticsRecord[], year: number, asOf: string, timeZone: string, weekStartsOn: 0 | 1 = 1) {
   const now = Date.parse(asOf);
   const today = calendarKey(asOf, timeZone);
   const counts = new Map<string, number>();
@@ -13,7 +13,7 @@ export function buildActivityHeatmap(records: AnalyticsRecord[], year: number, a
   }
   const start = `${year}-01-01`;
   const end = `${year}-12-31`;
-  const weekday = (new Date(`${start}T12:00:00Z`).getUTCDay() + 6) % 7;
+  const weekday = (new Date(`${start}T12:00:00Z`).getUTCDay() - weekStartsOn + 7) % 7;
   const gridStart = shiftCalendarKey(start, -weekday);
   const days: { key: string; count: number; available: boolean; inYear: boolean }[] = [];
   for (let key = gridStart; key <= end || days.length % 7 !== 0; key = shiftCalendarKey(key, 1)) {

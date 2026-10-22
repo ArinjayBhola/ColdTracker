@@ -1,5 +1,6 @@
 "use client";
 
+import { usePreferences } from "@/components/preferences-provider";
 import { useMemo, useState } from "react";
 import { buildActivityHeatmap } from "@/lib/outreach-heatmap";
 import { calendarKey } from "@/lib/user-calendar";
@@ -12,11 +13,13 @@ const shades = ["bg-muted", "bg-primary/25", "bg-primary/45", "bg-primary/70", "
 const label = (key: string) => new Date(`${key}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
 export function ActivityHeatmap({ records, asOf }: { records: AnalyticsRecord[]; asOf: string }) {
+  const { preferences } = usePreferences();
+  const weekStartsOn = preferences.stats.weekStartsOn;
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const currentYear = Number(calendarKey(asOf, timeZone).slice(0, 4));
   const [year, setYear] = useState(currentYear);
   const [selected, setSelected] = useState<string | null>(null);
-  const data = useMemo(() => buildActivityHeatmap(records, year, asOf, timeZone), [records, year, asOf, timeZone]);
+  const data = useMemo(() => buildActivityHeatmap(records, year, asOf, timeZone, weekStartsOn), [records, year, asOf, timeZone, weekStartsOn]);
   const years = [...new Set([currentYear, ...records.filter(record => record.status !== "DRAFT" && Number.isFinite(Date.parse(record.sentAt)) && Date.parse(record.sentAt) <= Date.parse(asOf)).map(record => Number(calendarKey(record.sentAt, timeZone).slice(0, 4)))])].sort((a, b) => b - a);
   const day = data.days.find(day => day.key === selected && day.available);
   const defaultDay = data.days.find(day => day.key === calendarKey(asOf, timeZone) && day.available) ?? data.days.findLast(day => day.available);
@@ -35,7 +38,7 @@ export function ActivityHeatmap({ records, asOf }: { records: AnalyticsRecord[];
     <CardContent className="min-w-0 space-y-4">
       <div className="max-w-full overflow-x-auto pb-2" role="region" aria-label="Scrollable yearly outreach activity calendar" tabIndex={0}>
         <div className="flex gap-3" style={{ minWidth: width + 48 }}>
-          <div className="grid shrink-0 pt-7 text-[11px] leading-none text-muted-foreground" style={{ gridTemplateRows: `repeat(7, ${cellSize}px)`, rowGap: gap }} aria-hidden="true">{["Mon", "", "Wed", "", "Fri", "", "Sun"].map((name, index) => <span key={index}>{name}</span>)}</div>
+          <div className="grid shrink-0 pt-7 text-[11px] leading-none text-muted-foreground" style={{ gridTemplateRows: `repeat(7, ${cellSize}px)`, rowGap: gap }} aria-hidden="true">{(weekStartsOn === 1 ? ["Mon", "", "Wed", "", "Fri", "", "Sun"] : ["Sun", "", "Tue", "", "Thu", "", "Sat"]).map((name, index) => <span key={index}>{name}</span>)}</div>
           <div className="shrink-0" style={{ width }}>
             <div className="relative h-7 text-[11px] text-muted-foreground" aria-hidden="true">{data.weeks.map((week, index) => {
               const monthStart = week.find(day => day.inYear && day.key.endsWith("-01"));

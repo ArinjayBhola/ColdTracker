@@ -1,3 +1,4 @@
+import { StatsSettings } from "@/components/settings/stats-settings";
 import { NavigationSettings } from "@/components/settings/navigation-settings";
 import { AccountSync } from "@/components/settings/account-sync";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
@@ -102,6 +103,7 @@ export default async function SettingsPage({
             { id: "navigation", label: "Navigation", content: <NavigationSettings /> },
             { id: "shortcuts", label: "Shortcuts", content: <KeyboardShortcutSettings /> },
             { id: "notifications", label: "Notifications", content: <NotificationSettings initialEmail={fullUser?.notificationEmail || null} initialReceiveNotifications={fullUser?.receiveNotifications ?? true} /> },
+            { id: "statistics", label: "Statistics", content: <StatsSettings /> },
             { id: "data", label: "Data", content: <><AccountSync /><DataManagement /></> },
           ]} />
         </div>
