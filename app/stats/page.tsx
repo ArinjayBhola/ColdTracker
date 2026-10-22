@@ -9,9 +9,9 @@ export default async function StatsPage() {
   if (!session?.user?.id) redirect("/signin?callbackUrl=/stats");
   const records = await getOutreachAnalyticsRecords();
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="fixed inset-0 flex overflow-hidden bg-background">
       <Sidebar />
-      <main className="min-w-0 flex-1 overflow-y-auto p-4 md:p-8">
+      <main className="relative min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain p-4 md:p-8">
         <div className="mx-auto max-w-7xl pt-16 md:pt-0">
           <OutreachAnalyticsDashboard records={records} />
         </div>

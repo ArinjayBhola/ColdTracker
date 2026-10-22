@@ -54,7 +54,8 @@ const appearanceScript = `
     var fonts = ${JSON.stringify(FONT_OPTIONS)};
     var font = fonts.find(function(f) { return f.id === (p.font || p.bodyFont); });
     var html = document.documentElement;
-    if (["default","blue","purple","green","orange","rose","teal"].includes(p.colorTheme)) html.dataset.theme = p.colorTheme;
+    if (p.colorTheme === 'orange' || p.colorTheme === 'graphite') p.colorTheme = 'default';
+    if (["default","blue","purple","green","rose","teal"].includes(p.colorTheme)) html.dataset.theme = p.colorTheme;
     if (font) html.style.setProperty('--app-font', font.family);
     if ([200,300,400,500,600,700,800].includes(p.fontWeight)) html.style.setProperty('--app-font-weight', p.fontWeight);
     html.style.removeProperty('font-size');
@@ -91,7 +92,7 @@ export default function RootLayout({
             <AppearanceProvider>
             <PreferencesProvider>
               <NextTopLoader
-                color="#1f6f9f"
+                color="var(--primary)"
                 showSpinner={false}
               />
               <ToastProvider />

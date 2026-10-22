@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useSyncExternalStore } from "react";
 import { APPEARANCE_KEY, DEFAULT_APPEARANCE, applyAppearance, parseAppearance, type AppearancePreferences } from "@/lib/appearance";
 
-type Theme = "default" | "blue" | "purple" | "green" | "orange" | "rose" | "teal";
+type Theme = AppearancePreferences["colorTheme"];
 
 type AppearanceContextType = {
   colorTheme: Theme;

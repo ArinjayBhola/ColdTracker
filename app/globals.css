@@ -349,7 +349,6 @@ html[data-reduced-motion="true"] *::after {
 html[data-theme="blue"] { --palette-hue: 255; }
 html[data-theme="purple"] { --palette-hue: 300; }
 html[data-theme="green"] { --palette-hue: 150; }
-html[data-theme="orange"] { --palette-hue: 65; }
 html[data-theme="rose"] { --palette-hue: 15; }
 html[data-theme="teal"] { --palette-hue: 190; }
 html[data-theme]:not([data-theme="default"]) {
@@ -387,4 +386,9 @@ html.dark[data-theme]:not([data-theme="default"]) {
   --border: oklch(0.32 0.018 var(--palette-hue));
   --sidebar: oklch(0.16 0.01 var(--palette-hue));
   --sidebar-foreground: oklch(0.84 0.012 var(--palette-hue));
+}
+
+/* NProgress sets an inline `transition: all`; only animate movement, not theme colors. */
+#nprogress .bar {
+  transition-property: transform, margin-left, opacity !important;
 }

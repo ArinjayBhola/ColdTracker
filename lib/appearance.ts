@@ -33,7 +33,7 @@ export function availableFontWeights(font: FontId) {
   return FONT_WEIGHTS.map(weight => weight.value);
 }
 export type AppearancePreferences = {
-  colorTheme: "default" | "blue" | "purple" | "green" | "orange" | "rose" | "teal";
+  colorTheme: "default" | "blue" | "purple" | "green" | "rose" | "teal";
   font: FontId;
   fontWeight: number;
   fontSize: number;
@@ -46,9 +46,11 @@ export function parseAppearance(raw: string | null): AppearancePreferences {
   let value: Partial<AppearancePreferences> & { bodyFont?: FontId } = {};
   try { const parsed = JSON.parse(raw || "{}"); if (parsed && typeof parsed === "object") value = parsed; } catch { /* Use defaults for invalid saved settings. */ }
   const savedFont = value.font ?? value.bodyFont;
+  // Retired palettes fall back to Warm paper while keeping typography preferences.
+  if (["orange", "graphite"].includes(value.colorTheme as string)) value.colorTheme = "default";
   const font = FONT_OPTIONS.some(font => font.id === savedFont) ? savedFont! : "inter";
   return {
-    colorTheme: ["default", "blue", "purple", "green", "orange", "rose", "teal"].includes(value.colorTheme || "") ? value.colorTheme! : "default",
+    colorTheme: ["default", "blue", "purple", "green", "rose", "teal"].includes(value.colorTheme || "") ? value.colorTheme! : "default",
     font,
     fontWeight: availableFontWeights(font).includes(value.fontWeight ?? 400) ? value.fontWeight ?? 400 : 400,
     fontSize: typeof value.fontSize === "number" && Number.isFinite(value.fontSize) && value.fontSize >= 12 && value.fontSize <= 24 ? value.fontSize : 16,
