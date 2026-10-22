@@ -15,7 +15,9 @@ export async function getAccountPreferences() {
 export async function saveAccountPreferences(input: unknown) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Please sign in again.");
-  const patch = preferencesSchema.partial().strict().parse(input);
+  const parsed = preferencesSchema.partial().strict().parse(input);
+  // Zod applies defaults even inside optional fields; only write requested sections.
+  const patch = Object.fromEntries(Object.keys(input as object).map(key => [key, parsed[key as keyof typeof parsed]]));
   await db.update(users).set({ preferences: sql`coalesce(${users.preferences}, '{}'::jsonb) || ${JSON.stringify(patch)}::jsonb` }).where(eq(users.id, session.user.id));
   return { success: true };
 }
