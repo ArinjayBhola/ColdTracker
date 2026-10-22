@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "@/components/status-badge";
+import { ActivityHeatmap } from "@/components/activity-heatmap";
 
 const number = (value: number) => value.toLocaleString("en-US");
 const rate = (value: number) => `${value.toFixed(1)}%`;
@@ -133,6 +134,8 @@ function LocalOutreachAnalytics({ records, asOf }: { records: AnalyticsRecord[];
     {a.previous && <p className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground"><span>Previous {range} days: {number(a.previous.sent)} sent · {rate(percent(a.previous.responded, a.previous.sent))} recorded response rate</span>{change !== null && <span className="inline-flex items-center gap-1 text-foreground"><ArrowUpRight className={`h-3.5 w-3.5 ${change < 0 ? "rotate-90" : ""}`} />{change > 0 ? "+" : ""}{change.toFixed(1)} percentage points</span>}</p>}
 
     {a.sent === 0 ? <Card><CardContent className="space-y-3 py-10 text-center"><BarChart3 className="mx-auto h-9 w-9 text-muted-foreground" /><h2 className="text-xl">No sent outreach in this period</h2><p className="text-sm text-muted-foreground">{records.length ? "Choose a wider date range, or send an outreach to start seeing trends." : "Add your first outreach to build your performance picture."}</p><Button asChild><Link href="/outreach/new">Add outreach</Link></Button></CardContent></Card> : <ComparisonChart analytics={a} />}
+
+    <ActivityHeatmap records={records} asOf={asOf} />
 
     <div className="grid min-w-0 gap-6 xl:grid-cols-2">
       <Card><CardHeader><CardTitle>Conversion funnel</CardTitle><CardDescription>Each stage includes the later stages we can confirm.</CardDescription></CardHeader><CardContent className="space-y-5">
