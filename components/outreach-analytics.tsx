@@ -141,7 +141,7 @@ function LocalOutreachAnalytics({ records, asOf }: { records: AnalyticsRecord[];
 
     {show("heatmap") && <ActivityHeatmap records={records} asOf={asOf} />}
 
-    {(show("funnel") || show("pipeline")) && <div className="grid min-w-0 gap-6 xl:grid-cols-2">
+    {(show("funnel") || show("pipeline")) && <div className={`grid min-w-0 gap-6 ${show("funnel") && show("pipeline") ? "xl:grid-cols-2" : ""}`}>
       {show("funnel") && <Card><CardHeader><CardTitle>Conversion funnel</CardTitle><CardDescription>Each stage includes the later stages we can confirm.</CardDescription></CardHeader><CardContent className="space-y-5">
         {[{ label: "Sent", count: a.sent }, { label: "Recorded response", count: a.responded }, { label: "Interview or offer", count: a.interviews }, { label: "Offer", count: a.offers }].map(stage => <div key={stage.label} className="space-y-2"><div className="flex flex-wrap justify-between gap-2 text-sm"><span>{stage.label}</span><span className="tabular-nums">{number(stage.count)} <span className="text-muted-foreground">· {rate(percent(stage.count, a.sent))}</span></span></div><div role="meter" aria-label={stage.label} aria-valuenow={stage.count} aria-valuemin={0} aria-valuemax={Math.max(1, a.sent)} className="h-2.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${percent(stage.count, a.sent)}%` }} /></div></div>)}
         <p className="border-t pt-4 text-xs text-muted-foreground">Interview → offer conversion: {a.interviews ? rate(a.interviewToOfferRate) : "No interviews recorded yet"}.</p>

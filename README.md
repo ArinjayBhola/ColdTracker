@@ -125,7 +125,25 @@ Settings offers sixteen app-wide font families, including six handwriting fonts,
 and available weights from Extra Light
 to Extra Bold, a text size slider and custom 12–24 px values, light/dark/system modes,
 reduced motion, and a live typography preview. Appearance changes apply
-immediately, persist in this browser, and can be reset to defaults.
+immediately, sync to the signed-in account, and can be reset to defaults.
 Text sizing is independent of layout widths. Controls wrap or grow vertically
 and the settings grid stacks when needed to accommodate larger text.
 The expanded sidebar fits its content and follows the selected font and text size.
+
+## Account settings and backups
+
+Settings is divided into Account, Appearance, Navigation, Shortcuts, Notifications,
+Follow-up rules, Tables, Statistics, and Data tabs. Run
+`npm run db:migrate:preferences` on existing databases before deployment.
+
+Account preferences sync on focus, through same-origin tab notifications, and
+within a minute on other open devices. Each user can choose a sign-in landing
+page, reorder or hide sidebar links, select dashboard columns and page size,
+and choose Stats widgets, the default date range, and the heatmap week start.
+Follow-up rules control future automatic scheduling; existing and manually
+selected due dates are preserved. Weekend skipping rolls Saturday/Sunday to Monday.
+
+Data offers versioned JSON backups and a preview before restoring. Restore merges
+into the signed-in account in one transaction without deleting unrelated records.
+Passwords and OAuth tokens are excluded. Backups are limited to 5 MB and 5,000
+records per data type. Startup tracking requires its catalog startup to exist.

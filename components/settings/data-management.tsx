@@ -3,7 +3,7 @@
 import { BackupRestore } from "@/components/settings/backup-restore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ExportExcel } from "@/components/export-excel";
-import { FiDatabase, FiDownload } from "react-icons/fi";
+import { FiDatabase } from "react-icons/fi";
 
 export function DataManagement() {
   return (

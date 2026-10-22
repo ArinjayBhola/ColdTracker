@@ -4,6 +4,7 @@ import { users } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { eq, sql } from "drizzle-orm";
 import { parsePreferences, preferencesSchema } from "@/lib/preferences";
+import { revalidatePath } from "next/cache";
 
 export async function getAccountPreferences() {
   const session = await auth();
@@ -19,5 +20,6 @@ export async function saveAccountPreferences(input: unknown) {
   // Zod applies defaults even inside optional fields; only write requested sections.
   const patch = Object.fromEntries(Object.keys(input as object).map(key => [key, parsed[key as keyof typeof parsed]]));
   await db.update(users).set({ preferences: sql`coalesce(${users.preferences}, '{}'::jsonb) || ${JSON.stringify(patch)}::jsonb` }).where(eq(users.id, session.user.id));
+  if ("table" in patch) revalidatePath("/dashboard");
   return { success: true };
 }

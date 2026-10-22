@@ -18,7 +18,7 @@ export function BackupRestore() {
     setBusy(true); setMessage("");
     try {
       const data = await exportAccountBackup();
-      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: "application/json" }));
       const link = document.createElement("a"); link.href = url; link.download = `coldtrack-backup-${new Date().toLocaleDateString("en-CA")}.json`; link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       setMessage("Backup downloaded.");
