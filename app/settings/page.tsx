@@ -1,3 +1,4 @@
+import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { accounts, users } from "@/db/schema";
@@ -20,7 +21,7 @@ import { Sidebar } from "@/components/sidebar";
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ error?: string }>;
+  searchParams?: Promise<{ error?: string; tab?: string }>;
 }) {
   const session = await auth();
 
@@ -59,7 +60,7 @@ export default async function SettingsPage({
                 Account <span className="text-primary/90 font-bold">Settings</span>
               </h1>
               <p className="text-base text-muted-foreground font-medium">
-                Manage your profile, security, and view your performance metrics.
+                Control your account, appearance, and how ColdTrack works for you.
               </p>
             </div>
           </header>
@@ -70,11 +71,8 @@ export default async function SettingsPage({
             </div>
           )}
 
-          <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
-            {/* Left Column: Profile Overlay & Stats */}
-            <div className="min-w-0 space-y-6">
-              {/* Profile Card */}
-              <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-premium overflow-hidden group">
+          <SettingsTabs initialTab={params.error ? "account" : params.tab} tabs={[
+            { id: "account", label: "Account", content: <><div className="grid min-w-0 gap-6 md:grid-cols-2">              <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-premium overflow-hidden group">
                 <div className="h-20 bg-gradient-to-r from-primary/20 via-primary/10 to-transparent group-hover:from-primary/30 transition-all duration-500" />
                 <CardHeader className="relative -mt-10">
                   <div className="relative inline-block mx-auto mb-4">
@@ -97,29 +95,12 @@ export default async function SettingsPage({
 
               {/* Outreach Stats Card */}
               <OutreachStats />
-
-              {/* Other functional stuff could go here if needed */}
-            </div>
-
-            {/* Right Column: Forms & Danger Zone */}
-            <div className="min-w-0 space-y-6">
-              <AppearanceSettings />
-              <KeyboardShortcutSettings />
-
-              <AccountConnections googleConnected={Boolean(googleAccount)} />
-
-              <ChangePasswordForm hasPassword={typeof fullUser?.password === "string" && fullUser.password.trim().length > 0} />
-
-              <NotificationSettings
-                initialEmail={fullUser?.notificationEmail || null}
-                initialReceiveNotifications={fullUser?.receiveNotifications ?? true}
-              />
-
-              <DataManagement />
-
-              <DeleteAccountButton />
-            </div>
-          </div>
+</div><AccountConnections googleConnected={Boolean(googleAccount)} /><ChangePasswordForm hasPassword={typeof fullUser?.password === "string" && fullUser.password.trim().length > 0} /><DeleteAccountButton /></> },
+            { id: "appearance", label: "Appearance", content: <AppearanceSettings /> },
+            { id: "shortcuts", label: "Shortcuts", content: <KeyboardShortcutSettings /> },
+            { id: "notifications", label: "Notifications", content: <NotificationSettings initialEmail={fullUser?.notificationEmail || null} initialReceiveNotifications={fullUser?.receiveNotifications ?? true} /> },
+            { id: "data", label: "Data", content: <DataManagement /> },
+          ]} />
         </div>
       </main>
     </div>
