@@ -1,3 +1,5 @@
+import { getAccountPreferences } from "@/actions/preferences";
+import { DEFAULT_PREFERENCES } from "@/lib/preferences";
 import { Suspense } from "react";
 import { getGroupedOutreachByCompany } from "@/actions/outreach";
 import { Sidebar } from "@/components/sidebar";
@@ -25,12 +27,19 @@ async function DashboardGoalsSection() {
 }
 
 async function DashboardOutreachTableSection({ page, filter }: { page: number, filter: string }) {
-  const { items: outreachItems, totalCount } = await getGroupedOutreachByCompany(page, 10, filter);
+  const preferences = (await getAccountPreferences())?.preferences ?? DEFAULT_PREFERENCES;
+  const pageSize = preferences.table.pageSize;
+  const activeFilter = filter || preferences.table.defaultMethod;
+  let result = await getGroupedOutreachByCompany(page, pageSize, activeFilter);
+  const currentPage = Math.min(Math.max(1, page), Math.max(1, Math.ceil(result.totalCount / pageSize)));
+  if (currentPage !== page) result = await getGroupedOutreachByCompany(currentPage, pageSize, activeFilter);
+  const { items: outreachItems, totalCount } = result;
   return (
     <OutreachTable 
       items={outreachItems} 
       totalCount={totalCount} 
-      currentPage={page} 
+      currentPage={currentPage}
+      pageSize={pageSize} 
     />
   );
 }
@@ -42,7 +51,7 @@ export default async function DashboardPage(
 ) {
   const searchParams = await props.searchParams;
   const page = Number(searchParams.page) || 1;
-  const filter = searchParams.filter || "ALL";
+  const filter = searchParams.filter || "";
 
   return (
     <div className="app-page">

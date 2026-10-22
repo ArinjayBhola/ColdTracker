@@ -1,7 +1,7 @@
 "use client";
 import { createContext, useContext, useEffect, useRef, useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { getAccountPreferences, saveAccountPreferences } from "@/actions/preferences";
 import { DEFAULT_PREFERENCES, type AppPreferences } from "@/lib/preferences";
@@ -13,12 +13,13 @@ export const usePreferences = () => useContext(PreferencesContext);
 const key = ["account-preferences"];
 export function PreferencesProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const enabled = !["/", "/signin", "/signup"].includes(pathname);
   const client = useQueryClient();
   const { setTheme } = useTheme();
   const channel = useRef<BroadcastChannel | null>(null);
   const mutation = useMutation({ mutationKey: key, scope: { id: "account-preferences" }, mutationFn: saveAccountPreferences,
-    onSuccess: () => channel.current?.postMessage("updated"),
+    onSuccess: (_data, patch) => { channel.current?.postMessage("updated"); if (patch && typeof patch === "object" && "table" in patch) router.refresh(); },
     onSettled: () => { if (client.isMutating({ mutationKey: key }) === 1) void client.invalidateQueries({ queryKey: key }); },
   });
   const query = useQuery({ queryKey: key, queryFn: getAccountPreferences, enabled: enabled && !mutation.isPending, refetchOnWindowFocus: true, refetchOnMount: true, refetchInterval: 60_000 });

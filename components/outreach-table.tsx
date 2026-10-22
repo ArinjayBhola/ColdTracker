@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/components/preferences-provider";
 import { isBeforeLocalToday } from "@/lib/user-calendar";
 
 import { motion } from "framer-motion";
@@ -63,6 +64,7 @@ type OutreachTableProps = {
   items: OutreachItem[];
   totalCount: number;
   currentPage: number;
+  pageSize?: number;
 };
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -77,18 +79,20 @@ const SOURCE_LABELS: Record<string, string> = {
   OTHER: "Other",
 };
 
-export function OutreachTable({ items, totalCount, currentPage }: OutreachTableProps) {
+export function OutreachTable({ items, totalCount, currentPage, pageSize = 10 }: OutreachTableProps) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
-  const itemsPerPage = 10;
+  const { preferences } = usePreferences();
+  const itemsPerPage = pageSize;
+  const columnStyle = (column: typeof preferences.table.columns[number]) => preferences.table.columns.includes(column) ? undefined : { display: "none" };
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const filter = searchParams.get("filter") || "ALL";
+  const filter = searchParams.get("filter") || preferences.table.defaultMethod;
 
   const filteredItems = items.filter((item) => {
     const matchesSearch = 
@@ -291,11 +295,11 @@ export function OutreachTable({ items, totalCount, currentPage }: OutreachTableP
               />
             </th>
             <th className="h-12 px-4 md:px-6 text-left align-middle font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">Company</th>
-            <th className="hidden md:table-cell h-12 min-w-[240px] px-4 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Role</th>
-            <th className="h-12 px-4 md:px-6 text-left align-middle font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground">Status</th>
-            <th className="hidden lg:table-cell h-12 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Date</th>
-            <th className="hidden sm:table-cell h-12 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Follow Up</th>
-            <th className="h-12 px-4 md:px-6 text-right align-middle font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground">Actions</th>
+            <th style={columnStyle("role")} className="hidden md:table-cell h-12 min-w-[240px] px-4 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Role</th>
+            <th style={columnStyle("status")} className="h-12 px-4 md:px-6 text-left align-middle font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground">Status</th>
+            <th style={columnStyle("date")} className="hidden lg:table-cell h-12 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Date</th>
+            <th style={columnStyle("followUp")} className="hidden sm:table-cell h-12 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Follow Up</th>
+            <th style={columnStyle("actions")} className="h-12 px-4 md:px-6 text-right align-middle font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground">Actions</th>
           </tr>
         </thead>
         <motion.tbody
@@ -352,7 +356,7 @@ export function OutreachTable({ items, totalCount, currentPage }: OutreachTableP
                         {item.followUpSentAt && (
                           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0" title="Follow-up Sent" />
                         )}
-                        <span title={item.companyName} className="text-sm md:text-base font-semibold tracking-tight group-hover:text-primary transition-colors truncate max-w-[120px] md:max-w-[220px]">{item.companyName}</span>
+                        <span title={item.companyName} className="text-sm md:text-base font-semibold tracking-tight group-hover:text-primary transition-colors truncate max-w-[120px] md:max-w-[220px]"><Link href={`/outreach/${item.id}`}>{item.companyName}</Link></span>
                         {item.contactCount && item.contactCount > 1 && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
                             {item.contactCount}
@@ -377,25 +381,25 @@ export function OutreachTable({ items, totalCount, currentPage }: OutreachTableP
                         </span>
                       )}
                     </div>
-                    <div className="md:hidden text-[10px] text-muted-foreground truncate max-w-[120px]">
+                    <div style={columnStyle("role")} className="md:hidden text-[10px] text-muted-foreground truncate max-w-[120px]">
                       {item.roleTargeted}{item.applicationStatus ? ` · ${item.applicationStatus}` : ""}
                     </div>
                   </div>
                 </td>
-                <td className="hidden md:table-cell min-w-[240px] px-4 py-4 align-middle">
+                <td style={columnStyle("role")} className="hidden md:table-cell min-w-[240px] px-4 py-4 align-middle">
                   <span title={item.roleTargeted} className="line-clamp-2 min-w-[208px] max-w-[280px] break-words font-semibold leading-6 text-foreground">{item.roleTargeted}</span>
                 </td>
-                <td className="p-3 md:p-6 align-middle">
+                <td style={columnStyle("status")} className="p-3 md:p-6 align-middle">
                   <div className="scale-90 md:scale-100 origin-left">
                       <StatusBadge status={item.status} />
                   </div>
                 </td>
-                <td className="hidden lg:table-cell p-6 align-middle">
+                <td style={columnStyle("date")} className="hidden lg:table-cell p-6 align-middle">
                   <span className="font-mono text-xs text-muted-foreground font-medium whitespace-nowrap">
                     {item.messageSentAt ? format(new Date(item.messageSentAt), "MMM d, yyyy") : "-"}
                   </span>
                 </td>
-                <td className="hidden sm:table-cell p-6 align-middle">
+                <td style={columnStyle("followUp")} className="hidden sm:table-cell p-6 align-middle">
                   {item.status !== "REPLIED" && item.status !== "CLOSED" && item.status !== "REJECTED" ? (
                     <span className={cn(
                       "text-[10px] md:text-xs font-semibold px-2 md:px-3 py-1 md:py-1.5 rounded-full border whitespace-nowrap inline-block",
@@ -409,7 +413,7 @@ export function OutreachTable({ items, totalCount, currentPage }: OutreachTableP
                     <span className="text-muted-foreground">-</span>
                   )}
                 </td>
-                <td className="p-3 md:p-6 align-middle text-right">
+                <td style={columnStyle("actions")} className="p-3 md:p-6 align-middle text-right">
                   <div className="flex w-max items-center justify-end gap-1 md:gap-2">
                      <div className="hidden md:block">
                           <OutreachActions id={item.id} currentStatus={item.status} />
