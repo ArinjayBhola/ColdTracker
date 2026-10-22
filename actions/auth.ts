@@ -47,7 +47,7 @@ export async function signUpAction(_prevState: AuthActionState, formData: FormDa
 }
 
 export async function googleSignIn() {
-    await signIn("google");
+    await signIn("google", { redirectTo: "/workspace" });
 }
 
 export async function signOutAction() {
@@ -56,6 +56,7 @@ export async function signOutAction() {
 
 export async function credentialsSignIn(_prevState: AuthActionState, formData: FormData) {
     try {
+        formData.set("redirectTo", "/workspace");
         await signIn("credentials", formData);
     } catch (error) {
         if (error && typeof error === "object" && "type" in error && error.type === "CredentialsSignin") {

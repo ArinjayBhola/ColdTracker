@@ -10,7 +10,7 @@ export default auth((req) => {
 
   if (isAuthPage) {
     if (isLoggedIn) {
-      return NextResponse.redirect(new URL("/dashboard", req.nextUrl));
+      return NextResponse.redirect(new URL("/workspace", req.nextUrl));
     }
     return null;
   }

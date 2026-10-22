@@ -1,5 +1,6 @@
 "use client";
 
+import { usePreferences } from "@/components/preferences-provider";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,8 @@ const links = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { preferences } = usePreferences();
+  const orderedLinks = [...new Set([...preferences.navigation.order, ...links.map(link => link.href)])].map(href => links.find(link => link.href === href)!).filter(link => link && !preferences.navigation.hidden.includes(link.href as typeof preferences.navigation.hidden[number]));
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
@@ -109,7 +112,7 @@ export function Sidebar() {
 
         {/* Navigation */}
         <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto">
-          {links.map((link) => {
+          {orderedLinks.map((link) => {
             const Icon = link.icon;
             // Precise matching for the root dashboard to avoid matching sub-routes
             const isActive = link.href === "/dashboard"

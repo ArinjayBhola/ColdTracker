@@ -1,3 +1,4 @@
+import { NavigationSettings } from "@/components/settings/navigation-settings";
 import { AccountSync } from "@/components/settings/account-sync";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { auth } from "@/lib/auth";
@@ -98,6 +99,7 @@ export default async function SettingsPage({
               <OutreachStats />
 </div><AccountConnections googleConnected={Boolean(googleAccount)} /><ChangePasswordForm hasPassword={typeof fullUser?.password === "string" && fullUser.password.trim().length > 0} /><DeleteAccountButton /></> },
             { id: "appearance", label: "Appearance", content: <AppearanceSettings /> },
+            { id: "navigation", label: "Navigation", content: <NavigationSettings /> },
             { id: "shortcuts", label: "Shortcuts", content: <KeyboardShortcutSettings /> },
             { id: "notifications", label: "Notifications", content: <NotificationSettings initialEmail={fullUser?.notificationEmail || null} initialReceiveNotifications={fullUser?.receiveNotifications ?? true} /> },
             { id: "data", label: "Data", content: <><AccountSync /><DataManagement /></> },
