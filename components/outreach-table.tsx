@@ -80,9 +80,10 @@ const SOURCE_LABELS: Record<string, string> = {
 };
 
 export function OutreachTable({ items, totalCount, currentPage, pageSize = 10 }: OutreachTableProps) {
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
+  const searchParams = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState<string>(searchParams.get("q") || "");
+  const startDate = searchParams.get("start") || "";
+  const endDate = searchParams.get("end") || "";
   const { preferences } = usePreferences();
   const itemsPerPage = pageSize;
   const columnStyle = (column: typeof preferences.table.columns[number]) => preferences.table.columns.includes(column) ? undefined : { display: "none" };
@@ -91,21 +92,17 @@ export function OutreachTable({ items, totalCount, currentPage, pageSize = 10 }:
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const filter = searchParams.get("filter") || preferences.table.defaultMethod;
 
-  const filteredItems = items.filter((item) => {
-    const matchesSearch = 
-      item.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.personName.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
-  });
+  const filteredItems = items;
 
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
   const handleFilterChange = (newFilter: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("filter", newFilter);
+    params.set("q", searchQuery);
+    setSelectedIds(new Set());
     params.set("page", "1");
     router.push(`/dashboard?${params.toString()}`);
   };
@@ -113,25 +110,26 @@ export function OutreachTable({ items, totalCount, currentPage, pageSize = 10 }:
   const handlePageChange = (newPage: number) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", newPage.toString());
+    setSelectedIds(new Set());
     router.push(`/dashboard?${params.toString()}`);
   };
 
-  const handleSearchChange = (query: string) => {
-    setSearchQuery(query);
+  const updateFilters = (changes: Record<string, string>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("q", searchQuery);
+    for (const [key, value] of Object.entries(changes)) { if (value) params.set(key, value); else params.delete(key); }
+    params.set("page", "1");
+    router.push(`/dashboard?${params.toString()}`);
+    setSelectedIds(new Set());
   };
-
+  const handleSearchChange = (query: string) => { setSearchQuery(query); if (!query) updateFilters({ q: "" }); };
   const handleDateChange = (type: "start" | "end", date: string) => {
-    if (type === "start") {
-      setStartDate(date);
-    } else {
-      setEndDate(date);
-    }
+    const changes: Record<string, string> = { [type]: date };
+    if (type === "start" && endDate && date > endDate) changes.end = date;
+    if (type === "end" && startDate && date && date < startDate) changes.start = date;
+    updateFilters(changes);
   };
-
-  const clearDateFilters = () => {
-    setStartDate("");
-    setEndDate("");
-  };
+  const clearDateFilters = () => updateFilters({ start: "", end: "" });
 
   const toggleSelectAll = () => {
     if (selectedIds.size === items.length) {
@@ -185,13 +183,15 @@ export function OutreachTable({ items, totalCount, currentPage, pageSize = 10 }:
   return (
     <TableShell>
       <TableHeader
-        title="Recent Outreach"
+        title="Outreach"
         subtitle={`Showing ${totalCount === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-${Math.min(currentPage * itemsPerPage, totalCount)} of ${totalCount} applications`}
         searchQuery={searchQuery}
         onSearchChange={handleSearchChange}
-        placeholder="Search by company or person..."
+        onSearchSubmit={() => updateFilters({ q: searchQuery })}
+        placeholder="Search all companies, people, or positions..."
       >
         <div className="flex items-center gap-3 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0">
+          <Button variant="outline" onClick={() => updateFilters({ q: searchQuery })}>Search</Button>
           {selectedIds.size > 0 && (
             <Button
               variant="destructive"
@@ -244,13 +244,15 @@ export function OutreachTable({ items, totalCount, currentPage, pageSize = 10 }:
         </div>
       </TableHeader>
 
-      <div className="px-6 py-4 bg-muted/30 border-b border-border/50">
+      <details className="px-6 py-3 bg-muted/30 border-b border-border/50" open={!!(startDate || endDate) || undefined}>
+        <summary className="cursor-pointer text-sm text-muted-foreground">Sent date filters{startDate || endDate ? ` - ${startDate || "Any"} to ${endDate || "Any"}` : ""}</summary>
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <FiCalendar className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Date Range:</span>
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Sent date:</span>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {[["Today", 0], ["Last 7 days", 6], ["Last 30 days", 29]].map(([label, days]) => <Button key={label} size="sm" variant="ghost" onClick={() => { const today = new Date(); const start = new Date(); start.setDate(start.getDate() - Number(days)); updateFilters({ start: format(start, "yyyy-MM-dd"), end: format(today, "yyyy-MM-dd") }); }}>{label}</Button>)}
             <div className="relative">
               <span className="absolute -top-2 left-2 bg-card px-1 text-[10px] font-bold text-muted-foreground uppercase z-10">From</span>
               <DatePicker 
@@ -282,7 +284,7 @@ export function OutreachTable({ items, totalCount, currentPage, pageSize = 10 }:
             )}
           </div>
         </div>
-      </div>
+      </details>
       
       <TableContent>
         <thead className="border-b border-border/50 bg-muted/30">

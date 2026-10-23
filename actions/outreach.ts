@@ -143,6 +143,8 @@ export async function createOutreachAction(prevState: ActionState, formData: For
       
       try { await recordDailyActivity(); } catch (e) { console.error("Daily activity error:", e); }
       revalidatePath("/dashboard");
+      revalidatePath("/stats");
+      revalidatePath("/follow-ups");
       return { success: true, outreachId: existing.id };
     } else {
       // Create new outreach entry
@@ -163,6 +165,8 @@ export async function createOutreachAction(prevState: ActionState, formData: For
 
       try { await recordDailyActivity(); } catch (e) { console.error("Daily activity error:", e); }
       revalidatePath("/dashboard");
+      revalidatePath("/stats");
+      revalidatePath("/follow-ups");
       return { success: true, outreachId: result[0]?.id };
     }
   } catch (error) {
@@ -205,7 +209,7 @@ export async function getStats() {
 
     return result;
 }
-export async function getGroupedOutreachByCompany(page: number = 1, limit: number = 10, filter: string = "ALL") {
+export async function getGroupedOutreachByCompany(page: number = 1, limit: number = 10, filter: string = "ALL", options: { q?: string; start?: string; end?: string } = {}) {
   const session = await auth();
   if (!session?.user?.id) return { items: [], totalCount: 0 };
 
@@ -214,7 +218,23 @@ export async function getGroupedOutreachByCompany(page: number = 1, limit: numbe
   
   const whereClause = [eq(outreach.userId, session.user.id)];
   if (methodFilter !== "ALL") {
-    whereClause.push(sql`coalesce(${outreach.contacts}->0->>'contactMethod', 'EMAIL') = ${methodFilter}`);
+    whereClause.push(sql`exists (select 1 from jsonb_array_elements(${outreach.contacts}) contact where contact->>'contactMethod' = ${methodFilter})`);
+  }
+
+  const query = options.q?.trim().slice(0, 200);
+  if (query) {
+    const pattern = `%${query.replace(/[\\%_]/g, "\\$&")}%`;
+    whereClause.push(sql`(${outreach.companyName} ilike ${pattern} or ${outreach.roleTargeted} ilike ${pattern} or exists (select 1 from jsonb_array_elements(${outreach.contacts}) contact where contact->>'personName' ilike ${pattern}))`);
+  }
+  const timeZone = await getUserTimeZone();
+  const validDate = (value?: string) => !!value && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
+  const sentDate = sql`coalesce(nullif(contact->>'messageSentAt', '')::timestamptz, ${outreach.createdAt} AT TIME ZONE 'UTC')`;
+  if (timeZone && (validDate(options.start) || validDate(options.end))) {
+    const predicates = [sql`true`];
+    if (validDate(options.start)) predicates.push(sql`(${sentDate} AT TIME ZONE ${timeZone})::date >= ${options.start}::date`);
+    if (validDate(options.end)) predicates.push(sql`(${sentDate} AT TIME ZONE ${timeZone})::date <= ${options.end}::date`);
+    if (methodFilter !== "ALL") predicates.push(sql`contact->>'contactMethod' = ${methodFilter}`);
+    whereClause.push(sql`exists (select 1 from jsonb_array_elements(${outreach.contacts}) contact where ${and(...predicates)})`);
   }
 
   const [items, totalCountRes] = await Promise.all([

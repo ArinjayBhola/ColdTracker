@@ -7,6 +7,7 @@ interface TableHeaderProps {
   subtitle: string;
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  onSearchSubmit?: () => void;
   placeholder?: string;
   showSearch?: boolean;
   children?: React.ReactNode;
@@ -17,6 +18,7 @@ export function TableHeader({
   subtitle,
   searchQuery,
   onSearchChange,
+  onSearchSubmit,
   placeholder = "Search...",
   showSearch = true,
   children,
@@ -35,6 +37,8 @@ export function TableHeader({
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           {showSearch && <div className="relative w-full sm:w-64 lg:w-80">
             <input
+              aria-label={placeholder}
+              onKeyDown={e => { if (e.key === "Enter") onSearchSubmit?.(); }}
               type="text"
               placeholder={placeholder}
               value={searchQuery}

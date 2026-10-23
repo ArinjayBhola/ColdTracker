@@ -59,6 +59,7 @@ export async function updateDailyTarget(target: number) {
   }
 
   revalidatePath("/dashboard");
+  revalidatePath("/stats");
   return { success: true };
 }
 
@@ -86,6 +87,7 @@ export async function updateWeeklyTarget(target: number) {
   }
 
   revalidatePath("/dashboard");
+  revalidatePath("/stats");
   return { success: true };
 }
 
@@ -218,6 +220,7 @@ export async function syncActivityHistory() {
   }
 
   revalidatePath("/dashboard");
+  revalidatePath("/stats");
   return { success: true };
 }
 
