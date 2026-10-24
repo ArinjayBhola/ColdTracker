@@ -10,9 +10,11 @@ import { Loader2 } from "lucide-react";
 
 interface ExportExcelProps {
   fileName?: string;
+  label?: string;
+  disabled?: boolean;
 }
 
-export function ExportExcel({ fileName = "outreach-data" }: ExportExcelProps) {
+export function ExportExcel({ fileName = "outreach-data", label = "Export to Excel", disabled = false }: ExportExcelProps) {
   const { toast } = useToast();
   const [isExporting, setIsExporting] = useState(false);
 
@@ -86,11 +88,11 @@ export function ExportExcel({ fileName = "outreach-data" }: ExportExcelProps) {
       variant="outline" 
       size="sm" 
       onClick={handleExport} 
-      disabled={isExporting}
+      disabled={isExporting || disabled}
       className="gap-2 h-11 px-6 font-bold rounded-xl border-2 hover:bg-muted/50 transition-all"
     >
       {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FiDownload className="h-4 w-4" />}
-      {isExporting ? "Exporting..." : "Export to Excel"}
+      {isExporting ? "Exporting..." : label}
     </Button>
   );
 }

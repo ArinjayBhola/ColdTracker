@@ -23,25 +23,32 @@ function restoreId(owner: string, original: string, owned: Set<string>) {
 const asDate = (value: string | null) => value ? new Date(value) : null;
 
 export async function exportAccountBackup() {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Please sign in again.");
-  const userId = session.user.id;
-  const data = await db.transaction(async tx => {
-    const [records, templates, leads, tracking, user, goal] = await Promise.all([
-      tx.select().from(outreach).where(eq(outreach.userId, userId)),
-      tx.select().from(messageTemplates).where(eq(messageTemplates.userId, userId)),
-      tx.select().from(extensionLeads).where(eq(extensionLeads.userId, userId)),
-      tx.select().from(startupTracking).where(eq(startupTracking.userId, userId)),
-      tx.query.users.findFirst({ where: eq(users.id, userId), columns: { preferences: true, keyboardShortcuts: true, notificationEmail: true, receiveNotifications: true } }),
-      tx.query.goals.findFirst({ where: eq(goals.userId, userId) }),
-    ]);
-    if (!user) throw new Error("Account not found.");
-    const shortcuts = shortcutPreferencesSchema.safeParse(user.keyboardShortcuts);
-    return { format: "coldtrack-backup", version: 1, exportedAt: new Date().toISOString(), outreach: records, templates, extensionLeads: leads, startupTracking: tracking,
-      settings: { preferences: parsePreferences(user.preferences), keyboardShortcuts: shortcuts.success ? shortcuts.data : defaultShortcutPreferences, notificationEmail: user.notificationEmail, receiveNotifications: user.receiveNotifications ?? true, goals: goal ? { dailyTarget: goal.dailyTarget, weeklyTarget: goal.weeklyTarget } : null } };
-  }, { isolationLevel: "repeatable read", accessMode: "read only" });
-  // Schema strips ownership fields; credentials and OAuth tokens are never exported.
-  return readBackup(JSON.parse(JSON.stringify(data)));
+  try {
+    const session = await auth();
+    if (!session?.user?.id) throw new Error("Please sign in again.");
+    const userId = session.user.id;
+    const data = await db.transaction(async tx => {
+      const [records, templates, leads, tracking, user, goal] = await Promise.all([
+        tx.select().from(outreach).where(eq(outreach.userId, userId)),
+        tx.select().from(messageTemplates).where(eq(messageTemplates.userId, userId)),
+        tx.select().from(extensionLeads).where(eq(extensionLeads.userId, userId)),
+        tx.select().from(startupTracking).where(eq(startupTracking.userId, userId)),
+        tx.query.users.findFirst({ where: eq(users.id, userId), columns: { preferences: true, keyboardShortcuts: true, notificationEmail: true, receiveNotifications: true } }),
+        tx.query.goals.findFirst({ where: eq(goals.userId, userId) }),
+      ]);
+      if (!user) throw new Error("Account not found.");
+      const shortcuts = shortcutPreferencesSchema.safeParse(user.keyboardShortcuts);
+      return { format: "coldtrack-backup", version: 1, exportedAt: new Date().toISOString(), outreach: records, templates, extensionLeads: leads, startupTracking: tracking,
+        settings: { preferences: parsePreferences(user.preferences), keyboardShortcuts: shortcuts.success ? shortcuts.data : defaultShortcutPreferences, notificationEmail: user.notificationEmail, receiveNotifications: user.receiveNotifications ?? true, goals: goal ? { dailyTarget: goal.dailyTarget, weeklyTarget: goal.weeklyTarget } : null } };
+    }, { isolationLevel: "repeatable read", accessMode: "read only" });
+    // Schema strips ownership fields; credentials and OAuth tokens are never exported.
+    return { success: true as const, data: readBackup(JSON.parse(JSON.stringify(data))) };
+  } catch (error) {
+    console.error("Account backup export failed", error);
+    const message = error instanceof Error ? error.message : "";
+    return { success: false as const, error: message.startsWith("Invalid backup:") || message.startsWith("Backup exceeds") || message === "Please sign in again." || message === "Account not found."
+      ? message : "Could not prepare your backup. Please try again." };
+  }
 }
 
 export async function restoreAccountBackup(input: unknown, includeSettings: boolean) {

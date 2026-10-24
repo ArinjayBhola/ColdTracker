@@ -5,7 +5,11 @@ export const MAX_BACKUP_BYTES = 5 * 1024 * 1024;
 const date = z.string().datetime({ offset: true });
 const text = z.string().max(100_000);
 const nullableText = text.nullable();
-const url = z.string().max(4096).refine(value => { if (!value) return true; try { return ["http:", "https:"].includes(new URL(value).protocol); } catch { return false; } }, "Use an HTTP or HTTPS URL.");
+// Older records may contain bare domains, just as the outreach form accepts.
+const url = z.string().max(4096).transform(value => {
+  const trimmed = value.trim();
+  return trimmed && !/^[a-z][a-z\d+.-]*:/i.test(trimmed) ? `https://${trimmed}` : trimmed;
+}).refine(value => { if (!value) return true; try { return ["http:", "https:"].includes(new URL(value).protocol); } catch { return false; } }, "Use an HTTP or HTTPS URL.");
 const nullableUrl = url.nullable();
 const base = { id: z.string().uuid(), createdAt: date };
 const contact = z.object({ personName: z.string().max(500), personRole: z.string().max(500), contactMethod: z.enum(["EMAIL", "LINKEDIN"]), emailAddress: nullableText.optional(), linkedinProfileUrl: nullableUrl.optional(), emailThreadUrl: nullableUrl.optional(), messageSentAt: date.optional(), followUpDueAt: date.optional() });
