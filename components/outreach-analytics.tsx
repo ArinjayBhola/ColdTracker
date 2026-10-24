@@ -1,7 +1,7 @@
 "use client";
 
 import { usePreferences } from "@/components/preferences-provider";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { ArrowUpRight, BarChart3, Download, MessageCircle, Send, Target, Trophy, Clock3 } from "lucide-react";
 import { buildOutreachAnalytics, percent, type AnalyticsRecord, type AnalyticsRange, type OutreachAnalytics } from "@/lib/outreach-analytics";
@@ -89,6 +89,7 @@ function ComparisonChart({ analytics }: { analytics: OutreachAnalytics }) {
 export function OutreachAnalyticsDashboard({ records }: { records: AnalyticsRecord[] }) {
   const { ready, error, preferences } = usePreferences();
   const [asOf, setAsOf] = useState<string | null>(null);
+  const followedInitialAnchor = useRef(false);
   useEffect(() => {
     const sync = () => setAsOf(new Date().toISOString());
     sync();
@@ -96,6 +97,15 @@ export function OutreachAnalyticsDashboard({ records }: { records: AnalyticsReco
     window.addEventListener("focus", sync);
     return () => { clearInterval(timer); window.removeEventListener("focus", sync); };
   }, []);
+  useEffect(() => {
+    if (!asOf || (!ready && !error) || followedInitialAnchor.current || window.location.hash !== "#goals") return;
+    // Local charts expand after hydration; follow the anchor after that layout.
+    const frame = requestAnimationFrame(() => {
+      const goals = document.getElementById("goals");
+      if (goals) { goals.scrollIntoView({ block: "start" }); followedInitialAnchor.current = true; }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [asOf, ready, error]);
   if (!asOf || (!ready && !error)) return <p className="text-muted-foreground" role="status">Loading your local statistics...</p>;
   return <LocalOutreachAnalytics key={preferences.stats.range} records={records} asOf={asOf} />;
 }

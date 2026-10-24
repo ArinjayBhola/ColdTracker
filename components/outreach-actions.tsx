@@ -25,7 +25,7 @@ const STATUS_OPTIONS = [
   { value: "CLOSED", label: "Closed", color: "text-gray-600 dark:text-gray-400" },
 ];
 
-export function OutreachActions({ id, currentStatus }: { id: string; currentStatus: string }) {
+export function OutreachActions({ id, currentStatus, compact = false }: { id: string; currentStatus: string; compact?: boolean }) {
     const queryClient = useQueryClient();
     const { toast } = useToast();
     const [selection, setSelection] = useState<{ base: string; status: string } | null>(null);
@@ -69,9 +69,10 @@ export function OutreachActions({ id, currentStatus }: { id: string; currentStat
     return (
         <div className="flex shrink-0 items-center gap-2">
             <Select value={displayedStatus} onValueChange={handleStatusChange} disabled={isPending}>
-                <SelectTrigger className={cn(
+                <SelectTrigger aria-label="Outreach status" className={cn(
                     "h-auto min-h-9 w-auto min-w-[10em] shrink-0 px-3 py-2 rounded-lg border-2 border-border bg-background",
                     "text-sm font-semibold",
+                    compact && "min-w-0 border-0 bg-transparent px-2 py-1 text-xs shadow-none hover:bg-muted/70",
                     STATUS_OPTIONS.find(opt => opt.value === displayedStatus)?.color
                 )}>
                     <SelectValue />

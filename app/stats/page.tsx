@@ -3,11 +3,13 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
 import { getOutreachAnalyticsRecords } from "@/actions/analytics";
+import { getDashboardGoalsData } from "@/actions/goals";
+import { GoalsStreaksCard } from "@/components/goals-streaks-card";
 import { OutreachAnalyticsDashboard } from "@/components/outreach-analytics";
 
 async function StatsContent() {
-  const records = await getOutreachAnalyticsRecords();
-  return <OutreachAnalyticsDashboard records={records} />;
+  const [records, goals] = await Promise.all([getOutreachAnalyticsRecords(), getDashboardGoalsData()]);
+  return <div className="space-y-10"><OutreachAnalyticsDashboard records={records} /><section id="goals" className="scroll-mt-6"><h2 className="mb-4 text-lg font-semibold">Goals & consistency</h2><GoalsStreaksCard dailyProgress={goals.daily} weeklyProgress={goals.weekly} streakData={goals.streak} last7Days={goals.last7Days} /></section></div>;
 }
 
 export default async function StatsPage() {

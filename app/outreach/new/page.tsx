@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Sidebar } from "@/components/sidebar";
-import { Suspense, useState, useEffect, useRef } from "react";
+import { Suspense, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { FiArrowLeft, FiSave, FiBriefcase, FiUser, FiFileText, FiCalendar, FiPlus, FiTrash2, FiChevronDown } from "react-icons/fi";
@@ -45,18 +45,17 @@ const APPLICATION_STATUS_LABELS: Record<string, string> = {
   WITHDRAWN: "Withdrawn",
 };
 
-function SubmitButton() {
+function SubmitButton({ another = false }: { another?: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending} className="gap-2 h-12 px-8">
-      <FiSave className="h-5 w-5" />
-      {pending ? "Creating..." : "Create Outreach"}
+    <Button type="submit" name="intent" value={another ? "another" : "save"} variant={another ? "outline" : "default"} disabled={pending} className="h-auto min-h-11 flex-1 gap-2 px-3 py-2.5 text-xs sm:flex-initial sm:px-5 sm:text-sm">
+      <FiSave className="hidden h-4 w-4 sm:block" />
+      {pending ? "Saving..." : another ? "Save & add another" : "Save outreach"}
     </Button>
   );
 }
 
 function NewOutreachPageContent() {
-    const [state, formAction] = useActionState(createOutreachAction, { error: undefined, details: undefined, success: false });
     const searchParams = useSearchParams();
     const initialCompanyName = searchParams.get("company") || "";
     const initialContactName = searchParams.get("contact") || "";
@@ -69,22 +68,16 @@ function NewOutreachPageContent() {
         emailAddress: "",
         linkedinProfileUrl: ""
     }]);
+    const [companyName, setCompanyName] = useState(initialCompanyName);
+    const [position, setPosition] = useState("");
+    const [keepCompany, setKeepCompany] = useState(false);
+    const [formVersion, setFormVersion] = useState(0);
     const [customRoles, setCustomRoles] = useState<Record<number, string>>({});
     const [sentDate, setSentDate] = useState<Date | undefined>(() => new Date());
     const [showMoreDetails, setShowMoreDetails] = useState(false);
     const formRef = useRef<HTMLFormElement>(null);
     const router = useRouter();
     const { toast } = useToast();
-
-    useEffect(() => {
-        if (state.success && state.outreachId) {
-            toast({
-                title: "Outreach created!",
-                description: "Your job application has been logged successfully.",
-            });
-            router.push(`/outreach/${state.outreachId}`);
-        }
-    }, [state.success, state.outreachId, router, toast]);
 
     const addContact = () => {
         const lastContact = contacts[contacts.length - 1];
@@ -93,6 +86,7 @@ function NewOutreachPageContent() {
         // Clone all fields from last contact
         const newContact = {
             ...lastContact,
+            personName: "", emailAddress: "", linkedinProfileUrl: "",
             id: newId,
         };
         
@@ -133,21 +127,47 @@ function NewOutreachPageContent() {
             emailAddress: "",
             linkedinProfileUrl: ""
         }]);
+        setCompanyName("");
+        setPosition("");
+        setFormVersion(value => value + 1);
         setCustomRoles({});
         setSentDate(new Date());
         setShowMoreDetails(false);
     };
 
+    const [state, formAction] = useActionState(async (previous: Parameters<typeof createOutreachAction>[0], data: FormData) => {
+      const result = await createOutreachAction(previous, data);
+      if (result.success && result.outreachId) {
+        toast({ title: "Outreach saved", description: "Your conversation is in the tracker." });
+        if (data.get("intent") === "another") {
+          const company = String(data.get("companyName") || "");
+          const role = String(data.get("roleTargeted") || "");
+          handleClearAll();
+          if (keepCompany) { setCompanyName(company); setPosition(role); }
+          requestAnimationFrame(() => { (formRef.current?.querySelector(keepCompany ? 'input[name="contacts.0.personName"]' : 'input[name="companyName"]') as HTMLInputElement)?.focus(); });
+          return {};
+        }
+        router.push(`/outreach/${result.outreachId}`);
+      }
+      return result;
+    }, { error: undefined, details: undefined, success: false });
+
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto p-4 md:p-8">
-        <form action={formAction} ref={formRef}>
-          <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
+      <main className="flex-1 overflow-y-auto p-4 pt-20 md:p-8">
+        <form key={formVersion} action={formAction} ref={formRef} onKeyDown={event => {
+      if (event.key === "Enter" && !event.nativeEvent.isComposing && event.target instanceof HTMLInputElement && ["text", "email", "url"].includes(event.target.type)) {
+        event.preventDefault();
+        const save = event.currentTarget.querySelector<HTMLButtonElement>('button[value="save"]');
+        if (save && !save.disabled) event.currentTarget.requestSubmit(save);
+      }
+    }}>
+          <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="space-y-1">
-                <h1 className="text-3xl md:text-4xl font-bold tracking-tight">New Outreach</h1>
+                <h1 className="text-3xl md:text-4xl font-bold tracking-tight">New outreach</h1>
                 <p className="text-muted-foreground text-base md:text-lg">
                   Add the basics now. Details can be filled in later.
                 </p>
@@ -167,7 +187,6 @@ function NewOutreachPageContent() {
                     Back
                   </Link>
                 </Button>
-                <SubmitButton />
               </div>
             </div>
 
@@ -187,18 +206,18 @@ function NewOutreachPageContent() {
                     <section className="space-y-4">
                       <div className="flex items-center gap-3 pb-2 border-b border-border/30">
                         <FiBriefcase className="w-5 h-5 text-primary" />
-                        <h2 className="text-xl font-bold tracking-tight">Required</h2>
+                        <h2 className="text-xl font-bold tracking-tight">Company</h2>
                       </div>
 
                       <div className="grid gap-3">
                         <div className="space-y-1">
                           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1" htmlFor="companyName">Company Name<span className="text-destructive ml-1">*</span></label>
-                          <Input id="companyName" name="companyName" placeholder="e.g., Google" required className="h-11" defaultValue={initialCompanyName} />
+                          <Input id="companyName" name="companyName" placeholder="e.g., Google" required className="h-11" value={companyName} onChange={e => setCompanyName(e.target.value)} />
                           {state.details?.companyName && <p className="text-destructive text-[10px] ml-1">{state.details.companyName[0]}</p>}
                         </div>
                         <div className="space-y-1">
                           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1" htmlFor="roleTargeted">Position</label>
-                          <Input id="roleTargeted" name="roleTargeted" placeholder="Job inquiry" className="h-11" />
+                          <Input id="roleTargeted" name="roleTargeted" value={position} onChange={e => setPosition(e.target.value)} placeholder="Job inquiry" className="h-11" />
                           {state.details?.roleTargeted && <p className="text-destructive text-[10px] ml-1">{state.details.roleTargeted[0]}</p>}
                         </div>
                         <div className="space-y-1">
@@ -473,6 +492,10 @@ function NewOutreachPageContent() {
                 </div>
               </div>
             </div>
+          </div>
+          <div className="sticky bottom-0 mx-auto mt-6 flex max-w-4xl flex-wrap items-center justify-between gap-4 border-t bg-background/95 px-1 py-4 backdrop-blur">
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={keepCompany} onChange={e => setKeepCompany(e.target.checked)} className="accent-[var(--primary)]" />Keep company & position for the next entry</label>
+            <div className="flex w-full flex-wrap gap-3 sm:w-auto"><SubmitButton another /><SubmitButton /></div>
           </div>
         </form>
 

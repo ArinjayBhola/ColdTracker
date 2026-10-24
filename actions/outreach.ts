@@ -12,10 +12,11 @@ import { getAccountPreferences } from "@/actions/preferences";
 import { DEFAULT_PREFERENCES, parsePreferences } from "@/lib/preferences";
 import { readDashboardPage } from "@/lib/dashboard-query";
 
-export async function getDashboardOutreachPage(page = 1, filter = "") {
+export async function getDashboardOutreachPage(page = 1, filter = "", options: { q?: string; start?: string; end?: string } = {}) {
   const session = await auth();
-  if (!session?.user?.id) return { items: [], pageSize: 10, currentPage: 1, totalCount: 0 };
-  return readDashboardPage(session.user.id, page, filter);
+  if (!session?.user?.id) return { items: [], pageSize: 10, currentPage: 1, totalCount: 0, timeZone: "UTC" };
+  const timeZone = await getUserTimeZone();
+  return readDashboardPage(session.user.id, page, filter, { ...options, timeZone: timeZone ?? "UTC" });
 }
 
 export type ActionState = {

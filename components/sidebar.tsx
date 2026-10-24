@@ -14,7 +14,7 @@ import Image from "next/image";
 const links = [
   { href: "/dashboard", label: "Dashboard", icon: FiLayout },
   { href: "/startups", label: "Startups", icon: FiTrendingUp },
-  { href: "/dashboard/extension-leads", label: "Extension Leads", icon: FiLinkedin },
+  { href: "/dashboard/extension-leads", label: "Leads", icon: FiLinkedin },
   { href: "/follow-ups", label: "Follow-ups", icon: FiCheckSquare },
   { href: "/templates", label: "Templates", icon: FiFileText },
   { href: "/outreach/new", label: "Add Outreach", icon: FiPlusCircle },
@@ -55,6 +55,8 @@ export function Sidebar() {
       {/* Mobile Toggle Button */}
       <button
         onClick={() => setIsMobileOpen(!isMobileOpen)}
+        aria-label={isMobileOpen ? "Close navigation" : "Open navigation"}
+        aria-expanded={isMobileOpen}
         className="md:hidden fixed top-4 left-4 z-[100] p-2.5 rounded-lg border border-border bg-card text-foreground shadow-soft"
       >
         {isMobileOpen ? <FiChevronLeft size={20} /> : <FiLayout size={20} />}
@@ -70,12 +72,13 @@ export function Sidebar() {
 
       <div className={cn(
         "fixed inset-y-0 left-0 z-[36] md:relative flex h-screen shrink-0 flex-col border-r border-border bg-sidebar py-6 transition-colors duration-300",
-        isCollapsed && !isMobileOpen ? "w-20 px-3" : "w-max max-w-[calc(100vw-2rem)] px-4",
+        isCollapsed && !isMobileOpen ? "w-20 px-3" : "max-w-[calc(100vw-2rem)] px-4",
         isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-      )} style={isCollapsed && !isMobileOpen ? undefined : { minWidth: "calc(168px + var(--app-text-size, 16px) * 4)" }}>
+      )} style={isCollapsed && !isMobileOpen ? undefined : { width: "calc(152px + var(--app-text-size, 16px) * 4)" }}>
         {/* Collapse Toggle Button (Desktop) */}
         <button
           onClick={toggleSidebar}
+          aria-label={isCollapsed ? "Expand navigation" : "Collapse navigation"}
           className="hidden md:flex absolute -right-3 top-9 h-6 w-6 rounded-full border border-border bg-card items-center justify-center text-muted-foreground shadow-soft hover:text-foreground z-[37]"
         >
           {isCollapsed ? <FiChevronRight size={14} /> : <FiChevronLeft size={14} />}
@@ -99,50 +102,35 @@ export function Sidebar() {
             {(!isCollapsed || isMobileOpen) && (
               <div className="min-w-0">
                 <Link href="/dashboard">
-                  <h1 className="truncate font-display text-lg font-semibold text-foreground leading-none mb-1 tracking-tight">
+                  <span className="block truncate font-display text-lg font-semibold text-foreground leading-none mb-1 tracking-tight">
                     ColdTrack
-                  </h1>
+                  </span>
                 </Link>
-                <p className="eyebrow truncate">Outreach CRM</p>
+                <p className="eyebrow truncate">Outreach</p>
               </div>
             )}
           </div>
           {(!isCollapsed || isMobileOpen) && <ThemeToggle />}
         </div>
 
-        {/* Navigation */}
-        <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto">
-          {orderedLinks.map((link) => {
-            const Icon = link.icon;
-            // Precise matching for the root dashboard to avoid matching sub-routes
-            const isActive = link.href === "/dashboard"
-              ? pathname === "/dashboard"
-              : pathname === link.href || pathname?.startsWith(link.href + "/");
-            const showLabel = !isCollapsed || isMobileOpen;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  "flex items-center rounded-lg py-2.5 text-sm font-medium transition-colors duration-200 group relative",
-                  isActive
-                      ? "bg-primary/10 text-foreground font-semibold"
-                      : "text-sidebar-foreground hover:text-foreground hover:bg-foreground/[0.04]",
-                  showLabel ? "px-3.5 gap-3" : "justify-center px-0"
-                )}
-                title={isCollapsed && !isMobileOpen ? link.label : undefined}
-              >
-                {/* Active accent rail */}
-                {isActive && showLabel && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full bg-primary" />
-                )}
-                <Icon className={cn(
-                  "h-[18px] w-[18px] shrink-0 transition-colors duration-200 relative z-10",
-                  isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
-                )} />
-                {showLabel && <span className="relative z-10 whitespace-nowrap">{link.label}</span>}
-              </Link>
-            );
+        <nav aria-label="Main navigation" className="min-h-0 flex-1 space-y-6 overflow-y-auto">
+          {orderedLinks.some(link => link.href === "/outreach/new") && <Button variant="outline" asChild className={cn("mb-1 h-10 w-full bg-card shadow-none", isCollapsed && !isMobileOpen ? "px-0" : "justify-start gap-2.5 px-3")}>
+            <Link href="/outreach/new" title="New outreach"><FiPlusCircle className="h-4 w-4 shrink-0" /><span className={isCollapsed && !isMobileOpen ? "sr-only" : ""}>New outreach</span></Link>
+          </Button>}
+          {[{ label: "Workspace", paths: ["/dashboard", "/follow-ups", "/dashboard/extension-leads"] }, { label: "Library", paths: ["/templates", "/startups", "/stats"] }].map(group => {
+            const groupLinks = orderedLinks.filter(link => group.paths.includes(link.href));
+            if (!groupLinks.length) return null;
+            return <div key={group.label} className="space-y-1">
+              <p className={cn("mb-2 px-3 text-[10px] tracking-widest text-muted-foreground/70", isCollapsed && !isMobileOpen && "sr-only")}>{group.label.toUpperCase()}</p>
+              {groupLinks.map(link => {
+                const Icon = link.icon;
+                const active = link.href === "/dashboard" ? pathname === "/dashboard" : pathname === link.href || pathname.startsWith(link.href + "/");
+                const expanded = !isCollapsed || isMobileOpen;
+                return <Link key={link.href} href={link.href} title={link.label} aria-current={active ? "page" : undefined} className={cn("flex items-center rounded-lg py-2.5 text-sm transition-colors", expanded ? "gap-3 px-3" : "justify-center", active ? "bg-primary/8 text-primary font-medium" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground")}>
+                  <Icon className="h-[17px] w-[17px] shrink-0" /><span className={!expanded ? "sr-only" : ""}>{link.label}</span>
+                </Link>;
+              })}
+            </div>;
           })}
         </nav>
 

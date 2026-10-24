@@ -1,499 +1,145 @@
 "use client";
-import { usePreferences } from "@/components/preferences-provider";
-import { isBeforeLocalToday } from "@/lib/user-calendar";
-
-import { motion } from "framer-motion";
-import { StatusBadge } from "@/components/status-badge";
-import { Button } from "@/components/ui/button";
-import { format } from "date-fns";
-import { FiMail, FiLinkedin, FiCalendar, FiXCircle } from "react-icons/fi";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { OutreachActions } from "@/components/outreach-actions";
-import { DeleteArchiveActions } from "@/components/delete-archive-actions";
-import { cn } from "@/lib/utils";
-import { useState } from "react";
-import { DatePicker } from "@/components/ui/date-picker";
-import { TableShell, TableContent } from "@/components/ui/data-table/table-shell";
-import { TableHeader } from "@/components/ui/data-table/table-header";
-import { TablePagination } from "@/components/ui/data-table/table-pagination";
-import { Checkbox } from "@/components/ui/checkbox";
-import { bulkDeleteOutreach } from "@/actions/outreach";
-import { useToast } from "@/hooks/use-toast";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { FiTrash2, FiAlertTriangle } from "react-icons/fi";
-import { Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { format } from "date-fns";
+import { ArrowUpRight, ChevronDown, Ellipsis, Inbox, Linkedin, Loader2, Mail, Search, SlidersHorizontal, Trash2, X } from "lucide-react";
+import { usePreferences } from "@/components/preferences-provider";
+import { OutreachActions } from "@/components/outreach-actions";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { TableShell, TableContent } from "@/components/ui/data-table/table-shell";
+import { TablePagination } from "@/components/ui/data-table/table-pagination";
+import { bulkDeleteOutreach } from "@/actions/outreach";
+import { calendarKey } from "@/lib/user-calendar";
+import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
-type OutreachItem = {
-  id: string;
-  companyName: string;
-  companyLink: string | null;
-  roleTargeted: string;
-  personName: string;
-  personRole: string;
-  applicationSource?: string;
-  applicationStatus?: string;
-  applicationUrl?: string | null;
-  status: string;
-  messageSentAt: Date | string;
-  followUpDueAt: Date | string;
-  followUpSentAt?: Date | null;
-  contactMethod: string;
-  contactCount: number;
-  contacts: {
-    personName?: string;
-    personRole?: string;
-    contactMethod?: string;
-    emailAddress?: string | null;
-    linkedinProfileUrl?: string | null;
-    messageSentAt?: Date | string;
-    followUpDueAt?: Date | string;
-  }[];
-};
-
-type OutreachTableProps = {
-  items: OutreachItem[];
-  totalCount: number;
-  currentPage: number;
-  pageSize?: number;
-};
-
-const SOURCE_LABELS: Record<string, string> = {
-  DIRECT_EMAIL: "Direct email",
-  DIRECT_LINKEDIN: "Direct LinkedIn",
-  COMPANY_WEBSITE: "Company site",
-  INDEED: "Indeed",
-  GLASSDOOR: "Glassdoor",
-  NAUKRI: "Naukri",
-  LINKEDIN_JOB: "LinkedIn job",
-  REFERRAL: "Referral",
-  OTHER: "Other",
-};
-
-export function OutreachTable({ items, totalCount, currentPage, pageSize = 10 }: OutreachTableProps) {
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
-  const { preferences } = usePreferences();
-  const itemsPerPage = pageSize;
-  const columnStyle = (column: typeof preferences.table.columns[number]) => preferences.table.columns.includes(column) ? undefined : { display: "none" };
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const { toast } = useToast();
+type OutreachItem = { id: string; companyName: string; roleTargeted: string; personName: string; status: string; messageSentAt: Date | string; followUpDueAt: Date | string | null; contactMethod: string; contactCount: number };
+type Props = { items: OutreachItem[]; totalCount: number; currentPage: number; pageSize?: number; timeZone?: string };
+type FilterDraft = { method: string; start: string; end: string; preset: string };
+const calendarDate = (value: string | null) => value && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value ? value : "";
+const dateLabel = (value: string) => value ? format(new Date(`${value}T12:00:00`), "MMM d") : "Any date";
+export function OutreachTable({ items, totalCount, currentPage, pageSize = 10, timeZone = "UTC" }: Props) {
+  const todayKey = calendarKey(new Date(), timeZone);
+  const formatDay = (value: Date | string) => { const key = calendarKey(value, timeZone); return format(new Date(`${key}T12:00:00`), key.slice(0, 4) === todayKey.slice(0, 4) ? "MMM d" : "MMM d, yyyy"); };
+  const overdue = (value: Date | string) => calendarKey(value, timeZone) < todayKey;
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const filter = searchParams.get("filter") || preferences.table.defaultMethod;
-
-  const filteredItems = items.filter((item) => {
-    const matchesSearch = 
-      item.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.personName.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
-  });
-
-  const totalPages = Math.ceil(totalCount / itemsPerPage);
-
-  const handleFilterChange = (newFilter: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("filter", newFilter);
-    params.set("page", "1");
-    router.push(`/dashboard?${params.toString()}`);
-  };
-
-  const handlePageChange = (newPage: number) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", newPage.toString());
-    router.push(`/dashboard?${params.toString()}`);
-  };
-
-  const handleSearchChange = (query: string) => {
-    setSearchQuery(query);
-  };
-
-  const handleDateChange = (type: "start" | "end", date: string) => {
-    if (type === "start") {
-      setStartDate(date);
-    } else {
-      setEndDate(date);
+  const params = useSearchParams();
+  const { preferences } = usePreferences();
+  const { toast } = useToast();
+  const [pending, startTransition] = useTransition();
+  const appliedSearch = params.get("q") || "";
+  const requestedMethod = params.get("filter") || preferences.table.defaultMethod;
+  const method = ["ALL", "EMAIL", "LINKEDIN"].includes(requestedMethod) ? requestedMethod : "ALL";
+  const start = calendarDate(params.get("start"));
+  const end = calendarDate(params.get("end"));
+  const [search, setSearch] = useState(appliedSearch);
+  const lastSubmitted = useRef(appliedSearch);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scope = params.toString();
+  const [selection, setSelection] = useState({ scope, ids: new Set<string>() });
+  const selected = selection.scope === scope ? selection.ids : new Set<string>();
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [draft, setDraft] = useState<FilterDraft>({ method, start, end, preset: start || end ? "custom" : "any" });
+  const [deleteIds, setDeleteIds] = useState<string[]>([]);
+  const [deleting, setDeleting] = useState(false);
+  const show = (column: typeof preferences.table.columns[number]) => preferences.table.columns.includes(column);
+  const activeCount = Number(method !== "ALL") + Number(!!(start || end));
+  useEffect(() => () => { if (searchTimer.current) clearTimeout(searchTimer.current); }, []);
+  useEffect(() => {
+    if (lastSubmitted.current !== appliedSearch) {
+      lastSubmitted.current = appliedSearch;
+      // Keep the input in sync with browser back/forward navigation.
+          setSearch(appliedSearch);
     }
-  };
-
-  const clearDateFilters = () => {
-    setStartDate("");
-    setEndDate("");
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedIds.size === items.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(items.map((item) => item.id)));
-    }
-  };
-
-  const toggleSelectItem = (id: string) => {
-    const newSelected = new Set(selectedIds);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
-    }
-    setSelectedIds(newSelected);
-  };
-
-  const handleBulkDelete = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsDeleting(true);
+  }, [appliedSearch]);
+  function navigate(changes: Record<string, string>, replace = true) {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    const next = new URLSearchParams(params.toString());
+    next.set("q", search);
+    for (const [key, value] of Object.entries(changes)) { if (value) next.set(key, value); else next.delete(key); }
+    if (!next.get("q")) next.delete("q");
+    if (!("page" in changes)) next.set("page", "1");
+    lastSubmitted.current = next.get("q") || "";
+    setSelection({ scope, ids: new Set() });
+    startTransition(() => { const href = `/dashboard?${next.toString()}`; if (replace) router.replace(href, { scroll: false }); else router.push(href, { scroll: false }); });
+  }
+  function searchChanged(value: string) {
+    setSearch(value);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => navigate({ q: value }), 350);
+  }
+  function openFilters(open: boolean) {
+    if (open) setDraft({ method, start, end, preset: start || end ? "custom" : "any" });
+    setFiltersOpen(open);
+  }
+  function choosePreset(value: string) {
+    if (value === "custom") { setDraft(previous => ({ ...previous, preset: value })); return; }
+    if (value === "any") { setDraft(previous => ({ ...previous, preset: value, start: "", end: "" })); return; }
+    const now = new Date(); const beginning = new Date(); beginning.setDate(beginning.getDate() - Number(value));
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    setDraft(previous => ({ ...previous, preset: value, start: calendarKey(beginning, zone), end: calendarKey(now, zone) }));
+  }
+  function toggle(id: string) { setSelection(previous => { const ids = previous.scope === scope ? new Set(previous.ids) : new Set<string>(); if (ids.has(id)) ids.delete(id); else ids.add(id); return { scope, ids }; }); }
+  async function remove() {
+    setDeleting(true);
     try {
-      const res = await bulkDeleteOutreach(Array.from(selectedIds));
-      if (res.success) {
-        toast({
-          title: "Delete Successful",
-          description: `Successfully deleted ${selectedIds.size} outreach items.`,
-        });
-        setSelectedIds(new Set());
-        setShowDeleteDialog(false);
-        router.refresh();
-      } else {
-        toast({
-          title: "Delete Failed",
-          description: res.error || "Failed to delete items.",
-          variant: "destructive",
-        });
-      }
-    } catch {
-       toast({
-          title: "Error",
-          description: "An unexpected error occurred.",
-          variant: "destructive",
-        });
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  return (
-    <TableShell>
-      <TableHeader
-        title="Recent Outreach"
-        subtitle={`Showing ${totalCount === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-${Math.min(currentPage * itemsPerPage, totalCount)} of ${totalCount} applications`}
-        searchQuery={searchQuery}
-        onSearchChange={handleSearchChange}
-        placeholder="Search by company or person..."
-      >
-        <div className="flex items-center gap-3 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0">
-          {selectedIds.size > 0 && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setShowDeleteDialog(true)}
-              className="h-10 px-4 gap-2 font-bold shadow-lg shadow-destructive/20 animate-in fade-in slide-in-from-right-2"
-            >
-              <FiTrash2 className="w-4 h-4" />
-              Delete ({selectedIds.size})
-            </Button>
-          )}
-
-          <div className="flex items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
-            <button
-              onClick={() => handleFilterChange("ALL")}
-              className={cn(
-                "px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap",
-                filter === "ALL"
-                  ? "bg-primary text-primary-foreground shadow-soft"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              All
-            </button>
-            <button
-              onClick={() => handleFilterChange("EMAIL")}
-              className={cn(
-                "px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-2 whitespace-nowrap",
-                filter === "EMAIL"
-                  ? "bg-primary text-primary-foreground shadow-soft"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <FiMail className="w-4 h-4" />
-              Email
-            </button>
-            <button
-              onClick={() => handleFilterChange("LINKEDIN")}
-              className={cn(
-                "px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-2 whitespace-nowrap",
-                filter === "LINKEDIN"
-                  ? "bg-primary text-primary-foreground shadow-soft"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <FiLinkedin className="w-4 h-4" />
-              LinkedIn
-            </button>
+      const result = await bulkDeleteOutreach(deleteIds);
+      if (!result.success) throw new Error(result.error || "Could not delete outreach");
+      toast({ title: deleteIds.length === 1 ? "Outreach deleted" : `${deleteIds.length} entries deleted` });
+      setDeleteIds([]); setSelection({ scope, ids: new Set() });
+    } catch (error) { toast({ title: "Could not delete", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" }); }
+    finally { setDeleting(false); }
+  }
+  return <TableShell className="shadow-none">
+    <div className="flex flex-wrap items-center gap-3 border-b px-4 py-4 sm:px-5">
+      <h2 className="mr-auto flex items-center gap-2 text-base font-medium">Outreach<span className="rounded-md bg-muted px-2 py-0.5 text-xs tabular-nums text-muted-foreground">{totalCount}</span></h2>
+      <form onSubmit={event => { event.preventDefault(); navigate({ q: search }); }} role="search" className="relative order-3 w-full sm:order-none sm:w-64 lg:w-80">
+        {pending ? <Loader2 className="absolute left-3 top-3 h-4 w-4 animate-spin text-muted-foreground" /> : <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />}
+        <input aria-label="Search all outreach" type="search" maxLength={200} placeholder="Search company, person, role..." value={search} onChange={event => searchChanged(event.target.value)} className="h-10 w-full rounded-lg border bg-background pl-9 pr-9 text-sm outline-none placeholder:text-muted-foreground/70 focus:border-primary/50 focus:ring-2 focus:ring-primary/10 [&::-webkit-search-cancel-button]:appearance-none" />
+        {search && <button type="button" aria-label="Clear search" onClick={() => { setSearch(""); navigate({ q: "" }); }} className="absolute right-2 top-2 rounded p-1 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>}
+      </form>
+      <Popover open={filtersOpen} onOpenChange={openFilters}><PopoverTrigger asChild><Button variant="outline" className="h-10 gap-2 px-3 text-sm shadow-none"><SlidersHorizontal className="h-3.5 w-3.5" />Filters{activeCount > 0 && <span className="rounded bg-primary/10 px-1.5 text-xs text-primary">{activeCount}</span>}<ChevronDown className="h-3 w-3 text-muted-foreground" /></Button></PopoverTrigger>
+        <PopoverContent align="end" className="w-[320px] max-w-[calc(100vw-2rem)] bg-card p-5">
+          <h3 className="mb-5 text-sm font-medium">Narrow your view</h3>
+          <div className="space-y-5"><div><p className="mb-2 text-xs text-muted-foreground">Channel</p><div className="grid grid-cols-3 gap-1 rounded-lg bg-muted/60 p-1">{['ALL', 'EMAIL', 'LINKEDIN'].map(value => <button key={value} type="button" aria-pressed={draft.method === value} onClick={() => setDraft(previous => ({ ...previous, method: value }))} className={cn("rounded-md py-2 text-xs", draft.method === value ? "bg-card shadow-sm" : "text-muted-foreground")}>{value === "ALL" ? "All" : value === "EMAIL" ? "Email" : "LinkedIn"}</button>)}</div></div>
+            <div className="space-y-2"><label htmlFor="sent-period" className="text-xs text-muted-foreground">Sent date</label><select id="sent-period" value={draft.preset} onChange={event => choosePreset(event.target.value)} className="h-10 w-full rounded-lg border bg-background px-3 text-sm"><option value="any">Any time</option><option value="0">Today</option><option value="6">Last 7 days</option><option value="29">Last 30 days</option><option value="custom">Custom range</option></select></div>
+            {draft.preset === "custom" && <div className="grid grid-cols-2 gap-3"><div className="space-y-2"><label htmlFor="sent-from" className="text-xs text-muted-foreground">From</label><input id="sent-from" type="date" value={draft.start} onChange={event => setDraft(previous => ({ ...previous, start: event.target.value }))} className="h-10 w-full min-w-0 rounded-lg border bg-background px-2 text-xs" /></div><div className="space-y-2"><label htmlFor="sent-to" className="text-xs text-muted-foreground">To</label><input id="sent-to" type="date" value={draft.end} min={draft.start || undefined} onChange={event => setDraft(previous => ({ ...previous, end: event.target.value }))} className="h-10 w-full min-w-0 rounded-lg border bg-background px-2 text-xs" /></div></div>}
+            {draft.start && draft.end && draft.start > draft.end && <p role="alert" className="text-xs text-destructive">The end date must be on or after the start date.</p>}
+            <div className="flex items-center justify-between border-t pt-4"><Button variant="ghost" size="sm" onClick={() => setDraft({ method: "ALL", start: "", end: "", preset: "any" })}>Reset</Button><Button size="sm" disabled={!!(draft.start && draft.end && draft.start > draft.end)} onClick={() => { navigate({ filter: draft.method, start: draft.start, end: draft.end }); setFiltersOpen(false); }}>Apply filters</Button></div>
           </div>
-        </div>
-      </TableHeader>
-
-      <div className="px-6 py-4 bg-muted/30 border-b border-border/50">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <FiCalendar className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Date Range:</span>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="relative">
-              <span className="absolute -top-2 left-2 bg-card px-1 text-[10px] font-bold text-muted-foreground uppercase z-10">From</span>
-              <DatePicker 
-                value={startDate ? new Date(`${startDate}T00:00:00`) : undefined}
-                onChange={(date) => handleDateChange("start", date ? format(date, "yyyy-MM-dd") : "")}
-                placeholder="Start Date"
-                className="w-[180px]"
-              />
-            </div>
-            <div className="relative">
-              <span className="absolute -top-2 left-2 bg-card px-1 text-[10px] font-bold text-muted-foreground uppercase z-10">To</span>
-               <DatePicker 
-                value={endDate ? new Date(`${endDate}T00:00:00`) : undefined}
-                onChange={(date) => handleDateChange("end", date ? format(date, "yyyy-MM-dd") : "")}
-                placeholder="End Date"
-                className="w-[180px]"
-              />
-            </div>
-            {(startDate || endDate) && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={clearDateFilters}
-                className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1 h-10"
-              >
-                <FiXCircle className="w-4 h-4" />
-                Clear Dates
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-      
-      <TableContent>
-        <thead className="border-b border-border/50 bg-muted/30">
-          <tr>
-            <th className="h-12 w-[40px] px-4 align-middle">
-              <Checkbox
-                checked={items.length > 0 && selectedIds.size === items.length}
-                onCheckedChange={toggleSelectAll}
-                aria-label="Select all"
-              />
-            </th>
-            <th className="h-12 px-4 md:px-6 text-left align-middle font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">Company</th>
-            <th style={columnStyle("role")} className="hidden md:table-cell h-12 min-w-[240px] px-4 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Role</th>
-            <th style={columnStyle("status")} className="h-12 px-4 md:px-6 text-left align-middle font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground">Status</th>
-            <th style={columnStyle("date")} className="hidden lg:table-cell h-12 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Date</th>
-            <th style={columnStyle("followUp")} className="hidden sm:table-cell h-12 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Follow Up</th>
-            <th style={columnStyle("actions")} className="h-12 px-4 md:px-6 text-right align-middle font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground">Actions</th>
-          </tr>
-        </thead>
-        <motion.tbody
-          initial="hidden"
-          animate="visible"
-          variants={{
-            visible: {
-              transition: {
-                staggerChildren: 0.05,
-              },
-            },
-          }}
-        >
-          {filteredItems.length === 0 ? (
-            <tr>
-              <td colSpan={7} className="p-12 text-center text-muted-foreground text-base italic">
-                No outreach items match your search.
-              </td>
-            </tr>
-          ) : (
-            filteredItems.map((item) => (
-              <motion.tr
-                key={item.id}
-                variants={{
-                  hidden: { opacity: 0, y: 10 },
-                  visible: { opacity: 1, y: 0 },
-                }}
-                className={cn(
-                  "border-b border-border/30 transition-all duration-200 hover:bg-muted/30 group",
-                  selectedIds.has(item.id) && "bg-primary/5 hover:bg-primary/10"
-                )}
-              >
-                <td className="p-3 md:p-6 align-middle">
-                  <Checkbox
-                    checked={selectedIds.has(item.id)}
-                    onCheckedChange={() => toggleSelectItem(item.id)}
-                    aria-label={`Select ${item.companyName}`}
-                  />
-                </td>
-                <td className="p-3 md:p-6 align-middle">
-                  <div className="flex flex-col gap-1 md:gap-2">
-                    <div className="flex flex-wrap items-start md:items-center gap-1 md:gap-2">
-                      <div className="flex min-w-0 items-center gap-2">
-                        {!["REPLIED", "REJECTED", "OFFER", "CLOSED"].includes(item.status) && !item.followUpSentAt && (
-                          <div className={cn(
-                            "w-2.5 h-2.5 rounded-full flex-shrink-0 animate-pulse",
-                            item.followUpDueAt && isBeforeLocalToday(item.followUpDueAt)
-                              ? "bg-destructive shadow-[0_0_8px_rgba(239,68,68,0.5)]"
-                              : item.followUpDueAt && new Date(item.followUpDueAt).toDateString() === new Date().toDateString()
-                              ? "bg-primary shadow-[0_0_8px_rgba(var(--primary),0.5)]"
-                              : "hidden"
-                          )} />
-                        )}
-                        {item.followUpSentAt && (
-                          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0" title="Follow-up Sent" />
-                        )}
-                        <span title={item.companyName} className="text-sm md:text-base font-semibold tracking-tight group-hover:text-primary transition-colors truncate max-w-[120px] md:max-w-[220px]"><Link href={`/outreach/${item.id}`}>{item.companyName}</Link></span>
-                        {item.contactCount && item.contactCount > 1 && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
-                            {item.contactCount}
-                          </span>
-                        )}
-                      </div>
-                      <span className={cn(
-                        "inline-flex w-fit items-center gap-1 px-1.5 md:px-2 py-0.5 rounded-md text-[10px] font-semibold border",
-                        item.contactMethod === "EMAIL"
-                          ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
-                          : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
-                      )}>
-                        {item.contactMethod === "EMAIL" ? (
-                          <><FiMail className="w-2.5 h-2.5 md:w-3 md:h-3" /> <span className="hidden md:inline">Email</span></>
-                        ) : (
-                          <><FiLinkedin className="w-2.5 h-2.5 md:w-3 md:h-3" /> <span className="hidden md:inline">LinkedIn</span></>
-                        )}
-                      </span>
-                      {item.applicationSource && item.applicationSource !== "DIRECT_EMAIL" && (
-                        <span className="inline-flex w-fit items-center rounded-md border border-border px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                          {SOURCE_LABELS[item.applicationSource] || item.applicationSource}
-                        </span>
-                      )}
-                    </div>
-                    <div style={columnStyle("role")} className="md:hidden text-[10px] text-muted-foreground truncate max-w-[120px]">
-                      {item.roleTargeted}{item.applicationStatus ? ` · ${item.applicationStatus}` : ""}
-                    </div>
-                  </div>
-                </td>
-                <td style={columnStyle("role")} className="hidden md:table-cell min-w-[240px] px-4 py-4 align-middle">
-                  <span title={item.roleTargeted} className="line-clamp-2 min-w-[208px] max-w-[280px] break-words font-semibold leading-6 text-foreground">{item.roleTargeted}</span>
-                </td>
-                <td style={columnStyle("status")} className="p-3 md:p-6 align-middle">
-                  <div className="scale-90 md:scale-100 origin-left">
-                      <StatusBadge status={item.status} />
-                  </div>
-                </td>
-                <td style={columnStyle("date")} className="hidden lg:table-cell p-6 align-middle">
-                  <span className="font-mono text-xs text-muted-foreground font-medium whitespace-nowrap">
-                    {item.messageSentAt ? format(new Date(item.messageSentAt), "MMM d, yyyy") : "-"}
-                  </span>
-                </td>
-                <td style={columnStyle("followUp")} className="hidden sm:table-cell p-6 align-middle">
-                  {item.status !== "REPLIED" && item.status !== "CLOSED" && item.status !== "REJECTED" ? (
-                    <span className={cn(
-                      "text-[10px] md:text-xs font-semibold px-2 md:px-3 py-1 md:py-1.5 rounded-full border whitespace-nowrap inline-block",
-                      item.followUpDueAt && isBeforeLocalToday(item.followUpDueAt)
-                        ? "bg-destructive/10 text-destructive border-destructive/30" 
-                        : "bg-background text-muted-foreground border-border"
-                    )}>
-                      {item.followUpDueAt ? format(new Date(item.followUpDueAt), "MMM d") : "-"}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  )}
-                </td>
-                <td style={columnStyle("actions")} className="p-3 md:p-6 align-middle text-right">
-                  <div className="flex w-max items-center justify-end gap-1 md:gap-2">
-                     <div className="hidden md:block">
-                          <OutreachActions id={item.id} currentStatus={item.status} />
-                     </div>
-                    <Button variant="outline" size="sm" asChild className="h-8 md:h-9 px-2 md:px-3">
-                      <Link href={`/outreach/${item.id}`} className="text-[10px] md:text-sm">View</Link>
-                    </Button>
-                    <div className="hidden md:block">
-                      <DeleteArchiveActions id={item.id} />
-                    </div>
-                  </div>
-                </td>
-              </motion.tr>
-            ))
-          )}
-        </motion.tbody>
-      </TableContent>
-
-      <TablePagination
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={handlePageChange}
-      />
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent className="rounded-2xl border border-border shadow-raise bg-card max-w-[440px] p-8">
-          <AlertDialogHeader className="space-y-6">
-            <div className="flex flex-col items-center text-center space-y-4">
-              <div className="w-16 h-16 rounded-2xl bg-destructive/8 flex items-center justify-center border border-destructive/15">
-                <FiAlertTriangle className="w-8 h-8 text-destructive" />
-              </div>
-              <div className="space-y-2">
-                <AlertDialogTitle className="font-display text-2xl font-semibold tracking-tight">Delete {selectedIds.size} {selectedIds.size === 1 ? "entry" : "entries"}?</AlertDialogTitle>
-                <AlertDialogDescription className="text-sm text-muted-foreground leading-relaxed">
-                  This permanently removes the selected outreach, including all associated contacts and status history.
-                </AlertDialogDescription>
-              </div>
-            </div>
-
-            <div className="bg-destructive/8 border border-destructive/20 rounded-xl p-3.5 flex gap-3 items-start">
-               <FiAlertTriangle className="w-4.5 h-4.5 text-destructive shrink-0 mt-0.5" />
-               <p className="text-sm font-medium text-destructive leading-relaxed">
-                 This action cannot be undone.
-               </p>
-            </div>
-          </AlertDialogHeader>
-
-          <AlertDialogFooter className="grid grid-cols-2 gap-3 mt-8 sm:flex-none">
-            <AlertDialogCancel asChild>
-              <Button
-                variant="outline"
-                disabled={isDeleting}
-                className="h-11"
-              >
-                Keep them
-              </Button>
-            </AlertDialogCancel>
-            <AlertDialogAction
-              asChild
-            >
-              <Button
-                variant="destructive"
-                onClick={handleBulkDelete}
-                disabled={isDeleting}
-                className="h-11"
-              >
-                {isDeleting ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  "Yes, Delete"
-                )}
-              </Button>
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </TableShell>
-  );
+        </PopoverContent>
+      </Popover>
+    </div>
+    {(activeCount > 0 || appliedSearch || selected.size > 0) && <div className="flex flex-wrap items-center gap-2 border-b bg-muted/15 px-5 py-2.5 text-xs">
+      {selected.size > 0 ? <><span className="mr-2">{selected.size} selected</span><button className="flex items-center gap-1.5 text-destructive" onClick={() => setDeleteIds([...selected])}><Trash2 className="h-3.5 w-3.5" />Delete selected</button><button onClick={() => setSelection({ scope, ids: new Set() })} className="ml-auto text-muted-foreground">Deselect</button></> : <>
+        {method !== "ALL" && <button onClick={() => navigate({ filter: "ALL" })} className="flex items-center gap-2 rounded-md border bg-card px-2 py-1">{method === "EMAIL" ? "Email" : "LinkedIn"}<X className="h-3 w-3" /></button>}
+        {(start || end) && <button onClick={() => navigate({ start: "", end: "" })} className="flex items-center gap-2 rounded-md border bg-card px-2 py-1">Sent: {dateLabel(start)} - {dateLabel(end)}<X className="h-3 w-3" /></button>}
+        <span className="text-muted-foreground">{totalCount} matching {totalCount === 1 ? "entry" : "entries"}</span><button onClick={() => { setSearch(""); navigate({ filter: "ALL", start: "", end: "", q: "" }); }} className="ml-auto text-muted-foreground hover:text-foreground">Clear all</button>
+      </>}
+    </div>}
+    <div aria-busy={pending} className={cn("transition-opacity", pending && "opacity-65")}><TableContent>
+      <thead className="bg-muted/20 text-left text-[11px] text-muted-foreground"><tr>
+        <th className="w-10 px-3 py-3"><Checkbox className="border-border data-[state=checked]:border-primary" aria-label="Select all entries on this page" checked={items.length > 0 && selected.size === items.length ? true : selected.size > 0 ? "indeterminate" : false} onCheckedChange={() => setSelection({ scope, ids: selected.size === items.length ? new Set() : new Set(items.map(item => item.id)) })} /></th>
+        <th className="px-3 py-3 font-normal">{show("role") ? "Company & position" : "Company"}</th><th className="hidden px-3 py-3 font-normal sm:table-cell">Contact</th>
+        {show("status") && <th className="px-3 py-3 font-normal">Status</th>}{show("date") && <th className="hidden px-3 py-3 font-normal lg:table-cell">Sent</th>}{show("followUp") && <th className="hidden px-3 py-3 font-normal md:table-cell">Next follow-up</th>}{show("actions") && <th className="w-10 px-2 py-3"><span className="sr-only">Actions</span></th>}
+      </tr></thead>
+      <tbody>{items.length === 0 ? <tr><td colSpan={7} className="px-5 py-16 text-center"><Inbox className="mx-auto mb-4 h-8 w-8 text-muted-foreground/50" /><p className="text-sm font-medium">{appliedSearch || activeCount ? "No matching conversations" : "Your next conversation starts here"}</p><p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">{appliedSearch || activeCount ? "Try a different search or clear a filter to see more outreach." : "Use Quick log above to save your first outreach. We'll keep track of what comes next."}</p></td></tr> : items.map(item => <tr key={item.id} className={cn("border-t border-border/60 transition-colors hover:bg-muted/25", selected.has(item.id) && "bg-primary/5")}>
+        <td className="px-3 py-4"><Checkbox className="border-border data-[state=checked]:border-primary" aria-label={`Select ${item.companyName}`} checked={selected.has(item.id)} onCheckedChange={() => toggle(item.id)} /></td>
+        <td className="px-3 py-4"><Link href={`/outreach/${item.id}`} className="block max-w-[140px] sm:max-w-[260px] truncate text-sm font-medium hover:text-primary">{item.companyName}</Link>{show("role") && <p className="mt-1 max-w-[140px] sm:max-w-[260px] truncate text-xs text-muted-foreground" title={item.roleTargeted}>{item.roleTargeted}</p>}<p className="mt-1 max-w-[140px] truncate text-xs text-muted-foreground sm:hidden">{item.personName === "No Contact" ? (item.contactMethod === "EMAIL" ? "Email" : "LinkedIn") : item.personName}</p></td>
+        <td className="hidden px-3 py-4 sm:table-cell"><span className="block max-w-[190px] truncate text-sm">{item.personName === "No Contact" ? "Not added" : item.personName}</span><span className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">{item.contactMethod === "EMAIL" ? <Mail className="h-3 w-3" /> : <Linkedin className="h-3 w-3" />}{item.contactMethod === "EMAIL" ? "Email" : "LinkedIn"}{item.contactCount > 1 && <span className="ml-1">+{item.contactCount - 1} more</span>}</span></td>
+        {show("status") && <td className="px-1 py-4"><OutreachActions compact id={item.id} currentStatus={item.status} /></td>}
+        {show("date") && <td className="hidden whitespace-nowrap px-3 py-4 text-xs text-muted-foreground lg:table-cell">{formatDay(item.messageSentAt)}</td>}
+        {show("followUp") && <td className="hidden whitespace-nowrap px-3 py-4 text-xs md:table-cell">{item.followUpDueAt ? <span className={cn("inline-flex items-center gap-1.5", overdue(item.followUpDueAt) ? "text-destructive" : "text-muted-foreground")}>{overdue(item.followUpDueAt) && <span className="h-1 w-1 rounded-full bg-destructive" />}{formatDay(item.followUpDueAt)}</span> : <span className="text-muted-foreground/50">-</span>}</td>}
+        {show("actions") && <td className="px-2 py-4"><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" aria-label={`Actions for ${item.companyName}`}><Ellipsis className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem asChild><Link href={`/outreach/${item.id}`}><ArrowUpRight className="h-4 w-4" />Open outreach</Link></DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem variant="destructive" onSelect={() => setDeleteIds([item.id])}><Trash2 className="h-4 w-4" />Delete outreach</DropdownMenuItem></DropdownMenuContent></DropdownMenu></td>}
+      </tr>)}</tbody>
+    </TableContent></div>
+    {items.length > 0 && <div className="flex items-center justify-between border-t px-5 py-3 text-xs text-muted-foreground"><span>{(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, totalCount)} of {totalCount} entries</span><span>Sorted by newest</span></div>}
+    <TablePagination currentPage={currentPage} totalPages={Math.ceil(totalCount / pageSize)} onPageChange={page => navigate({ page: String(page) }, false)} />
+    <AlertDialog open={deleteIds.length > 0} onOpenChange={open => { if (!open && !deleting) setDeleteIds([]); }}><AlertDialogContent onEscapeKeyDown={event => { if (deleting) event.preventDefault(); }}><AlertDialogHeader><AlertDialogTitle>Delete {deleteIds.length === 1 ? "this outreach" : `${deleteIds.length} entries`}?</AlertDialogTitle><AlertDialogDescription>The selected outreach and its contacts will be permanently removed.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel disabled={deleting}>Keep {deleteIds.length === 1 ? "it" : "them"}</AlertDialogCancel><AlertDialogAction asChild><Button variant="destructive" disabled={deleting} onClick={event => { event.preventDefault(); void remove(); }}>{deleting ? "Deleting..." : "Delete outreach"}</Button></AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+  </TableShell>;
 }
