@@ -3,102 +3,47 @@
 import { db } from "@/db";
 import { startups, startupEmployees, startupTracking } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { eq, and, sql, inArray, ilike, or } from "drizzle-orm";
+import { eq, and, sql, inArray, ilike, or, asc, desc, getTableColumns } from "drizzle-orm";
 import { revalidatePath, revalidateTag, unstable_cache as cache } from "next/cache";
 
-// Cache for 24 hours for static startup data
-const getCachedStartups = cache(
-  async (search: string) => {
-    const searchTerm = search.trim();
-    const searchWhere = searchTerm
-      ? or(
-          ilike(startups.name, `%${searchTerm}%`),
-          ilike(startups.description, `%${searchTerm}%`),
-          ilike(startups.sector, `%${searchTerm}%`),
-        )
-      : undefined;
-    const [items, countResult] = await Promise.all([
-      db.query.startups.findMany({
-        where: searchWhere,
-        orderBy: (startups, { desc }) => [desc(startups.createdAt)],
-      }),
-      db.select({ count: sql<number>`count(*)` }).from(startups).where(searchWhere),
-    ]);
+// Only the public catalog count is shared; personalized rows are queried per user.
+const getCachedStartupCount = cache(async (search: string) => {
+  const where = startupSearch(search);
+  const [result] = await db.select({ count: sql<number>`count(*)` }).from(startups).where(where);
+  return Number(result.count);
+}, ["startups-count"], { revalidate: 86400, tags: ["startups"] });
 
-    const count = countResult[0].count;
+function startupSearch(search: string) {
+  const value = search.trim().slice(0, 200);
+  return value ? or(ilike(startups.name, `%${value}%`), ilike(startups.description, `%${value}%`), ilike(startups.sector, `%${value}%`)) : undefined;
+}
 
-    return { items, totalCount: Number(count) };
-  },
-  ["startups-list"],
-  { revalidate: 86400, tags: ["startups"] }
-);
-
-export async function getStartupsAction(page: number = 1, pageSize: number = 20, search: string = "", sort: string = "NOT_OUTREACHED") {
+export async function getStartupsAction(page = 1, pageSize = 20, search = "", sort = "NOT_OUTREACHED") {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
-
-  const safePage = Math.max(1, Math.floor(page));
-  const safePageSize = Math.min(50, Math.max(1, Math.floor(pageSize)));
-
-  // Fetch static data from cache
-  const { items: allItems, totalCount } = await getCachedStartups(search);
-
-  // Fetch dynamic tracking data for this user
-  const startupIds = allItems.map(i => i.id);
-  const trackingData = startupIds.length > 0 ? await db.query.startupTracking.findMany({
-    where: and(
-      eq(startupTracking.userId, session.user.id),
-      inArray(startupTracking.startupId, startupIds)
-    ),
-  }) : [];
-
-  // Merge tracking data into items
-  const trackingByStartup = new Map(trackingData.map((tracking) => [tracking.startupId, tracking]));
-  const itemsWithTracking = allItems.map(item => ({
-    ...item,
-    tracking: trackingByStartup.has(item.id) ? [trackingByStartup.get(item.id)!] : []
-  }));
-
-  const normalizedSort = ["NOT_OUTREACHED", "OUTREACHED", "A_Z", "Z_A"].includes(sort)
-    ? sort
-    : "NOT_OUTREACHED";
-
-  itemsWithTracking.sort((a, b) => {
-    const aOutreached = a.tracking.some(t => t.outreachDone);
-    const bOutreached = b.tracking.some(t => t.outreachDone);
-
-    if (normalizedSort === "NOT_OUTREACHED" && aOutreached !== bOutreached) {
-      return aOutreached ? 1 : -1;
-    }
-    if (normalizedSort === "OUTREACHED" && aOutreached !== bOutreached) {
-      return aOutreached ? -1 : 1;
-    }
-
-    const nameOrder = a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
-    return normalizedSort === "Z_A" ? -nameOrder : nameOrder;
-  });
-
-  const offset = (safePage - 1) * safePageSize;
-  const pageItems = itemsWithTracking.slice(offset, offset + safePageSize);
-  const pageIds = pageItems.map((item) => item.id);
-  const employees = pageIds.length > 0
-    ? await db.query.startupEmployees.findMany({ where: inArray(startupEmployees.startupId, pageIds) })
-    : [];
+  const safePage = Number.isFinite(page) ? Math.max(1, Math.floor(page)) : 1;
+  const safePageSize = Number.isFinite(pageSize) ? Math.min(50, Math.max(1, Math.floor(pageSize))) : 20;
+  const normalizedSort = ["NOT_OUTREACHED", "OUTREACHED", "A_Z", "Z_A"].includes(sort) ? sort : "NOT_OUTREACHED";
+  const name = sql`lower(${startups.name})`;
+  const contacted = sql`coalesce(${startupTracking.outreachDone}, false)`;
+  const ordering = normalizedSort === "OUTREACHED" ? [desc(contacted), asc(name)]
+    : normalizedSort === "NOT_OUTREACHED" ? [asc(contacted), asc(name)]
+    : normalizedSort === "Z_A" ? [desc(name)] : [asc(name)];
+  const [rows, totalCount] = await Promise.all([
+    db.select({ startup: getTableColumns(startups), tracking: getTableColumns(startupTracking) })
+      .from(startups).leftJoin(startupTracking, and(eq(startupTracking.startupId, startups.id), eq(startupTracking.userId, session.user.id)))
+      .where(startupSearch(search)).orderBy(...ordering, asc(startups.id))
+      .limit(safePageSize).offset((safePage - 1) * safePageSize),
+    getCachedStartupCount(search),
+  ]);
+  const ids = rows.map(row => row.startup.id);
+  const employees = ids.length ? await db.query.startupEmployees.findMany({ where: inArray(startupEmployees.startupId, ids) }) : [];
   const employeesByStartup = new Map<string, typeof employees>();
   for (const employee of employees) {
-    const existing = employeesByStartup.get(employee.startupId) || [];
-    existing.push(employee);
-    employeesByStartup.set(employee.startupId, existing);
+    const list = employeesByStartup.get(employee.startupId) ?? [];
+    list.push(employee); employeesByStartup.set(employee.startupId, list);
   }
-  const items = pageItems.map((item) => ({
-    ...item,
-    employees: employeesByStartup.get(item.id) || [],
-  }));
-
-  return {
-    items,
-    totalCount,
-  };
+  return { items: rows.map(row => ({ ...row.startup, tracking: row.tracking ? [row.tracking] : [], employees: employeesByStartup.get(row.startup.id) ?? [] })), totalCount };
 }
 
 

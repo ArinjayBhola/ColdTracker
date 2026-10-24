@@ -52,7 +52,7 @@ export const users = pgTable("user", {
   notificationEmail: text("notification_email"),
   receiveNotifications: boolean("receive_notifications").default(true),
   keyboardShortcuts: jsonb("keyboard_shortcuts").$type<import("@/lib/keyboard-shortcuts").ShortcutPreferences>(),
-});
+}, (table) => ({ emailIdx: index("user_email_idx").on(table.email) }));
 
 export const accounts = pgTable(
   "account",
@@ -136,6 +136,7 @@ export const outreach = pgTable("outreach", {
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
 }, (table) => ({
   // Covers the default dashboard list / export: WHERE userId ORDER BY createdAt DESC.
+  userIdCompanyIdx: index("outreach_user_id_company_idx").on(table.userId, table.companyName),
   userIdCreatedAtIdx: index("outreach_user_id_created_at_idx").on(table.userId, table.createdAt),
   // Covers status-filtered list + getStats grouping. Its (userId) and (userId,status)
   // prefixes also serve those narrower lookups, so no standalone indexes are needed.
@@ -179,6 +180,7 @@ export const extensionLeads = pgTable("extension_leads", {
   notes: text("notes"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
 }, (table) => ({
+  userIdCreatedAtIdx: index("extension_leads_user_id_created_at_idx").on(table.userId, table.createdAt),
   userIdIdx: index("extension_leads_user_id_idx").on(table.userId),
   createdAtIdx: index("extension_leads_created_at_idx").on(table.createdAt),
 }));
@@ -193,7 +195,7 @@ export const goals = pgTable("goals", {
   weeklyTarget: integer("weekly_target").notNull().default(10),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
-});
+}, (table) => ({ userIdIdx: index("goals_user_id_idx").on(table.userId) }));
 
 export const dailyActivity = pgTable("daily_activity", {
   id: uuid("id").defaultRandom().primaryKey(),

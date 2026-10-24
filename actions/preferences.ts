@@ -4,14 +4,17 @@ import { users } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { eq, sql } from "drizzle-orm";
 import { parsePreferences, preferencesSchema } from "@/lib/preferences";
+import { cache } from "react";
 import { revalidatePath } from "next/cache";
 
-export async function getAccountPreferences() {
+const readAccountPreferences = cache(async () => {
   const session = await auth();
   if (!session?.user?.id) return null;
   const user = await db.query.users.findFirst({ where: eq(users.id, session.user.id), columns: { preferences: true } });
   return user ? { preferences: user.preferences ? parsePreferences(user.preferences) : null } : null;
-}
+});
+
+export async function getAccountPreferences() { return readAccountPreferences(); }
 
 export async function saveAccountPreferences(input: unknown) {
   const session = await auth();

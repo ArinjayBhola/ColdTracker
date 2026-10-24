@@ -9,8 +9,15 @@ import { revalidatePath } from "next/cache";
 import { getUserTimeZone } from "@/lib/user-time-zone";
 import { scheduleFollowUp } from "@/lib/follow-up-rules";
 import { getAccountPreferences } from "@/actions/preferences";
-import { DEFAULT_PREFERENCES } from "@/lib/preferences";
-import { recordDailyActivity } from "@/actions/goals";
+import { DEFAULT_PREFERENCES, parsePreferences } from "@/lib/preferences";
+import { readDashboardPage } from "@/lib/dashboard-query";
+
+export async function getDashboardOutreachPage(page = 1, filter = "") {
+  const session = await auth();
+  if (!session?.user?.id) return { items: [], pageSize: 10, currentPage: 1, totalCount: 0 };
+  return readDashboardPage(session.user.id, page, filter);
+}
+
 export type ActionState = {
   error?: string;
   success?: boolean;
@@ -92,7 +99,12 @@ export async function createOutreachAction(prevState: ActionState, formData: For
 
     const timeZone = await getUserTimeZone();
     if (!timeZone) return { error: "Please reload so we can detect your device timezone." };
-    const rules = (await getAccountPreferences())?.preferences?.followUp ?? DEFAULT_PREFERENCES.followUp;
+    const [account, existing] = await Promise.all([
+      db.query.users.findFirst({ where: eq(users.id, session.user.id), columns: { preferences: true } }),
+      db.query.outreach.findFirst({ where: and(eq(outreach.userId, session.user.id), eq(outreach.companyName, companyName)) }),
+    ]);
+    if (!account) return { error: "User account not found. Please try logging in again." };
+    const rules = parsePreferences(account.preferences).followUp;
     const now = new Date();
     
     // Apply defaults to each contact if dates are missing
@@ -105,24 +117,6 @@ export async function createOutreachAction(prevState: ActionState, formData: For
         followUpDueAt: contactFollowUpDueAt
       };
     });
-
-    // Check if company already exists for this user
-    const existing = await db.query.outreach.findFirst({
-      where: and(
-        eq(outreach.userId, session.user.id),
-        eq(outreach.companyName, companyName)
-      )
-    });
-
-    // Verify user exists before creating outreach to avoid FK violation
-    const userExists = await db.query.users.findFirst({
-      where: eq(users.id, session.user.id),
-      columns: { id: true }
-    });
-
-    if (!userExists) {
-        return { error: "User account not found. Please try logging in again." };
-    }
 
     if (existing) {
       // Append new contacts to existing ones
@@ -141,7 +135,6 @@ export async function createOutreachAction(prevState: ActionState, formData: For
         })
         .where(eq(outreach.id, existing.id));
       
-      try { await recordDailyActivity(); } catch (e) { console.error("Daily activity error:", e); }
       revalidatePath("/dashboard");
       return { success: true, outreachId: existing.id };
     } else {
@@ -161,7 +154,6 @@ export async function createOutreachAction(prevState: ActionState, formData: For
         updatedAt: now,
       }).returning({ id: outreach.id });
 
-      try { await recordDailyActivity(); } catch (e) { console.error("Daily activity error:", e); }
       revalidatePath("/dashboard");
       return { success: true, outreachId: result[0]?.id };
     }
@@ -267,7 +259,7 @@ export async function updateOutreachStatus(id: string, newStatus: string) {
     }
 
     try {
-        await db.update(outreach)
+        const [updated] = await db.update(outreach)
             .set({ 
                 // @ts-expect-error - we validated it above
                 status: newStatus, 
@@ -278,8 +270,9 @@ export async function updateOutreachStatus(id: string, newStatus: string) {
                     eq(outreach.id, id),
                     eq(outreach.userId, session.user.id)
                 )
-            );
+            ).returning({ id: outreach.id });
         
+        if (!updated) return { error: "Outreach not found" };
         revalidatePath("/dashboard");
         return { success: true };
     } catch (error) {
@@ -301,7 +294,6 @@ export async function deleteOutreach(id: string) {
                 )
             );
         
-        await recordDailyActivity();
         revalidatePath("/dashboard");
         return { success: true };
     } catch (error) {
@@ -515,7 +507,6 @@ export async function bulkDeleteOutreach(ids: string[]) {
                 )
             );
         
-        await recordDailyActivity();
         revalidatePath("/dashboard");
         return { success: true };
     } catch (error) {

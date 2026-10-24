@@ -38,13 +38,12 @@ export default async function SettingsPage({
   const params = searchParams ? await searchParams : {};
 
   // Fetch full user data to get notification settings
-  const fullUser = await db.query.users.findFirst({
+  const [fullUser, googleAccount] = await Promise.all([db.query.users.findFirst({
     where: eq(users.id, user.id as string),
-  });
-  const googleAccount = await db.query.accounts.findFirst({
+  }), db.query.accounts.findFirst({
     where: and(eq(accounts.userId, user.id as string), eq(accounts.provider, "google")),
     columns: { provider: true },
-  });
+  })]);
 
 
   return (

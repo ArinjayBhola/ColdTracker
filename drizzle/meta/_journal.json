@@ -57,6 +57,13 @@
       "when": 1792454400004,
       "tag": "0010_account_preferences",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792800000000,
+      "tag": "0011_latency_indexes",
+      "breakpoints": true
     }
   ]
 }

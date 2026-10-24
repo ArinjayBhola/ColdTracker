@@ -1,9 +1,8 @@
 "use client";
 import { isBeforeLocalToday } from "@/lib/user-calendar";
 
-import { useQuery } from "@tanstack/react-query";
-import { getOutreachById } from "@/actions/get-outreach";
-import { getCompanyContacts } from "@/actions/outreach";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { getOutreachById } from "@/actions/get-outreach";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FiFileText } from "react-icons/fi";
 import { NotesEditor } from "@/components/notes-editor";
@@ -18,37 +17,35 @@ import { type OutreachContact } from "@/db/schema";
 
 type OutreachDetailClientProps = {
   initialData: Awaited<ReturnType<typeof getOutreachById>>;
-  initialContacts: Awaited<ReturnType<typeof getCompanyContacts>>;
   id: string;
 };
 
-export function OutreachDetailClient({ initialData, initialContacts, id }: OutreachDetailClientProps) {
+export function OutreachDetailClient({ initialData, id }: OutreachDetailClientProps) {
   const [activeContactIndex, setActiveContactIndex] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isUpdatingFollowUp, setIsUpdatingFollowUp] = useState(false);
   const [isEditingDate, setIsEditingDate] = useState(false);
   const [newDueDate, setNewDueDate] = useState<Date | undefined>(undefined);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: item, refetch: refetchItem } = useQuery({
     queryKey: ["outreach", id],
-    queryFn: () => getOutreachById(id),
+    queryFn: async ({ signal }) => {
+      const response = await fetch(`/api/outreach/${id}`, { cache: "no-store", signal });
+      if (!response.ok) throw new Error("Could not load outreach");
+      const data = await response.json();
+      for (const key of ["createdAt", "updatedAt", "followUpSentAt", "followUp2DueAt", "followUp2SentAt"]) if (data[key]) data[key] = new Date(data[key]);
+      return data as NonNullable<OutreachDetailClientProps["initialData"]>;
+    },
     initialData,
-    staleTime: 60 * 1000,
-  });
-
-  const { refetch: refetchContacts } = useQuery({
-    queryKey: ["company-contacts", item?.companyName],
-    queryFn: () => getCompanyContacts(item?.companyName || ""),
-    initialData: initialContacts,
-    enabled: !!item?.companyName,
     staleTime: 60 * 1000,
   });
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await Promise.all([refetchItem(), refetchContacts()]);
-    setTimeout(() => setIsRefreshing(false), 500);
+    await refetchItem();
+    setIsRefreshing(false);
   };
 
   const [isEditingSentDate, setIsEditingSentDate] = useState<number | null>(null); // null, 1 or 2
@@ -64,7 +61,9 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
         title: isMarkingSent ? "Follow-up status updated" : "Follow-up marked as unsent",
         description: "The status has been updated.",
       });
-      await refetchItem();
+      if (res.item) queryClient.setQueryData(["outreach", id], res.item);
+      else await refetchItem();
+      void queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
       setIsEditingSentDate(null);
     } else {
       toast({
@@ -87,7 +86,9 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
         title: "Follow-up date updated",
         description: "The due date has been changed successfully.",
       });
-      await refetchItem();
+      if (res.item) queryClient.setQueryData(["outreach", id], res.item);
+      else await refetchItem();
+      void queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
       setIsEditingDate(false);
     } else {
       toast({
@@ -109,7 +110,7 @@ export function OutreachDetailClient({ initialData, initialContacts, id }: Outre
         title: "Details updated",
         description: "The outreach information has been saved.",
       });
-      await Promise.all([refetchItem(), refetchContacts()]);
+      await refetchItem();
     } else {
       throw new Error(res.error || "Failed to update details");
     }

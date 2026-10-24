@@ -1,11 +1,24 @@
+// Formatters are expensive to construct. Bound the cache for long-lived servers.
+const formatterCache = new Map<string, Intl.DateTimeFormat>();
+function calendarFormatter(timeZone: string, withTime = false) {
+  const key = `${timeZone}:${withTime}`;
+  let formatter = formatterCache.get(key);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", ...(withTime ? { hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" as const } : {}) });
+    if (formatterCache.size >= 128) formatterCache.delete(formatterCache.keys().next().value!);
+    formatterCache.set(key, formatter);
+  }
+  return formatter;
+}
+
 // Calendar dates always belong to a user's IANA timezone, never the host server.
 export function validTimeZone(value: unknown): value is string {
   if (typeof value !== "string" || value.length > 100) return false;
-  try { new Intl.DateTimeFormat("en", { timeZone: value }).format(); return true; } catch { return false; }
+  try { calendarFormatter(value).format(); return true; } catch { return false; }
 }
 
 export function calendarKey(value: Date | string, timeZone: string) {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(value));
+  const parts = calendarFormatter(timeZone).formatToParts(new Date(value));
   return ["year", "month", "day"].map(type => parts.find(part => part.type === type)!.value).join("-");
 }
 
@@ -19,7 +32,7 @@ export function calendarMidnight(key: string, timeZone: string) {
   const target = Date.parse(`${key}T00:00:00Z`);
   let instant = target;
   for (let i = 0; i < 4; i++) {
-    const parts = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).formatToParts(new Date(instant));
+    const parts = calendarFormatter(timeZone, true).formatToParts(new Date(instant));
     const n = (type: string) => Number(parts.find(part => part.type === type)!.value);
     const represented = Date.UTC(n("year"), n("month") - 1, n("day"), n("hour"), n("minute"), n("second"));
     const difference = target - represented;

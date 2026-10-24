@@ -1,7 +1,5 @@
-import { getAccountPreferences } from "@/actions/preferences";
-import { DEFAULT_PREFERENCES } from "@/lib/preferences";
 import { Suspense } from "react";
-import { getGroupedOutreachByCompany } from "@/actions/outreach";
+import { getDashboardOutreachPage } from "@/actions/outreach";
 import { Sidebar } from "@/components/sidebar";
 import { Button } from "@/components/ui/button";
 import { FiPlus, FiTrendingUp } from "react-icons/fi";
@@ -27,13 +25,7 @@ async function DashboardGoalsSection() {
 }
 
 async function DashboardOutreachTableSection({ page, filter }: { page: number, filter: string }) {
-  const preferences = (await getAccountPreferences())?.preferences ?? DEFAULT_PREFERENCES;
-  const pageSize = preferences.table.pageSize;
-  const activeFilter = filter || preferences.table.defaultMethod;
-  let result = await getGroupedOutreachByCompany(page, pageSize, activeFilter);
-  const currentPage = Math.min(Math.max(1, page), Math.max(1, Math.ceil(result.totalCount / pageSize)));
-  if (currentPage !== page) result = await getGroupedOutreachByCompany(currentPage, pageSize, activeFilter);
-  const { items: outreachItems, totalCount } = result;
+  const { items: outreachItems, totalCount, currentPage, pageSize } = await getDashboardOutreachPage(page, filter);
   return (
     <OutreachTable 
       items={outreachItems} 

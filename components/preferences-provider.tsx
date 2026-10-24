@@ -3,7 +3,8 @@ import { createContext, useContext, useEffect, useRef, useCallback, useState } f
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { getAccountPreferences, saveAccountPreferences } from "@/actions/preferences";
+import { saveAccountPreferences } from "@/actions/preferences";
+import { fetchAccountPreferences } from "@/lib/account-state-client";
 import { DEFAULT_PREFERENCES, type AppPreferences } from "@/lib/preferences";
 import { APPEARANCE_KEY, applyAppearance, parseAppearance } from "@/lib/appearance";
 
@@ -24,7 +25,6 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     onSuccess: (_data, patch) => {
       setFailedPatch(previous => Object.fromEntries(Object.entries(previous).filter(([section]) => !(patch && typeof patch === "object" && section in patch))));
       channel.current?.postMessage("updated");
-      if (patch && typeof patch === "object" && "table" in patch) router.refresh();
     },
     onError: (_error, patch) => { if (patch && typeof patch === "object") setFailedPatch(previous => ({ ...previous, ...patch })); },
     onSettled: () => { if (client.isMutating({ mutationKey: key }) === 1) void client.invalidateQueries({ queryKey: key }); },
@@ -32,7 +32,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (!enabled) { client.removeQueries({ queryKey: key }); setFailedPatch({}); }
   }, [enabled, client]);
-  const query = useQuery({ queryKey: key, queryFn: getAccountPreferences, enabled: enabled && !mutation.isPending, refetchOnWindowFocus: true, refetchOnMount: true, refetchInterval: 60_000 });
+  const query = useQuery({ queryKey: key, queryFn: fetchAccountPreferences, enabled: enabled && !mutation.isPending, refetchOnWindowFocus: true, refetchOnMount: true, refetchInterval: 60_000 });
   const preferences = query.data?.preferences ?? DEFAULT_PREFERENCES;
   const ready = !!query.data?.preferences;
   const mutate = mutation.mutate;

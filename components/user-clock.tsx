@@ -8,10 +8,12 @@ import { userDayBounds } from "@/lib/user-calendar";
 export function UserClock() {
   const router = useRouter();
   const pathname = usePathname();
+  const inApp = !["/", "/signin", "/signup"].includes(pathname);
   const queryClient = useQueryClient();
   useEffect(() => {
     let lastDay = "";
     let savedZone = "";
+    let savingZone = "";
     const sync = () => {
       const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const day = new Date().toDateString();
@@ -23,11 +25,11 @@ export function UserClock() {
       const cookie = document.cookie.split("; ").find(value => value.startsWith("coldtrack-time-zone="))?.split("=")[1];
       const changed = decodeURIComponent(cookie || "") !== timeZone;
       if (changed) document.cookie = `coldtrack-time-zone=${encodeURIComponent(timeZone)}; Path=/; Max-Age=31536000; SameSite=Lax`;
-      if (savedZone !== timeZone) {
-        savedZone = timeZone;
-        void saveUserTimeZone(timeZone).catch(() => { savedZone = ""; });
+      if (inApp && savedZone !== timeZone && savingZone !== timeZone) {
+        savingZone = timeZone;
+        void saveUserTimeZone(timeZone).then(result => { if (result?.success) savedZone = timeZone; }).catch(() => {}).finally(() => { savingZone = ""; });
       }
-      if (changed || previousKey !== bounds.key || (lastDay && day !== lastDay)) {
+      if (inApp && (changed || previousKey !== bounds.key || (lastDay && day !== lastDay))) {
         void queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
         window.dispatchEvent(new Event("coldtrack-calendar-change"));
         router.refresh();
@@ -38,6 +40,6 @@ export function UserClock() {
     const timer = setInterval(sync, 30_000);
     window.addEventListener("focus", sync);
     return () => { clearInterval(timer); window.removeEventListener("focus", sync); };
-  }, [router, queryClient, pathname]);
+  }, [router, queryClient, inApp]);
   return null;
 }

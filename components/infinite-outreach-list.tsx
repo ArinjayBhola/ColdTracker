@@ -2,8 +2,9 @@
 
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useCallback, useState } from "react";
-import { getPaginatedFollowUpItemsAction, toggleFollowUpSentAction } from "@/actions/follow-ups";
-import { userDayBounds } from "@/lib/user-calendar";
+import { toggleFollowUpSentAction } from "@/actions/follow-ups";
+import { calendarKey } from "@/lib/user-calendar";
+import type { getPaginatedFollowUpItemsAction } from "@/actions/follow-ups";
 import { cn } from "@/lib/utils";
 import { FiCalendar, FiClock, FiMail, FiLinkedin, FiRefreshCw, FiCheckCircle, FiSearch, FiFilter, FiX } from "react-icons/fi";
 import { format } from "date-fns";
@@ -19,16 +20,20 @@ import { useToast } from "@/hooks/use-toast";
 type Category = "OVERDUE" | "TODAY" | "UPCOMING" | "SENT" | "ALL_ACTIVE";
 
 export function InfiniteOutreachList({ 
-  initialCategory
-}: { 
-  initialCategory: Category
+  initialCategory, initialPage, initialTimeZone = null, initialDay
+}: {
+  initialCategory: Category;
+  initialPage?: Awaited<ReturnType<typeof getPaginatedFollowUpItemsAction>>;
+  initialTimeZone?: string | null;
+  initialDay?: string;
 }) {
-  const [localDate, setLocalDate] = useState("");
-  const [timeZone, setTimeZone] = useState<string | null>(null);
+  const [localDate, setLocalDate] = useState(initialDay || "");
+  const [timeZone, setTimeZone] = useState<string | null>(initialTimeZone);
   useEffect(() => {
     const sync = () => {
-      setTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
-      setLocalDate(new Date().toDateString());
+      const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      setTimeZone(zone);
+      setLocalDate(calendarKey(new Date(), zone));
     };
     sync();
     window.addEventListener("coldtrack-calendar-change", sync);
@@ -65,11 +70,13 @@ export function InfiniteOutreachList({
   } = useInfiniteQuery({
     enabled: !!timeZone,
     queryKey: ["follow-ups", category, stageFilter, timeZone, localDate],
-    queryFn: async ({ pageParam = 1 }) => {
-      const day = userDayBounds(timeZone!);
-      const res = await getPaginatedFollowUpItemsAction(category, pageParam as number, 15, stageFilter, timeZone!, { key: day.key, start: day.start.toISOString(), end: day.end.toISOString() });
-      return res;
+    queryFn: async ({ pageParam = 1, signal }) => {
+      const params = new URLSearchParams({ category, page: String(pageParam), stage: stageFilter, timeZone: timeZone! });
+      const response = await fetch(`/api/follow-ups?${params}`, { cache: "no-store", signal });
+      if (!response.ok) throw new Error("Could not load follow-ups");
+      return await response.json() as Awaited<ReturnType<typeof getPaginatedFollowUpItemsAction>>;
     },
+    initialData: initialPage && category === initialCategory && stageFilter === "ALL" && timeZone === initialTimeZone && localDate === initialDay ? { pages: [initialPage], pageParams: [1] } : undefined,
     initialPageParam: 1,
     getNextPageParam: (lastPage, allPages) => {
       return lastPage.hasMore ? allPages.length + 1 : undefined;

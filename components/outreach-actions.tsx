@@ -1,6 +1,7 @@
 "use client";
 
 import { updateOutreachStatus } from "@/actions/outreach";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { FiLoader } from "react-icons/fi";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -27,17 +28,31 @@ const STATUS_OPTIONS = [
 export function OutreachActions({ id, currentStatus }: { id: string; currentStatus: string }) {
     const queryClient = useQueryClient();
     const { toast } = useToast();
+    const [selection, setSelection] = useState<{ base: string; status: string } | null>(null);
+    const displayedStatus = selection?.base === currentStatus ? selection.status : currentStatus;
 
     const { mutate, isPending } = useMutation({
-        mutationFn: (newStatus: string) => updateOutreachStatus(id, newStatus),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["outreach"] });
+        mutationFn: async (newStatus: string) => {
+            const result = await updateOutreachStatus(id, newStatus);
+            if (!result.success) throw new Error(result.error || "Could not update status");
+            return result;
+        },
+        onMutate: async (status: string) => {
+            await queryClient.cancelQueries({ queryKey: ["outreach", id] });
+            const previous = selection;
+            setSelection({ base: currentStatus, status });
+            return { previous };
+        },
+        onSuccess: (_result, status) => {
+            queryClient.setQueryData(["outreach", id], (previous: Record<string, unknown> | undefined) => previous ? { ...previous, status } : previous);
+            void queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
             toast({
                 title: "Status updated",
                 description: "The outreach status has been successfully updated.",
             });
         },
-        onError: () => {
+        onError: (_error, _status, context) => {
+            setSelection(context?.previous ?? null);
             toast({
                 variant: "destructive",
                 title: "Failed to update status",
@@ -47,17 +62,17 @@ export function OutreachActions({ id, currentStatus }: { id: string; currentStat
     });
 
     const handleStatusChange = (newStatus: string) => {
-        if (newStatus === currentStatus) return;
+        if (newStatus === displayedStatus) return;
         mutate(newStatus);
     };
 
     return (
         <div className="flex shrink-0 items-center gap-2">
-            <Select value={currentStatus} onValueChange={handleStatusChange} disabled={isPending}>
+            <Select value={displayedStatus} onValueChange={handleStatusChange} disabled={isPending}>
                 <SelectTrigger className={cn(
                     "h-auto min-h-9 w-auto min-w-[10em] shrink-0 px-3 py-2 rounded-lg border-2 border-border bg-background",
                     "text-sm font-semibold",
-                    STATUS_OPTIONS.find(opt => opt.value === currentStatus)?.color
+                    STATUS_OPTIONS.find(opt => opt.value === displayedStatus)?.color
                 )}>
                     <SelectValue />
                 </SelectTrigger>

@@ -5,13 +5,15 @@ import { usePathname, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { CircleHelp, Plus, X } from "lucide-react";
-import { getKeyboardShortcuts, saveKeyboardShortcuts } from "@/actions/keyboard-shortcuts";
+import { saveKeyboardShortcuts } from "@/actions/keyboard-shortcuts";
 import { defaultShortcutPreferences, formatBinding, keyboardStroke, normalizeBinding, shortcutActions, shortcutPreferencesSchema, type ShortcutPreferences } from "@/lib/keyboard-shortcuts";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+import { fetchKeyboardShortcuts } from "@/lib/account-state-client";
 
 const queryKey = ["keyboard-shortcut-preferences"];
 const syncEvent = "coldtrack-shortcuts-saved";
@@ -25,7 +27,7 @@ function useShortcutPreferences(enabled = true) {
     if (channel) channel.onmessage = refresh;
     return () => channel?.close();
   }, [enabled, queryClient]);
-  return useQuery({ queryKey, queryFn: getKeyboardShortcuts, enabled, staleTime: 60_000, retry: 1, refetchOnWindowFocus: true });
+  return useQuery({ queryKey, queryFn: fetchKeyboardShortcuts, enabled, staleTime: 60_000, retry: 1, refetchOnWindowFocus: true });
 }
 
 function ShortcutList({ preferences }: { preferences: ShortcutPreferences }) {

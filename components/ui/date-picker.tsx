@@ -6,7 +6,8 @@ import { Calendar as CalendarIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
+import dynamic from "next/dynamic"
+const Calendar = dynamic(() => import("@/components/ui/calendar").then(module => module.Calendar), { loading: () => <div className="h-72 w-72 animate-pulse rounded-xl bg-muted" aria-label="Loading calendar" /> })
 import {
   Popover,
   PopoverContent,
@@ -54,14 +55,14 @@ export function DatePicker({ value, onChange, placeholder = "Pick a date", class
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0 rounded-2xl border-border/50 bg-card/95 backdrop-blur-2xl shadow-premium animate-in zoom-in-95 duration-200" align="start">
-          <Calendar
+          {open && <Calendar
             mode="single"
             selected={date}
             onSelect={handleSelect}
             initialFocus
             startMonth={new Date(new Date().getFullYear() - 100, 0)}
             endMonth={new Date(new Date().getFullYear() + 10, 11)}
-          />
+          />}
           <div className="flex items-center justify-between p-3 border-t border-border/20 bg-muted/30 rounded-b-2xl">
             <Button 
                 variant="ghost" 
