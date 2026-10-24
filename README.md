@@ -147,22 +147,3 @@ Data offers versioned JSON backups and a preview before restoring. Restore merge
 into the signed-in account in one transaction without deleting unrelated records.
 Passwords and OAuth tokens are excluded. Backups are limited to 5 MB and 5,000
 records per data type. Startup tracking requires its catalog startup to exist.
-
-
-## Fast outreach logging and navigation
-
-Use **Log outreach** in the sidebar or Outreach header to open a drawer without
-leaving the current page. Save closes the drawer; **Save & add another** clears
-contact details and keeps logging open. Enable **Keep company and position** when
-logging multiple people at the same company. The full `/outreach/new` page uses
-the same form. Additional metadata stays under More details.
-
-Outreach search covers company names, positions, and every contact name across
-all pages. Press Enter or Search to apply it. Channel and inclusive Sent date
-filters run before pagination; their values persist in the URL. Date presets use
-the device calendar and server filtering uses the account's detected timezone.
-
-The Outreach page shows a compact daily/weekly goal and due follow-up summary.
-Full goal editing, streaks, and seven-day activity cards are on Stats. Startups
-is under More in the sidebar. Existing navigation visibility/order preferences
-continue to apply.

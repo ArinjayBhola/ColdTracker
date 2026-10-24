@@ -2,8 +2,8 @@ import { z } from "zod";
 import { DEFAULT_APPEARANCE, parseAppearance } from "@/lib/appearance";
 
 export const NAV_ITEMS = [
-  { href: "/dashboard", label: "Outreach" }, { href: "/startups", label: "Startups" },
-  { href: "/dashboard/extension-leads", label: "Leads" }, { href: "/follow-ups", label: "Follow-ups" },
+  { href: "/dashboard", label: "Dashboard" }, { href: "/startups", label: "Startups" },
+  { href: "/dashboard/extension-leads", label: "Extension Leads" }, { href: "/follow-ups", label: "Follow-ups" },
   { href: "/templates", label: "Templates" }, { href: "/outreach/new", label: "Add Outreach" }, { href: "/stats", label: "Stats" },
 ] as const;
 export const TABLE_COLUMNS = ["role", "status", "date", "followUp", "actions"] as const;

@@ -199,17 +199,3 @@ export async function getPaginatedFollowUpItemsAction(
 
   return { items, hasMore };
 }
-
-// Count companies with an unfinished follow-up due today or earlier.
-export async function getDashboardDueCount() {
-  const session = await auth();
-  const bounds = await import("@/lib/user-time-zone").then(m => m.getUserDayBounds());
-  if (!session?.user?.id || !bounds) return 0;
-  const result = await db.select({ count: sql<number>`count(*)` }).from(outreach).where(and(
-    eq(outreach.userId, session.user.id), isNull(outreach.followUp2SentAt),
-    notInArray(outreach.status, ["DRAFT", "REPLIED", "REJECTED", "OFFER", "CLOSED"]),
-    sql`case when ${outreach.followUpSentAt} is not null then (${outreach.followUp2DueAt} AT TIME ZONE 'UTC') < ${bounds.end.toISOString()}::timestamptz
-    else exists (select 1 from jsonb_array_elements(${outreach.contacts}) contact where nullif(contact->>'followUpDueAt', '')::timestamptz < ${bounds.end.toISOString()}::timestamptz) end`
-  ));
-  return Number(result[0]?.count || 0);
-}
