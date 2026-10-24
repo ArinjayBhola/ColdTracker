@@ -173,17 +173,15 @@
     font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
   }
 
-  /* High-contrast text selection. The accent fills the highlight solidly and
-     primary-foreground is tuned to contrast it, so selected text stays legible
-     in both light and dark themes. */
+  /* Soft palette tint with dark ink keeps highlighted text easy to read. */
   ::selection {
-    background-color: var(--primary);
-    color: var(--primary-foreground);
+    background-color: color-mix(in oklab, var(--primary) 18%, white);
+    color: oklch(0.24 0.015 60);
     text-shadow: none;
   }
   ::-moz-selection {
-    background-color: var(--primary);
-    color: var(--primary-foreground);
+    background-color: color-mix(in oklab, var(--primary) 18%, white);
+    color: oklch(0.24 0.015 60);
     text-shadow: none;
   }
 
@@ -237,6 +235,20 @@
 }
 
 @layer components {
+  /* Selected and today can be the same cell. Paint the actual button, so
+     today's pale tint cannot override the selected date's solid contrast. */
+  .calendar-day[data-selected="true"] { opacity: 1 !important; }
+  .calendar-day[data-selected="true"] > button {
+    background-color: var(--primary) !important;
+    color: var(--primary-foreground) !important;
+    box-shadow: var(--shadow-soft);
+  }
+  .calendar-day[data-today="true"]:not([data-selected="true"]) > button {
+    background-color: color-mix(in oklab, var(--primary) 10%, var(--background));
+    color: var(--primary);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--primary) 25%, transparent);
+  }
+
   /* Display heading helper — the editorial serif look on demand */
   .font-display {
     font-family: var(--font-serif);

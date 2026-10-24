@@ -155,7 +155,7 @@ function NewOutreachPageContent() {
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto p-4 pt-20 md:p-8">
+      <main className="flex-1 overflow-y-auto p-4 pb-2 pt-20 md:p-8 md:pb-2">
         <form key={formVersion} action={formAction} ref={formRef} onKeyDown={event => {
       if (event.key === "Enter" && !event.nativeEvent.isComposing && event.target instanceof HTMLInputElement && ["text", "email", "url"].includes(event.target.type)) {
         event.preventDefault();
@@ -493,7 +493,7 @@ function NewOutreachPageContent() {
               </div>
             </div>
           </div>
-          <div className="sticky bottom-0 mx-auto mt-6 flex max-w-4xl flex-wrap items-center justify-between gap-4 border-t bg-background/95 px-1 py-4 backdrop-blur">
+          <div className="sticky bottom-0 mx-auto mt-8 flex max-w-4xl flex-wrap items-center justify-between gap-4 border-t bg-background/95 px-1 pt-6 pb-2 backdrop-blur">
             <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={keepCompany} onChange={e => setKeepCompany(e.target.checked)} className="accent-[var(--primary)]" />Keep company & position for the next entry</label>
             <div className="flex w-full flex-wrap gap-3 sm:w-auto"><SubmitButton another /><SubmitButton /></div>
           </div>

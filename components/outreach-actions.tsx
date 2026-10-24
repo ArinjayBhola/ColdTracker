@@ -72,7 +72,7 @@ export function OutreachActions({ id, currentStatus, compact = false }: { id: st
                 <SelectTrigger aria-label="Outreach status" className={cn(
                     "h-auto min-h-9 w-auto min-w-[10em] shrink-0 px-3 py-2 rounded-lg border-2 border-border bg-background",
                     "text-sm font-semibold",
-                    compact && "min-w-0 border-0 bg-transparent px-2 py-1 text-xs shadow-none hover:bg-muted/70",
+                    compact && "min-w-[6.5em] px-3 py-1.5 text-sm",
                     STATUS_OPTIONS.find(opt => opt.value === displayedStatus)?.color
                 )}>
                     <SelectValue />

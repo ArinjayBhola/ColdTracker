@@ -29,7 +29,7 @@ export function TemplateOptionPicker({ id, label, options, values, onChange, mul
           <span className="truncate">{values.length ? multiple ? `${values.length} tags selected` : values[0] : `Choose or create ${multiple ? "tags" : "a category"}`}</span><ChevronDown className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] min-w-60 max-w-[calc(100vw-2rem)] space-y-2 bg-popover p-2">
+      <PopoverContent align="start" className="z-[170] w-[var(--radix-popover-trigger-width)] min-w-60 max-w-[calc(100vw-2rem)] space-y-2 bg-popover p-2">
         <Input aria-label={`Search or create ${label.toLowerCase()}`} placeholder="Search or type a new name…" value={query} maxLength={maxLength} onChange={e => setQuery(e.target.value)} onKeyDown={e => {
           if (e.key === "Enter") {
             e.preventDefault();

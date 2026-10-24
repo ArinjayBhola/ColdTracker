@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { getDashboardOutreachPage } from "@/actions/outreach";
 import { Sidebar } from "@/components/sidebar";
-import { DashboardTools } from "@/components/dashboard-tools";
+import { DashboardRefreshButton } from "@/components/dashboard-refresh-button";
 import { OutreachTable } from "@/components/outreach-table";
 import { DashboardFocus } from "@/components/dashboard-focus";
 import { QuickOutreach } from "@/components/quick-outreach";
@@ -36,7 +36,7 @@ export default async function DashboardPage(
         <div className="app-container">
             <header className="flex flex-wrap items-center justify-between gap-4">
               <div><p className="mb-1 text-xs text-muted-foreground">YOUR WORKSPACE</p><h1 className="font-display text-3xl font-semibold tracking-tight">Dashboard</h1><p className="mt-2 text-sm text-muted-foreground">A little less tracking. A little more connecting.</p></div>
-              <div className="flex items-center gap-2"><DashboardTools /><QuickOutreach /></div>
+              <div className="flex items-center gap-2"><DashboardRefreshButton /><QuickOutreach /></div>
             </header>
             <Suspense fallback={<div className="h-28 animate-pulse rounded-xl bg-muted/50" />}><DashboardFocus /></Suspense>
 

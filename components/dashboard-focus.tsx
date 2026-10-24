@@ -13,8 +13,8 @@ export async function DashboardFocus() {
     <div className="col-span-2 flex flex-col justify-between border-t px-4 py-4 sm:col-span-1 sm:border-l sm:border-t-0 sm:px-5">
       <div className="hidden items-center justify-between text-xs text-muted-foreground sm:flex"><span>Next up</span><CalendarClock className="h-3.5 w-3.5" /></div>
       <div className="flex items-center justify-between gap-3 sm:block">
-        <Link href="/follow-ups" className="flex items-baseline gap-1.5 hover:text-primary sm:mt-2"><strong className="text-xl tabular-nums sm:text-2xl">{data.due}</strong><span className="text-xs text-muted-foreground sm:text-sm">follow-ups due</span></Link>
-        <Link href="/stats#goals" className="flex items-center gap-1 whitespace-nowrap text-xs text-primary sm:mt-3">Activity & goals <ArrowUpRight className="h-3 w-3" /></Link>
+        <div className="flex items-baseline gap-1.5 sm:mt-2"><strong className="text-xl tabular-nums sm:text-2xl">{data.due}</strong><span className="text-xs text-muted-foreground sm:text-sm">follow-ups to check</span></div>
+        <Link href="/stats#goals" className="flex items-center gap-1 whitespace-nowrap text-xs text-primary sm:mt-3"><span className="hidden sm:inline">View </span>activity & goals <ArrowUpRight className="h-3 w-3" /></Link>
       </div>
     </div>
   </section>;

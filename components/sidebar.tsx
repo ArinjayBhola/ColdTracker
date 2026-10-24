@@ -1,5 +1,6 @@
 "use client";
 
+import { NAV_GROUPS } from "@/lib/preferences";
 import { usePreferences } from "@/components/preferences-provider";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -117,7 +118,7 @@ export function Sidebar() {
           {orderedLinks.some(link => link.href === "/outreach/new") && <Button variant="outline" asChild className={cn("mb-1 h-10 w-full bg-card shadow-none", isCollapsed && !isMobileOpen ? "px-0" : "justify-start gap-2.5 px-3")}>
             <Link href="/outreach/new" title="New outreach"><FiPlusCircle className="h-4 w-4 shrink-0" /><span className={isCollapsed && !isMobileOpen ? "sr-only" : ""}>New outreach</span></Link>
           </Button>}
-          {[{ label: "Workspace", paths: ["/dashboard", "/follow-ups", "/dashboard/extension-leads"] }, { label: "Library", paths: ["/templates", "/startups", "/stats"] }].map(group => {
+          {NAV_GROUPS.map(group => {
             const groupLinks = orderedLinks.filter(link => group.paths.includes(link.href));
             if (!groupLinks.length) return null;
             return <div key={group.label} className="space-y-1">

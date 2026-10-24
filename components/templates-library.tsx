@@ -10,8 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SideDrawerContent } from "@/components/ui/side-drawer";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Check, Copy, FileText, Plus, Search, Star, Pencil, Trash2, Files, Pin, LayoutGrid, Rows3 } from "lucide-react";
+import { Check, Copy, FileText, Plus, Search, Star, Pencil, Trash2, FilePlus2, Pin, LayoutGrid, Rows3 } from "lucide-react";
 
 type Template = typeof messageTemplates.$inferSelect;
 const empty: TemplateInput = { title: "", subject: "", body: "", category: "", tags: [], characterLimit: null, favorite: false, pinned: false };
@@ -180,7 +181,7 @@ export function TemplatesLibrary({ initialTemplates }: { initialTemplates: Templ
               <TemplateCopyButton text={template.body} label="Copy" variant="outline" onError={setNotice} />
               {template.subject && <><TemplateCopyButton text={template.subject} label="Subject" onError={setNotice} /><TemplateCopyButton text={`Subject: ${template.subject}\n\n${template.body}`} label="Copy both" onError={setNotice} /></>}
               <Button size="icon" className="h-7 w-7" title="Edit" aria-label={`Edit ${template.title}`} variant="ghost" onClick={() => openEditor(template)}><Pencil className="h-3.5 w-3.5" /></Button>
-              <Button size="icon" className="h-7 w-7" title="Duplicate" aria-label={`Duplicate ${template.title}`} variant="ghost" onClick={() => openEditor(template, true)}><Files className="h-3.5 w-3.5" /></Button>
+              <Button size="icon" className="h-7 w-7" title="Duplicate" aria-label={`Duplicate ${template.title}`} variant="ghost" onClick={() => openEditor(template, true)}><FilePlus2 className="h-3.5 w-3.5" /></Button>
               <Button size="icon" className="h-7 w-7" title="Delete" variant="ghost" aria-label={`Delete ${template.title}`} onClick={() => { setError(""); setDeleting(template); }}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
             </div>
           </article>;
@@ -188,13 +189,13 @@ export function TemplatesLibrary({ initialTemplates }: { initialTemplates: Templ
       </div>}
 
       <Dialog open={editor !== null} onOpenChange={open => { if (!open && !pending) setEditor(null); }}>
-        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
-          <DialogHeader><DialogTitle>{editor?.id ? "Edit template" : "New template"}</DialogTitle><DialogDescription>Make it yours. Categories, tags, and character limits are optional.</DialogDescription></DialogHeader>
-          {editor && <form className="space-y-4" onSubmit={e => { e.preventDefault(); save(); }}>
-            <fieldset disabled={pending} className="space-y-4">
-              <div className="space-y-2"><Label htmlFor="template-title">Title</Label><Input id="template-title" required maxLength={200} autoFocus value={editor.value.title} onChange={e => update({ title: e.target.value })} /></div>
-              <div className="space-y-2"><Label htmlFor="template-subject">Subject (optional)</Label><Input id="template-subject" maxLength={500} value={editor.value.subject} onChange={e => update({ subject: e.target.value })} /></div>
-              <div className="space-y-2"><Label htmlFor="template-body">Message</Label><Textarea id="template-body" required rows={9} value={editor.value.body} onChange={e => update({ body: e.target.value })} aria-describedby="template-count" /><p id="template-count" aria-live="polite" className={`text-sm ${overLimit ? "text-destructive" : "text-muted-foreground"}`}>{count}{limit !== null && Number.isFinite(limit) ? ` / ${limit}` : ""} characters{overLimit ? ` — ${count - limit!} over the limit. You can still save this draft.` : ""}</p></div>
+        <SideDrawerContent busy={pending}>
+          <DialogHeader className="shrink-0 border-b px-6 py-5 pr-14 text-left"><DialogTitle>{editor?.id ? "Edit template" : "New template"}</DialogTitle><DialogDescription>Make it yours. Categories, tags, and character limits are optional.</DialogDescription></DialogHeader>
+          {editor && <form className="flex min-h-0 flex-1 flex-col" onSubmit={e => { e.preventDefault(); save(); }}>
+            <div className="flex-1 overflow-y-auto px-6 py-5"><fieldset disabled={pending} className="space-y-4">
+              <div className="space-y-2"><Label htmlFor="template-title">Title</Label><Input id="template-title" placeholder="e.g. LinkedIn introduction" required maxLength={200} autoFocus value={editor.value.title} onChange={e => update({ title: e.target.value })} /></div>
+              <div className="space-y-2"><Label htmlFor="template-subject">Subject (optional)</Label><Input id="template-subject" placeholder="e.g. Exploring opportunities at [Company]" maxLength={500} value={editor.value.subject} onChange={e => update({ subject: e.target.value })} /></div>
+              <div className="space-y-2"><Label htmlFor="template-body">Message</Label><Textarea id="template-body" placeholder={"Hi [Name],\n\nI would love to connect about [opportunity] at [Company]..."} required rows={9} value={editor.value.body} onChange={e => update({ body: e.target.value })} aria-describedby="template-count" /><p id="template-count" aria-live="polite" className={`text-sm ${overLimit ? "text-destructive" : "text-muted-foreground"}`}>{count}{limit !== null && Number.isFinite(limit) ? ` / ${limit}` : ""} characters{overLimit ? ` — ${count - limit!} over the limit. You can still save this draft.` : ""}</p></div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2"><Label htmlFor="template-category">Category</Label><TemplateOptionPicker id="template-category" label="Category" options={categories} values={editor.value.category ? [editor.value.category] : []} onChange={values => update({ category: values[0] ?? "" })} maxLength={80} disabled={pending} /></div>
                 <div className="space-y-2"><Label htmlFor="template-limit">Character limit</Label><Input id="template-limit" type="number" min={1} max={50000} step={1} placeholder="No limit" value={limitText} onChange={e => setLimitText(e.target.value)} /><p className="text-xs text-muted-foreground">Applies to the message body.</p></div>
@@ -206,9 +207,9 @@ export function TemplatesLibrary({ initialTemplates }: { initialTemplates: Templ
               </div>
             </fieldset>
             {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-            <div className="flex justify-end gap-2"><Button type="button" variant="outline" disabled={pending} onClick={() => setEditor(null)}>Cancel</Button><Button type="submit" disabled={pending}>{pending ? "Saving…" : "Save template"}</Button></div>
+            </div><div className="flex shrink-0 justify-end gap-2 border-t bg-card/70 px-6 py-4"><Button type="button" variant="outline" disabled={pending} onClick={() => setEditor(null)}>Cancel</Button><Button type="submit" disabled={pending}>{pending ? "Saving…" : "Save template"}</Button></div>
           </form>}
-        </DialogContent>
+        </SideDrawerContent>
       </Dialog>
       <Dialog open={deleting !== null} onOpenChange={open => { if (!open && !pending) setDeleting(null); }}>
         <DialogContent><DialogHeader><DialogTitle>Delete template?</DialogTitle><DialogDescription>“{deleting?.title}” will be permanently removed.</DialogDescription></DialogHeader>

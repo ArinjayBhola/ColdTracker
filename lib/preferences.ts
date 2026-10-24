@@ -4,8 +4,12 @@ import { DEFAULT_APPEARANCE, parseAppearance } from "@/lib/appearance";
 export const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard" }, { href: "/startups", label: "Startups" },
   { href: "/dashboard/extension-leads", label: "Leads" }, { href: "/follow-ups", label: "Follow-ups" },
-  { href: "/templates", label: "Templates" }, { href: "/outreach/new", label: "Add Outreach" }, { href: "/stats", label: "Stats" },
+  { href: "/templates", label: "Templates" }, { href: "/outreach/new", label: "New outreach" }, { href: "/stats", label: "Stats" },
 ] as const;
+export const NAV_GROUPS: { label: string; paths: readonly string[] }[] = [
+  { label: "Workspace", paths: ["/dashboard", "/follow-ups", "/dashboard/extension-leads"] },
+  { label: "Library", paths: ["/templates", "/startups", "/stats"] },
+];
 export const TABLE_COLUMNS = ["role", "status", "date", "followUp", "actions"] as const;
 export const STATS_WIDGETS = ["metrics", "comparison", "heatmap", "funnel", "pipeline", "channels", "pending"] as const;
 const route = z.enum(NAV_ITEMS.map(item => item.href));

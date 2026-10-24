@@ -23,6 +23,7 @@ export function DashboardRefreshButton() {
       onClick={handleRefresh}
       className="h-11 w-11 rounded-xl border-2"
       title="Refresh dashboard"
+      aria-label="Refresh dashboard"
     >
       <FiRefreshCw className={`h-5 w-5 ${isRefreshing ? "animate-spin" : ""}`} />
     </Button>

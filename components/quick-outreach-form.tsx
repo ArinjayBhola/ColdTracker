@@ -4,6 +4,8 @@ import { Check, ChevronDown, Linkedin, Loader2, Mail, Plus } from "lucide-react"
 import { createOutreachAction } from "@/actions/outreach";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
+import { format } from "date-fns";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { calendarKey } from "@/lib/user-calendar";
@@ -59,7 +61,7 @@ export default function QuickOutreachForm({ onSaved, onBusyChange }: { onSaved: 
         <div className="space-y-2"><label htmlFor="quick-address" className="text-sm">{draft.method === "EMAIL" ? "Email address" : "LinkedIn profile"} <span className="ml-1 text-xs text-muted-foreground">optional</span></label><Input id="quick-address" type={draft.method === "EMAIL" ? "email" : "text"} value={draft.address} onChange={e => update("address", e.target.value)} placeholder={draft.method === "EMAIL" ? "name@company.com" : "linkedin.com/in/name"} className="h-11 bg-card" /></div>
         <div className="space-y-2"><label htmlFor="quick-position" className="text-sm">Position <span className="ml-1 text-xs text-muted-foreground">optional</span></label><Input id="quick-position" value={draft.position} onChange={e => update("position", e.target.value)} placeholder="e.g. Product designer" className="h-11 bg-card" /></div>
         <details className="group border-t pt-4"><summary className="flex cursor-pointer list-none items-center justify-between text-sm text-muted-foreground">Dates & a note<ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" /></summary>
-          <div className="mt-5 space-y-4"><div className="grid grid-cols-2 gap-3"><div className="space-y-2"><label htmlFor="quick-sent" className="text-xs text-muted-foreground">Sent date</label><Input id="quick-sent" type="date" value={draft.sent} onChange={e => update("sent", e.target.value)} /></div><div className="space-y-2"><label htmlFor="quick-follow-up" className="text-xs text-muted-foreground">Follow-up date</label><Input id="quick-follow-up" type="date" value={draft.followUp} onChange={e => update("followUp", e.target.value)} /></div></div><Textarea aria-label="Outreach note" value={draft.notes} onChange={e => update("notes", e.target.value)} placeholder="A little context for next time..." rows={3} /></div>
+          <div className="mt-5 space-y-4"><div className="grid grid-cols-2 gap-3"><div className="space-y-2"><label htmlFor="quick-sent" className="text-xs text-muted-foreground">Sent date</label><DatePicker id="quick-sent" displayFormat="MMM d, yyyy" value={draft.sent ? new Date(`${draft.sent}T12:00:00`) : undefined} onChange={date => update("sent", date ? format(date, "yyyy-MM-dd") : "")} placeholder="Sent date" /></div><div className="space-y-2"><label htmlFor="quick-follow-up" className="text-xs text-muted-foreground">Follow-up date</label><DatePicker id="quick-follow-up" displayFormat="MMM d, yyyy" value={draft.followUp ? new Date(`${draft.followUp}T12:00:00`) : undefined} onChange={date => update("followUp", date ? format(date, "yyyy-MM-dd") : "")} placeholder="Automatic" /></div></div><Textarea aria-label="Outreach note" value={draft.notes} onChange={e => update("notes", e.target.value)} placeholder="A little context for next time..." rows={3} /></div>
         </details>
       </fieldset>
       <p className="text-xs leading-relaxed text-muted-foreground">Logged as sent. Your follow-up rules take care of the reminder.</p>

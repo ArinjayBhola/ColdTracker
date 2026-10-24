@@ -20,15 +20,18 @@ interface DatePickerProps {
     placeholder?: string
     className?: string
     name?: string
+    id?: string
+    displayFormat?: string
 }
 
-export function DatePicker({ value, onChange, placeholder = "Pick a date", className, name }: DatePickerProps) {
+export function DatePicker({ value, onChange, placeholder = "Pick a date", className, name, id, displayFormat = "PPP" }: DatePickerProps) {
   const [date, setDate] = React.useState<Date | undefined>(value ? new Date(value) : undefined)
   const [open, setOpen] = React.useState(false)
 
+  const timestamp = value?.getTime()
   React.useEffect(() => {
-    setDate(value ? new Date(value) : undefined)
-  }, [value])
+    setDate(timestamp === undefined ? undefined : new Date(timestamp))
+  }, [timestamp])
 
   const handleSelect = (newDate: Date | undefined) => {
     setDate(newDate)
@@ -44,6 +47,8 @@ export function DatePicker({ value, onChange, placeholder = "Pick a date", class
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
+            id={id}
+            type="button"
             variant={"outline"}
             className={cn(
               "w-full justify-start text-left font-semibold h-11 px-4 rounded-xl border-border/50 bg-background/50 backdrop-blur-sm hover:border-primary/50 hover:bg-primary/5 transition-all group shadow-sm",
@@ -51,10 +56,10 @@ export function DatePicker({ value, onChange, placeholder = "Pick a date", class
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-            {date && !isNaN(date.getTime()) ? format(date, "PPP") : <span>{placeholder}</span>}
+            {date && !isNaN(date.getTime()) ? format(date, displayFormat) : <span>{placeholder}</span>}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 rounded-2xl border-border/50 bg-card/95 backdrop-blur-2xl shadow-premium animate-in zoom-in-95 duration-200" align="start">
+        <PopoverContent className="z-[180] w-auto max-w-[calc(100vw-1rem)] p-0 rounded-2xl border-border/50 bg-card/95 backdrop-blur-2xl shadow-premium animate-in zoom-in-95 duration-200" align="start">
           {open && <Calendar
             mode="single"
             selected={date}
@@ -64,7 +69,8 @@ export function DatePicker({ value, onChange, placeholder = "Pick a date", class
             endMonth={new Date(new Date().getFullYear() + 10, 11)}
           />}
           <div className="flex items-center justify-between p-3 border-t border-border/20 bg-muted/30 rounded-b-2xl">
-            <Button 
+            <Button
+                type="button"
                 variant="ghost" 
                 size="sm" 
                 className="text-primary hover:bg-primary/20 font-extrabold px-5 rounded-lg transition-all active:scale-95"
@@ -75,7 +81,8 @@ export function DatePicker({ value, onChange, placeholder = "Pick a date", class
             >
                 Today
             </Button>
-            <Button 
+            <Button
+                type="button"
                 variant="ghost" 
                 size="sm" 
                 className="text-muted-foreground hover:text-foreground hover:bg-muted/50 font-bold px-5 rounded-lg transition-all"
