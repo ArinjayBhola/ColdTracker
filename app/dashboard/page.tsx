@@ -7,8 +7,8 @@ import { DashboardFocus } from "@/components/dashboard-focus";
 import { QuickOutreach } from "@/components/quick-outreach";
 
 
-async function DashboardOutreachTableSection({ page, filter, q, start, end }: { page: number; filter: string; q?: string; start?: string; end?: string }) {
-  const { items: outreachItems, totalCount, currentPage, pageSize, timeZone } = await getDashboardOutreachPage(page, filter, { q, start, end });
+async function DashboardOutreachTableSection({ page, filter, q, start, end, origin }: { page: number; filter: string; q?: string; start?: string; end?: string; origin?: string }) {
+  const { items: outreachItems, totalCount, currentPage, pageSize, timeZone } = await getDashboardOutreachPage(page, filter, { q, start, end, origin });
   return (
     <OutreachTable
       items={outreachItems}
@@ -22,7 +22,7 @@ async function DashboardOutreachTableSection({ page, filter, q, start, end }: { 
 
 export default async function DashboardPage(
   props: {
-    searchParams: Promise<{ page?: string; filter?: string; q?: string; start?: string; end?: string }>;
+    searchParams: Promise<{ page?: string; filter?: string; q?: string; start?: string; end?: string; origin?: string }>;
   }
 ) {
   const searchParams = await props.searchParams;
@@ -43,7 +43,7 @@ export default async function DashboardPage(
             {/* Outreach Table */}
             <div>
               <Suspense fallback={<div className="w-full h-[400px] bg-muted/50 animate-pulse rounded-xl" />}>
-                <DashboardOutreachTableSection page={page} filter={filter} q={searchParams.q} start={searchParams.start} end={searchParams.end} />
+                <DashboardOutreachTableSection page={page} filter={filter} q={searchParams.q} start={searchParams.start} end={searchParams.end} origin={searchParams.origin} />
               </Suspense>
             </div>
         </div>

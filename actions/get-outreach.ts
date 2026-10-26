@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { outreach } from "@/db/schema";
+import { outreach, automationOutreachEvents } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { eq, and } from "drizzle-orm";
 
@@ -16,5 +16,10 @@ export async function getOutreachById(id: string) {
     )
   });
 
-  return item || null;
+  if (!item) return null;
+  const event = await db.query.automationOutreachEvents.findFirst({
+    columns: { eventKey: true },
+    where: and(eq(automationOutreachEvents.userId, session.user.id), eq(automationOutreachEvents.outreachId, id)),
+  });
+  return { ...item, isAutomated: !!event };
 }

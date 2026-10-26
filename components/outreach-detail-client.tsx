@@ -61,7 +61,7 @@ export function OutreachDetailClient({ initialData, id }: OutreachDetailClientPr
         title: isMarkingSent ? "Follow-up status updated" : "Follow-up marked as unsent",
         description: "The status has been updated.",
       });
-      if (res.item) queryClient.setQueryData(["outreach", id], res.item);
+      if (res.item) queryClient.setQueryData(["outreach", id], { ...res.item, isAutomated: item.isAutomated });
       else await refetchItem();
       void queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
       setIsEditingSentDate(null);
@@ -86,7 +86,7 @@ export function OutreachDetailClient({ initialData, id }: OutreachDetailClientPr
         title: "Follow-up date updated",
         description: "The due date has been changed successfully.",
       });
-      if (res.item) queryClient.setQueryData(["outreach", id], res.item);
+      if (res.item) queryClient.setQueryData(["outreach", id], { ...res.item, isAutomated: item.isAutomated });
       else await refetchItem();
       void queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
       setIsEditingDate(false);

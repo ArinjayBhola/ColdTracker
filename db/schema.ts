@@ -12,8 +12,9 @@ import {
   uniqueIndex,
   unique,
   index,
+  check,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { type AdapterAccount } from "next-auth/adapters";
 
 // --- Enums ---
@@ -141,6 +142,21 @@ export const outreach = pgTable("outreach", {
   // Covers status-filtered list + getStats grouping. Its (userId) and (userId,status)
   // prefixes also serve those narrower lookups, so no standalone indexes are needed.
   userIdStatusCreatedAtIdx: index("outreach_user_id_status_created_at_idx").on(table.userId, table.status, table.createdAt),
+}));
+
+// Existing automation ledger, created externally. outreach_id deliberately has
+// no foreign key: match the deployed table rather than changing its lifecycle.
+export const automationOutreachEvents = pgTable("automation_outreach_events", {
+  eventKey: text("event_key").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  outreachId: uuid("outreach_id").notNull(),
+  payloadSha256: text("payload_sha256").notNull(),
+  result: text("result").notNull(),
+  messageSentAt: timestamp("message_sent_at", { mode: "date" }).notNull(),
+  loggedAt: timestamp("logged_at", { mode: "date" }).notNull().default(sql`(now() AT TIME ZONE 'UTC')`),
+}, (table) => ({
+  payloadCheck: check("automation_outreach_events_payload_sha256_check", sql`${table.payloadSha256} ~ '^[0-9a-f]{64}$'`),
+  resultCheck: check("automation_outreach_events_result_check", sql`${table.result} IN ('created', 'merged')`),
 }));
 
 // --- Personal message templates ---

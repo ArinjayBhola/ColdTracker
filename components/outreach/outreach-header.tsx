@@ -9,6 +9,7 @@ import { OutreachActions } from "@/components/outreach-actions";
 import { DeleteArchiveActions } from "@/components/delete-archive-actions";
 import { DetailHeader } from "@/components/details/detail-header";
 import { contactDisplayName } from "@/lib/contact-display";
+import { AutomationOutreachBadge } from "@/components/automation-outreach-badge";
 
 interface OutreachHeaderProps {
   id: string;
@@ -45,6 +46,7 @@ export function OutreachHeader({
       isRefreshing={isRefreshing}
       onRefresh={onRefresh}
       badge={
+        <span className="flex flex-wrap items-center gap-2">
         <span className={cn(
           "inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider border",
           contactMethod === "EMAIL"
@@ -56,6 +58,8 @@ export function OutreachHeader({
           ) : (
             <><FiLinkedin className="w-4 h-4" /> LinkedIn</>
           )}
+        </span>
+        {outreachData.isAutomated && <AutomationOutreachBadge />}
         </span>
       }
       infoBar={

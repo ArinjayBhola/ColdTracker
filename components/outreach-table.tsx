@@ -17,12 +17,13 @@ import { TableShell, TableContent } from "@/components/ui/data-table/table-shell
 import { TablePagination } from "@/components/ui/data-table/table-pagination";
 import { bulkDeleteOutreach } from "@/actions/outreach";
 import { calendarKey } from "@/lib/user-calendar";
+import { AutomationOutreachBadge } from "@/components/automation-outreach-badge";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
-type OutreachItem = { id: string; companyName: string; roleTargeted: string; personName: string; status: string; messageSentAt: Date | string; followUpDueAt: Date | string | null; contactMethod: string; contactCount: number };
+type OutreachItem = { isAutomated?: boolean; id: string; companyName: string; roleTargeted: string; personName: string; status: string; messageSentAt: Date | string; followUpDueAt: Date | string | null; contactMethod: string; contactCount: number };
 type Props = { items: OutreachItem[]; totalCount: number; currentPage: number; pageSize?: number; timeZone?: string };
-type FilterDraft = { method: string; start: string; end: string; preset: string };
+type FilterDraft = { origin: string; method: string; start: string; end: string; preset: string };
 const calendarDate = (value: string | null) => value && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value ? value : "";
 const dateLabel = (value: string) => value ? format(new Date(`${value}T12:00:00`), "MMM d") : "Any date";
 export function OutreachTable({ items, totalCount, currentPage, pageSize = 10, timeZone = "UTC" }: Props) {
@@ -37,6 +38,7 @@ export function OutreachTable({ items, totalCount, currentPage, pageSize = 10, t
   const appliedSearch = params.get("q") || "";
   const requestedMethod = params.get("filter") || preferences.table.defaultMethod;
   const method = ["ALL", "EMAIL", "LINKEDIN"].includes(requestedMethod) ? requestedMethod : "ALL";
+  const origin = ["AUTOMATED", "MANUAL"].includes(params.get("origin") || "") ? params.get("origin")! : "ALL";
   const start = calendarDate(params.get("start"));
   const end = calendarDate(params.get("end"));
   const [search, setSearch] = useState(appliedSearch);
@@ -46,11 +48,11 @@ export function OutreachTable({ items, totalCount, currentPage, pageSize = 10, t
   const [selection, setSelection] = useState({ scope, ids: new Set<string>() });
   const selected = selection.scope === scope ? selection.ids : new Set<string>();
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [draft, setDraft] = useState<FilterDraft>({ method, start, end, preset: start || end ? "custom" : "any" });
+  const [draft, setDraft] = useState<FilterDraft>({ origin, method, start, end, preset: start || end ? "custom" : "any" });
   const [deleteIds, setDeleteIds] = useState<string[]>([]);
   const [deleting, setDeleting] = useState(false);
   const show = (column: typeof preferences.table.columns[number]) => preferences.table.columns.includes(column);
-  const activeCount = Number(method !== "ALL") + Number(!!(start || end));
+  const activeCount = Number(origin !== "ALL") + Number(method !== "ALL") + Number(!!(start || end));
   useEffect(() => () => { if (searchTimer.current) clearTimeout(searchTimer.current); }, []);
   useEffect(() => {
     if (lastSubmitted.current !== appliedSearch) {
@@ -76,7 +78,7 @@ export function OutreachTable({ items, totalCount, currentPage, pageSize = 10, t
     searchTimer.current = setTimeout(() => navigate({ q: value }), 350);
   }
   function openFilters(open: boolean) {
-    if (open) setDraft({ method, start, end, preset: start || end ? "custom" : "any" });
+    if (open) setDraft({ origin, method, start, end, preset: start || end ? "custom" : "any" });
     setFiltersOpen(open);
   }
   function choosePreset(value: string) {
@@ -109,19 +111,21 @@ export function OutreachTable({ items, totalCount, currentPage, pageSize = 10, t
         <PopoverContent align="end" className="w-[320px] max-w-[calc(100vw-2rem)] bg-card p-5">
           <h3 className="mb-5 text-sm font-medium">Narrow your view</h3>
           <div className="space-y-5"><div><p className="mb-2 text-xs text-muted-foreground">Channel</p><div className="grid grid-cols-3 gap-1 rounded-lg bg-muted/60 p-1">{['ALL', 'EMAIL', 'LINKEDIN'].map(value => <button key={value} type="button" aria-pressed={draft.method === value} onClick={() => setDraft(previous => ({ ...previous, method: value }))} className={cn("rounded-md py-2 text-xs", draft.method === value ? "bg-card shadow-sm" : "text-muted-foreground")}>{value === "ALL" ? "All" : value === "EMAIL" ? "Email" : "LinkedIn"}</button>)}</div></div>
+            <div className="space-y-2"><label htmlFor="outreach-origin" className="text-xs text-muted-foreground">Logged by</label><Select value={draft.origin} onValueChange={origin => setDraft(previous => ({ ...previous, origin }))}><SelectTrigger id="outreach-origin" className="h-10 w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ALL">All outreach</SelectItem><SelectItem value="AUTOMATED">Automation</SelectItem><SelectItem value="MANUAL">Manual</SelectItem></SelectContent></Select></div>
             <div className="space-y-2"><label htmlFor="sent-period" className="text-xs text-muted-foreground">Sent date</label><Select value={draft.preset} onValueChange={choosePreset}><SelectTrigger id="sent-period" className="h-10 w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="any">Any time</SelectItem><SelectItem value="0">Today</SelectItem><SelectItem value="6">Last 7 days</SelectItem><SelectItem value="29">Last 30 days</SelectItem><SelectItem value="custom">Custom range</SelectItem></SelectContent></Select></div>
             {draft.preset === "custom" && <div className="grid gap-3"><div className="space-y-2"><label htmlFor="sent-from" className="text-xs text-muted-foreground">From</label><DatePicker id="sent-from" displayFormat="MMM d, yyyy" value={draft.start ? new Date(`${draft.start}T12:00:00`) : undefined} onChange={date => setDraft(previous => ({ ...previous, start: date ? format(date, "yyyy-MM-dd") : "" }))} placeholder="Start date" /></div><div className="space-y-2"><label htmlFor="sent-to" className="text-xs text-muted-foreground">To</label><DatePicker id="sent-to" displayFormat="MMM d, yyyy" value={draft.end ? new Date(`${draft.end}T12:00:00`) : undefined} onChange={date => setDraft(previous => ({ ...previous, end: date ? format(date, "yyyy-MM-dd") : "" }))} placeholder="End date" /></div></div>}
             {draft.start && draft.end && draft.start > draft.end && <p role="alert" className="text-xs text-destructive">The end date must be on or after the start date.</p>}
-            <div className="flex items-center justify-between border-t pt-4"><Button variant="ghost" size="sm" onClick={() => setDraft({ method: "ALL", start: "", end: "", preset: "any" })}>Reset</Button><Button size="sm" disabled={!!(draft.start && draft.end && draft.start > draft.end)} onClick={() => { navigate({ filter: draft.method, start: draft.start, end: draft.end }); setFiltersOpen(false); }}>Apply filters</Button></div>
+            <div className="flex items-center justify-between border-t pt-4"><Button variant="ghost" size="sm" onClick={() => setDraft({ origin: "ALL", method: "ALL", start: "", end: "", preset: "any" })}>Reset</Button><Button size="sm" disabled={!!(draft.start && draft.end && draft.start > draft.end)} onClick={() => { navigate({ origin: draft.origin === "ALL" ? "" : draft.origin, filter: draft.method, start: draft.start, end: draft.end }); setFiltersOpen(false); }}>Apply filters</Button></div>
           </div>
         </PopoverContent>
       </Popover>
     </div>
     {(activeCount > 0 || appliedSearch || selected.size > 0) && <div className="flex flex-wrap items-center gap-2 border-b bg-muted/15 px-5 py-2.5 text-xs">
       {selected.size > 0 ? <><span className="mr-2">{selected.size} selected</span><button className="flex items-center gap-1.5 text-destructive" onClick={() => setDeleteIds([...selected])}><Trash2 className="h-3.5 w-3.5" />Delete selected</button><button onClick={() => setSelection({ scope, ids: new Set() })} className="ml-auto text-muted-foreground">Deselect</button></> : <>
+        {origin !== "ALL" && <button onClick={() => navigate({ origin: "" })} className="flex items-center gap-2 rounded-md border bg-card px-2 py-1">{origin === "AUTOMATED" ? "Automation" : "Manual"}<X className="h-3 w-3" /></button>}
         {method !== "ALL" && <button onClick={() => navigate({ filter: "ALL" })} className="flex items-center gap-2 rounded-md border bg-card px-2 py-1">{method === "EMAIL" ? "Email" : "LinkedIn"}<X className="h-3 w-3" /></button>}
         {(start || end) && <button onClick={() => navigate({ start: "", end: "" })} className="flex items-center gap-2 rounded-md border bg-card px-2 py-1">Sent: {dateLabel(start)} - {dateLabel(end)}<X className="h-3 w-3" /></button>}
-        <span className="text-muted-foreground">{totalCount} matching {totalCount === 1 ? "entry" : "entries"}</span><button onClick={() => { setSearch(""); navigate({ filter: "ALL", start: "", end: "", q: "" }); }} className="ml-auto text-muted-foreground hover:text-foreground">Clear all</button>
+        <span className="text-muted-foreground">{totalCount} matching {totalCount === 1 ? "entry" : "entries"}</span><button onClick={() => { setSearch(""); navigate({ origin: "", filter: "ALL", start: "", end: "", q: "" }); }} className="ml-auto text-muted-foreground hover:text-foreground">Clear all</button>
       </>}
     </div>}
     <div aria-busy={pending} className={cn("transition-opacity", pending && "opacity-65")}><TableContent>
@@ -132,7 +136,7 @@ export function OutreachTable({ items, totalCount, currentPage, pageSize = 10, t
       </tr></thead>
       <tbody>{items.length === 0 ? <tr><td colSpan={7} className="px-5 py-16 text-center"><Inbox className="mx-auto mb-4 h-8 w-8 text-muted-foreground/50" /><p className="text-sm font-medium">{appliedSearch || activeCount ? "No matching conversations" : "Your next conversation starts here"}</p><p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">{appliedSearch || activeCount ? "Try a different search or clear a filter to see more outreach." : "Use Quick log above to save your first outreach. We'll keep track of what comes next."}</p></td></tr> : items.map(item => <tr key={item.id} className={cn("border-t border-border/60 transition-colors hover:bg-muted/25", selected.has(item.id) && "bg-primary/5")}>
         <td className="px-3 py-4"><Checkbox className="border-border data-[state=checked]:border-primary" aria-label={`Select ${item.companyName}`} checked={selected.has(item.id)} onCheckedChange={() => toggle(item.id)} /></td>
-        <td className="px-3 py-4"><div className="flex items-center gap-2">{item.followUpDueAt && calendarKey(item.followUpDueAt, timeZone) <= todayKey && <span role="img" aria-label={overdue(item.followUpDueAt) ? "Follow-up overdue" : "Follow-up due today"} title={overdue(item.followUpDueAt) ? "Follow-up overdue" : "Follow-up due today"} className={cn("h-2.5 w-2.5 shrink-0 rounded-full", overdue(item.followUpDueAt) ? "bg-destructive" : "bg-primary")} />}<Link href={`/outreach/${item.id}`} className="block max-w-[128px] truncate text-sm font-medium hover:text-primary sm:max-w-[240px]">{item.companyName}</Link></div>{show("role") && <p className="mt-1 max-w-[140px] sm:max-w-[260px] truncate text-xs text-muted-foreground" title={item.roleTargeted}>{item.roleTargeted}</p>}<p className="mt-1 max-w-[140px] truncate text-xs text-muted-foreground sm:hidden">{item.personName === "No Contact" ? (item.contactMethod === "EMAIL" ? "Email" : "LinkedIn") : item.personName}</p></td>
+        <td className="px-3 py-4"><div className="flex items-center gap-2">{item.followUpDueAt && calendarKey(item.followUpDueAt, timeZone) <= todayKey && <span role="img" aria-label={overdue(item.followUpDueAt) ? "Follow-up overdue" : "Follow-up due today"} title={overdue(item.followUpDueAt) ? "Follow-up overdue" : "Follow-up due today"} className={cn("h-2.5 w-2.5 shrink-0 rounded-full", overdue(item.followUpDueAt) ? "bg-destructive" : "bg-primary")} />}<Link href={`/outreach/${item.id}`} className="block max-w-[128px] truncate text-sm font-medium hover:text-primary sm:max-w-[240px]">{item.companyName}</Link></div>{item.isAutomated && <div className="mt-1.5"><AutomationOutreachBadge /></div>}{show("role") && <p className="mt-1 max-w-[140px] sm:max-w-[260px] truncate text-xs text-muted-foreground" title={item.roleTargeted}>{item.roleTargeted}</p>}<p className="mt-1 max-w-[140px] truncate text-xs text-muted-foreground sm:hidden">{item.personName === "No Contact" ? (item.contactMethod === "EMAIL" ? "Email" : "LinkedIn") : item.personName}</p></td>
         <td className="hidden px-3 py-4 sm:table-cell"><span className="block max-w-[190px] truncate text-sm">{item.personName === "No Contact" ? "Not added" : item.personName}</span><span className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">{item.contactMethod === "EMAIL" ? <Mail className="h-3 w-3" /> : <Linkedin className="h-3 w-3" />}{item.contactMethod === "EMAIL" ? "Email" : "LinkedIn"}{item.contactCount > 1 && <span className="ml-1">+{item.contactCount - 1} more</span>}</span></td>
         {show("status") && <td className="px-1 py-4"><OutreachActions compact id={item.id} currentStatus={item.status} /></td>}
         {show("date") && <td className="hidden whitespace-nowrap px-3 py-4 text-xs text-muted-foreground lg:table-cell">{formatDay(item.messageSentAt)}</td>}
