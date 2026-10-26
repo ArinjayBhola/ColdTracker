@@ -93,12 +93,12 @@ export function DetailContentCard({
 
   return (
     <Card className="border border-border/60 shadow-sm rounded-xl overflow-hidden bg-gradient-to-br from-background to-muted/20">
-      <CardHeader className="flex flex-row items-center justify-between pb-2 pt-3 px-4 border-b border-border/50 bg-muted/10">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 pb-2 pt-3 px-4 border-b border-border/50 bg-muted/10">
         <CardTitle className="flex items-center gap-2 text-base font-bold tracking-tight">
           <div className="w-1 h-4 rounded-full bg-primary shadow-sm shadow-primary/30" />
           {title}
         </CardTitle>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {editable && !isEditing && (
             <Button 
               variant="outline" 

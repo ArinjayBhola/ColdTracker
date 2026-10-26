@@ -1,9 +1,16 @@
+"use client";
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import {
   FiBriefcase,
   FiExternalLink,
   FiMail,
   FiLinkedin,
   FiUser,
+  FiCopy,
+  FiCheck,
 } from "react-icons/fi";
 import { DetailContentCard, DetailItem } from "@/components/details/detail-content-card";
 
@@ -32,6 +39,29 @@ export function OutreachDetailsCard({
   editable,
   onSave,
 }: OutreachDetailsCardProps) {
+  const [copiedText, setCopiedText] = useState<string | null>(null);
+  const { toast } = useToast();
+  const copyText = [
+    ["Company name", companyName],
+    ["Website", companyLink],
+    ["Target role", roleTargeted],
+    ["Contact name", personName],
+    ["Contact position", personRole],
+    ["Contact method", contactMethod],
+    ["Email", emailAddress],
+    ["LinkedIn profile", linkedinProfileUrl],
+  ].map(([label, value]) => `${label}: ${value?.trim() || "Not provided"}`).join("\n");
+  const copied = copiedText === copyText;
+  const copyDetails = async () => {
+    try {
+      await navigator.clipboard.writeText(copyText);
+      setCopiedText(copyText);
+      toast({ title: "Outreach details copied" });
+    } catch {
+      setCopiedText(null);
+      toast({ title: "Could not copy details", description: "Please allow clipboard access and try again.", variant: "destructive" });
+    }
+  };
   // Derived, zero-storage deep link: opens a Gmail search scoped to this
   // contact's address (account-agnostic, no `/u/0` so Gmail picks the active
   // account). encodeURIComponent turns "@" into %40 etc. automatically.
@@ -112,5 +142,13 @@ export function OutreachDetailsCard({
     return item ? [{ ...item, fullWidth: id === "companyLink" }] : [];
   });
 
-  return <DetailContentCard items={orderedItems} editable={editable} onSave={onSave} action={gmailAction} />;
+  return <DetailContentCard items={orderedItems} editable={editable} onSave={onSave} action={
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      {gmailAction}
+      <Button type="button" variant="outline" size="sm" onClick={copyDetails} aria-label="Copy all outreach details" className="h-7 rounded-full px-3 text-[10px] font-bold border-border/80">
+        {copied ? <FiCheck className="h-3 w-3" /> : <FiCopy className="h-3 w-3" />}
+        {copied ? "Copied" : "Copy"}
+      </Button>
+    </div>
+  } />;
 }
