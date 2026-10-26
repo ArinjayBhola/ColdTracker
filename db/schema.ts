@@ -159,6 +159,43 @@ export const automationOutreachEvents = pgTable("automation_outreach_events", {
   resultCheck: check("automation_outreach_events_result_check", sql`${table.result} IN ('created', 'merged')`),
 }));
 
+// Per-email tracking, separate from company contacts and initial-send receipts.
+// Requires the reviewed 0012_email_open_tracking.PROPOSED.sql migration.
+export const outreachEmailMessages = pgTable("outreach_email_messages", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  outreachId: uuid("outreach_id").references(() => outreach.id, { onDelete: "cascade" }),
+  attemptId: text("attempt_id").notNull(), senderHash: text("sender_hash").notNull(),
+  recipient: text("recipient").notNull(), subject: varchar("subject", { length: 300 }).notNull(),
+  kind: text("kind").notNull(), tokenHash: text("token_hash").notNull(),
+  deliveryState: text("delivery_state").notNull().default("prepared"),
+  trackingEnabled: boolean("tracking_enabled").notNull().default(true), providerId: text("provider_id"),
+  sentAt: timestamp("sent_at", { withTimezone: true, mode: "date" }),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+  firstOpenAt: timestamp("first_open_at", { withTimezone: true, mode: "date" }),
+  lastOpenAt: timestamp("last_open_at", { withTimezone: true, mode: "date" }),
+  openCount: integer("open_count").notNull().default(0),
+  windowStart: timestamp("window_start", { withTimezone: true, mode: "date" }),
+  windowCount: integer("window_count").notNull().default(0),
+}, table => ({
+  ownerAttempt: unique("outreach_email_messages_user_id_attempt_id_key").on(table.userId, table.attemptId),
+  tokenUnique: unique("outreach_email_messages_token_hash_key").on(table.tokenHash),
+  ownerOutreach: index("outreach_email_messages_owner_outreach_idx").on(table.userId, table.outreachId, table.sentAt),
+  attemptCheck: check("outreach_email_messages_attempt_id_check", sql`${table.attemptId} ~ '^[0-9a-f]{32}$'`),
+  senderCheck: check("outreach_email_messages_sender_hash_check", sql`${table.senderHash} ~ '^[0-9a-f]{64}$'`),
+  tokenCheck: check("outreach_email_messages_token_hash_check", sql`${table.tokenHash} ~ '^[0-9a-f]{64}$'`),
+  kindCheck: check("outreach_email_messages_kind_check", sql`${table.kind} IN ('initial','follow_up_1','follow_up_2')`),
+  stateCheck: check("outreach_email_messages_delivery_state_check", sql`${table.deliveryState} IN ('prepared','accepted','failed','ambiguous')`),
+  countCheck: check("outreach_email_messages_open_count_check", sql`${table.openCount} BETWEEN 0 AND 10000`),
+  windowCheck: check("outreach_email_messages_window_count_check", sql`${table.windowCount} BETWEEN 0 AND 60`),
+  acceptedCheck: check("outreach_email_messages_check", sql`${table.deliveryState} <> 'accepted' OR (${table.providerId} IS NOT NULL AND ${table.sentAt} IS NOT NULL)`),
+}));
+export const outreachEmailOpenEvents = pgTable("outreach_email_open_events", {
+  id: uuid("id").primaryKey(),
+  messageId: uuid("message_id").notNull().references(() => outreachEmailMessages.id, { onDelete: "cascade" }),
+  observedAt: timestamp("observed_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+}, table => ({ messageTime: index("outreach_email_open_events_message_time_idx").on(table.messageId, table.observedAt) }));
+
 // --- Personal message templates ---
 export const messageTemplates = pgTable("message_templates", {
   id: uuid("id").defaultRandom().primaryKey(),

@@ -15,6 +15,7 @@ import { OutreachTimelineCard } from "@/components/outreach/outreach-timeline-ca
 import { OutreachContactsCard } from "@/components/outreach/outreach-contacts-card";
 import { type OutreachContact } from "@/db/schema";
 import { FollowUpMessageCard } from "@/components/outreach/follow-up-message-card";
+import { EmailActivityCard } from "@/components/outreach/email-activity-card";
 
 type OutreachDetailClientProps = {
   initialData: Awaited<ReturnType<typeof getOutreachById>>;
@@ -45,8 +46,9 @@ export function OutreachDetailClient({ initialData, id }: OutreachDetailClientPr
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await refetchItem();
-    setIsRefreshing(false);
+    try {
+      await Promise.all([refetchItem(), queryClient.invalidateQueries({ queryKey: ["outreach-email-activity", id] })]);
+    } finally { setIsRefreshing(false); }
   };
 
   const [isEditingSentDate, setIsEditingSentDate] = useState<number | null>(null); // null, 1 or 2
@@ -186,6 +188,8 @@ export function OutreachDetailClient({ initialData, id }: OutreachDetailClientPr
             editable={true}
             onSave={handleSaveDetails}
           />
+
+          <EmailActivityCard outreachId={item.id} />
 
           <FollowUpMessageCard
             key={`${item.id}-${activeContactIndex}-${item.followUpSentAt ? 2 : 1}`}

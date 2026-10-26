@@ -147,3 +147,10 @@ Data offers versioned JSON backups and a preview before restoring. Restore merge
 into the signed-in account in one transaction without deleting unrelated records.
 Passwords and OAuth tokens are excluded. Backups are limited to 5 MB and 5,000
 records per data type. Startup tracking requires its catalog startup to exist.
+
+## Optional email-open activity
+
+Per-message activity can appear directly on `/outreach/[id]`. It is disabled pending
+migration approval and deployment verification. See [configuration, limitations
+and isolated tests](docs/email-open-tracking.md). No email or migration is run by
+opening the page, and existing emails are not retrospectively tracked.
