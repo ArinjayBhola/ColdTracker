@@ -14,6 +14,7 @@ import { OutreachDetailsCard } from "@/components/outreach/outreach-details-card
 import { OutreachTimelineCard } from "@/components/outreach/outreach-timeline-card";
 import { OutreachContactsCard } from "@/components/outreach/outreach-contacts-card";
 import { type OutreachContact } from "@/db/schema";
+import { FollowUpMessageCard } from "@/components/outreach/follow-up-message-card";
 
 type OutreachDetailClientProps = {
   initialData: Awaited<ReturnType<typeof getOutreachById>>;
@@ -184,6 +185,19 @@ export function OutreachDetailClient({ initialData, id }: OutreachDetailClientPr
             linkedinProfileUrl={item.contacts?.[activeContactIndex]?.linkedinProfileUrl || (item as unknown as {linkedinProfileUrl?: string}).linkedinProfileUrl}
             editable={true}
             onSave={handleSaveDetails}
+          />
+
+          <FollowUpMessageCard
+            key={`${item.id}-${activeContactIndex}-${item.followUpSentAt ? 2 : 1}`}
+            companyName={item.companyName}
+            personName={activeContact.personName}
+            roleTargeted={item.roleTargeted}
+            status={item.status}
+            contactMethod={activeContact.contactMethod}
+            firstDue={followUpDueAt}
+            followUpSentAt={item.followUpSentAt}
+            followUp2DueAt={item.followUp2DueAt}
+            followUp2SentAt={item.followUp2SentAt}
           />
 
           <Card className="border-2 shadow-sm">

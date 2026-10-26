@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { messageTemplates } from "@/db/schema";
 import { deleteTemplate, saveTemplate, setTemplateFavorite, setTemplatePinned } from "@/actions/templates";
@@ -12,19 +13,21 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SideDrawerContent } from "@/components/ui/side-drawer";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Check, Copy, FileText, Plus, Search, Star, Pencil, Trash2, FilePlus2, Pin, LayoutGrid, Rows3 } from "lucide-react";
+import { Check, ChevronDown, Copy, FileText, Plus, Search, Star, Pencil, Trash2, FilePlus2, Pin, LayoutGrid, Rows3 } from "lucide-react";
+
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 type Template = typeof messageTemplates.$inferSelect;
 const empty: TemplateInput = { title: "", subject: "", body: "", category: "", tags: [], characterLimit: null, favorite: false, pinned: false };
 
-function TemplateCopyButton({ text, label, onError, variant = "ghost" }: {
-  text: string; label: string; onError: (message: string) => void; variant?: "ghost" | "outline";
+function TemplateCopyButton({ body, subject, onError }: {
+  body: string; subject: string; onError: (message: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
-  async function copy() {
+  async function copy(text: string) {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -35,12 +38,18 @@ function TemplateCopyButton({ text, label, onError, variant = "ghost" }: {
     }
   }
 
-  return <Button size="sm" className="h-7 px-2 text-xs" variant={variant} onClick={copy} aria-label={copied ? `${label} copied` : label}>
-    {copied ? <Check className="mr-1 h-3 w-3 text-green-600" /> : <Copy className="mr-1 h-3 w-3" />}{label}
+  const button = <Button size="sm" className="h-8 gap-1.5 px-2.5 text-xs" variant="outline" onClick={subject ? undefined : () => void copy(body)} aria-label={copied ? "Copied" : subject ? "Copy options" : "Copy message"}>
+    {copied ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}{copied ? "Copied" : "Copy"}{subject && <ChevronDown className="h-3 w-3 text-muted-foreground" />}
   </Button>;
+  return subject ? <DropdownMenu><DropdownMenuTrigger asChild>{button}</DropdownMenuTrigger><DropdownMenuContent align="start">
+    <DropdownMenuItem onSelect={() => void copy(body)}>Message</DropdownMenuItem>
+    <DropdownMenuItem onSelect={() => void copy(subject)}>Subject</DropdownMenuItem>
+    <DropdownMenuItem onSelect={() => void copy(`Subject: ${subject}\n\n${body}`)}>Subject and message</DropdownMenuItem>
+  </DropdownMenuContent></DropdownMenu> : button;
 }
 
 export function TemplatesLibrary({ initialTemplates }: { initialTemplates: Template[] }) {
+  const queryClient = useQueryClient();
   const [templates, setTemplates] = useState(initialTemplates);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
@@ -93,6 +102,7 @@ export function TemplatesLibrary({ initialTemplates }: { initialTemplates: Templ
         const result = await saveTemplate(value, editor.id);
         if (result.error) { setError(result.error); return; }
         if (result.template) upsert(result.template);
+        void queryClient.invalidateQueries({ queryKey: ["follow-up-templates"] });
         setEditor(null);
         setNotice("Template saved.");
       } catch { setError("Could not save. Please try again."); }
@@ -148,11 +158,11 @@ export function TemplatesLibrary({ initialTemplates }: { initialTemplates: Templ
           <p className="mt-2 text-sm text-muted-foreground">{templates.length ? "Try another search or clear your filters." : "Create your first template for any platform or purpose."}</p>
           <Button className="mt-5" variant="outline" onClick={() => templates.length ? (setSearch(""), setCategory(""), setTag(""), setFavorites(false)) : openEditor()}>{templates.length ? "Clear filters" : "Create a template"}</Button>
         </div>
-      ) : <div className={`grid gap-3 ${view === "grid" ? "lg:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"}`}>
+      ) : <div className={`grid items-stretch gap-3 ${view === "grid" ? "lg:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"}`}>
         {visible.map(template => {
           const length = characterCount(template.body);
           const exceeded = template.characterLimit !== null && length > template.characterLimit;
-          return <article key={template.id} className="flex min-w-0 flex-col gap-2 rounded-xl border bg-card p-3.5">
+          return <article key={template.id} className="flex h-[420px] min-w-0 flex-col gap-2 rounded-xl border bg-card p-3.5 [&>div]:shrink-0 [&>p]:shrink-0">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0 flex-1"><h2 className="line-clamp-2 break-words text-base font-semibold" title={template.title}>{template.title}</h2>{template.category && <p className="mt-0.5 truncate text-xs text-muted-foreground" title={template.category}>{template.category}</p>}</div>
               <div className="flex shrink-0 flex-wrap justify-end gap-1">
@@ -174,15 +184,16 @@ export function TemplatesLibrary({ initialTemplates }: { initialTemplates: Templ
             </div>
             <p className="text-xs text-muted-foreground">Created on {new Date(template.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</p>
             {template.subject && <p className="truncate text-sm" title={template.subject}><span className="font-medium">Subject: </span>{template.subject}</p>}
-            <p className="max-h-24 overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-muted/40 p-2 text-sm leading-relaxed">{template.body}</p>
+            <p className="min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-muted/40 p-3 text-sm leading-relaxed !shrink">{template.body}</p>
             {template.tags.length > 0 && <div className="flex max-h-14 flex-wrap gap-1 overflow-y-auto">{template.tags.map(t => <button key={t} onClick={() => setTag(t)} className="max-w-full break-words rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">#{t}</button>)}</div>}
             <p className={`text-xs ${exceeded ? "text-destructive" : "text-muted-foreground"}`}>{length}{template.characterLimit !== null ? ` / ${template.characterLimit}` : ""} characters{exceeded ? " · Over limit" : ""}</p>
-            <div className="mt-auto flex flex-wrap items-center gap-1 border-t pt-2">
-              <TemplateCopyButton text={template.body} label="Copy" variant="outline" onError={setNotice} />
-              {template.subject && <><TemplateCopyButton text={template.subject} label="Subject" onError={setNotice} /><TemplateCopyButton text={`Subject: ${template.subject}\n\n${template.body}`} label="Copy both" onError={setNotice} /></>}
+            <div className="mt-1 flex items-center justify-between gap-2 border-t pt-2">
+              <TemplateCopyButton body={template.body} subject={template.subject} onError={setNotice} />
+              <div className="flex shrink-0 items-center gap-1">
               <Button size="icon" className="h-7 w-7" title="Edit" aria-label={`Edit ${template.title}`} variant="ghost" onClick={() => openEditor(template)}><Pencil className="h-3.5 w-3.5" /></Button>
               <Button size="icon" className="h-7 w-7" title="Duplicate" aria-label={`Duplicate ${template.title}`} variant="ghost" onClick={() => openEditor(template, true)}><FilePlus2 className="h-3.5 w-3.5" /></Button>
               <Button size="icon" className="h-7 w-7" title="Delete" variant="ghost" aria-label={`Delete ${template.title}`} onClick={() => { setError(""); setDeleting(template); }}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+              </div>
             </div>
           </article>;
         })}
@@ -222,6 +233,7 @@ export function TemplatesLibrary({ initialTemplates }: { initialTemplates: Templ
                 const result = await deleteTemplate(id);
                 if (result.error) { setError(result.error); return; }
                 setTemplates(current => current.filter(t => t.id !== id));
+                void queryClient.invalidateQueries({ queryKey: ["follow-up-templates"] });
                 setDeleting(null); setNotice("Template deleted.");
               } catch { setError("Could not delete. Please try again."); }
             });
