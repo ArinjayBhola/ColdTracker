@@ -37,12 +37,12 @@ export async function readDashboardPage(userId: string, page = 1, filter = "", o
       WHERE o."userId" = ${userId}
         AND ${originCondition}
         AND (${query === ""} OR o.company_name ILIKE ${pattern} OR o.role_targeted ILIKE ${pattern}
-          OR EXISTS (SELECT 1 FROM jsonb_array_elements(o.contacts) c WHERE c->>'personName' ILIKE ${pattern}))
+          OR EXISTS (SELECT 1 FROM jsonb_array_elements(o.contacts) c WHERE c->>'personName' ILIKE ${pattern} OR c->>'emailAddress' ILIKE ${pattern}))
         AND ((s.method = 'ALL' AND ${!start && !end}) OR EXISTS (
           SELECT 1 FROM jsonb_array_elements(o.contacts) c
           WHERE (s.method = 'ALL' OR c->>'contactMethod' = s.method)
             AND ${sql.join(dateConditions, sql` AND `)}
-            AND (${query === ""} OR o.company_name ILIKE ${pattern} OR o.role_targeted ILIKE ${pattern} OR c->>'personName' ILIKE ${pattern})
+            AND (${query === ""} OR o.company_name ILIKE ${pattern} OR o.role_targeted ILIKE ${pattern} OR c->>'personName' ILIKE ${pattern} OR c->>'emailAddress' ILIKE ${pattern})
         ))
     ), totals AS (SELECT count(*) AS total FROM filtered), paging AS (
       SELECT page_size, method, total, least(${requestedPage}::bigint, greatest(1, (total + page_size - 1) / page_size)) AS current_page
@@ -69,7 +69,7 @@ export async function readDashboardPage(userId: string, page = 1, filter = "", o
       const selected = item.contacts.find(contact => {
         const activeMethod = result?.method || activeFilter || "ALL";
         if (activeMethod !== "ALL" && contact.contactMethod !== activeMethod) return false;
-        if (query && !item.companyName.toLowerCase().includes(query.toLowerCase()) && !item.roleTargeted.toLowerCase().includes(query.toLowerCase()) && !contact.personName?.toLowerCase().includes(query.toLowerCase())) return false;
+        if (query && !item.companyName.toLowerCase().includes(query.toLowerCase()) && !item.roleTargeted.toLowerCase().includes(query.toLowerCase()) && !contact.personName?.toLowerCase().includes(query.toLowerCase()) && !contact.emailAddress?.toLowerCase().includes(query.toLowerCase())) return false;
         const day = calendarKey(contact.messageSentAt || item.createdAt, zone);
         return (!start || day >= start) && (!end || day <= end);
       }) ?? item.contacts[0];
