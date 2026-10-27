@@ -189,8 +189,6 @@ export function OutreachDetailClient({ initialData, id }: OutreachDetailClientPr
             onSave={handleSaveDetails}
           />
 
-          <EmailActivityCard outreachId={item.id} />
-
           <FollowUpMessageCard
             key={`${item.id}-${activeContactIndex}-${item.followUpSentAt ? 2 : 1}`}
             companyName={item.companyName}
@@ -265,6 +263,8 @@ export function OutreachDetailClient({ initialData, id }: OutreachDetailClientPr
             onSelect={setActiveContactIndex}
             onDelete={handleDeleteContact}
           />
+
+          <EmailActivityCard outreachId={item.id} />
         </div>
       </div>
     </div>
