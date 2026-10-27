@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { FiTarget, FiZap, FiTrendingUp, FiEdit3, FiCheck, FiX, FiRefreshCw, FiSun } from "react-icons/fi";
+import { FiTarget, FiZap, FiEdit3, FiCheck, FiX, FiRefreshCw, FiSun } from "react-icons/fi";
 import { useState, useTransition } from "react";
 import { updateWeeklyTarget, updateDailyTarget, syncActivityHistory } from "@/actions/goals";
 
@@ -11,7 +11,6 @@ type GoalsStreaksProps = {
   dailyProgress: { target: number; current: number; percentage: number };
   weeklyProgress: { target: number; current: number; percentage: number };
   streakData: { currentStreak: number; longestStreak: number; todayCount: number };
-  last7Days: { date: string; day: string; count: number }[];
 };
 
 function ProgressRing({ percentage, size = 100, strokeWidth = 8, className }: { percentage: number; size?: number; strokeWidth?: number; className?: string }) {
@@ -80,15 +79,13 @@ function EditableTarget({ value, onSave, onCancel, isPending, max = 100 }: { val
   );
 }
 
-export function GoalsStreaksCard({ dailyProgress, weeklyProgress, streakData, last7Days }: GoalsStreaksProps) {
+export function GoalsStreaksCard({ dailyProgress, weeklyProgress, streakData }: GoalsStreaksProps) {
   const [editingDaily, setEditingDaily] = useState(false);
   const [editingWeekly, setEditingWeekly] = useState(false);
   const [dailyTargetValue, setDailyTargetValue] = useState(String(dailyProgress.target));
   const [weeklyTargetValue, setWeeklyTargetValue] = useState(String(weeklyProgress.target));
   const [isPending, startTransition] = useTransition();
   const [isSyncing, setSyncing] = useState(false);
-
-  const maxDayCount = Math.max(...last7Days.map((d) => d.count), 1);
 
   const handleSaveDailyTarget = (newValue: string) => {
     const num = parseInt(newValue);
@@ -119,7 +116,7 @@ export function GoalsStreaksCard({ dailyProgress, weeklyProgress, streakData, la
   };
 
   return (
-    <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
       {/* Daily Goal Progress */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between p-4 pb-2">
@@ -258,49 +255,6 @@ export function GoalsStreaksCard({ dailyProgress, weeklyProgress, streakData, la
         </CardContent>
       </Card>
 
-      {/* Last 7 Days Activity */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between p-4 pb-2">
-          <CardTitle className="text-[10px] md:text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-            <FiTrendingUp className="w-4 h-4 text-emerald-500" />
-            Last 7 Days
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 pt-0">
-          <div className="flex items-end justify-between gap-1.5 h-[80px]">
-            {last7Days.map((day) => {
-              const height = day.count > 0 ? Math.max((day.count / maxDayCount) * 100, 12) : 4;
-              const isToday = day === last7Days[last7Days.length - 1];
-              return (
-                <div key={day.date} className="flex flex-col items-center gap-1.5 flex-1">
-                  <span className="text-[10px] font-semibold text-muted-foreground">{day.count || ""}</span>
-                  <div
-                    className={cn(
-                      "w-full rounded-t-md transition-all duration-500",
-                      day.count > 0
-                        ? isToday
-                          ? "bg-emerald-500"
-                          : "bg-emerald-500/50"
-                        : "bg-muted/30",
-                    )}
-                    style={{ height: `${height}%` }}
-                  />
-                  <span className={cn(
-                    "text-[10px] font-medium",
-                    isToday ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-muted-foreground"
-                  )}>
-                    {day.day}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-3 pt-2 border-t border-border/50 flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">7-day total</span>
-            <span className="font-semibold">{last7Days.reduce((sum, d) => sum + d.count, 0)} outreach</span>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { DEFAULT_PREFERENCES, STATS_WIDGETS } from "@/lib/preferences";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-const labels = { metrics: "Summary metrics", comparison: "Sent-to-response chart", heatmap: "Activity heatmap", funnel: "Conversion funnel", pipeline: "Current pipeline", channels: "Performance by channel", pending: "Pending follow-ups summary" };
+const labels = { metrics: "Summary metrics", comparison: "Sent-to-response chart", heatmap: "Activity heatmap", funnel: "Conversion funnel", pipeline: "Current pipeline", channels: "Performance by channel" };
 export function StatsSettings() {
   const { preferences, update, ready, saving, error } = usePreferences();
   const value = preferences.stats;

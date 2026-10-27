@@ -3,7 +3,7 @@
 import { usePreferences } from "@/components/preferences-provider";
 import { useMemo, useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { ArrowUpRight, BarChart3, Download, MessageCircle, Send, Target, Trophy, Clock3, SlidersHorizontal, CalendarDays, Info } from "lucide-react";
+import { ArrowUpRight, BarChart3, Download, MessageCircle, Send, Target, Trophy, SlidersHorizontal, CalendarDays } from "lucide-react";
 import { buildOutreachAnalytics, percent, type AnalyticsRecord, type AnalyticsRange, type OutreachAnalytics } from "@/lib/outreach-analytics";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -171,11 +171,5 @@ function LocalOutreachAnalytics({ records, asOf }: { records: AnalyticsRecord[];
     {show("channels") && <Card><CardHeader><CardTitle>Performance by channel</CardTitle><CardDescription>Each outreach belongs to one channel. Multiple contact methods appear under Mixed.</CardDescription></CardHeader><CardContent>
       {a.channels.length ? <div className="relative overflow-x-auto"><table className="w-full text-sm [overflow-wrap:normal]"><caption className="sr-only">Outreach conversion by contact channel</caption><thead><tr className="border-b text-left text-muted-foreground">{["Channel", "Sent", "Responses", "Response rate", "Interview / offer"].map(label => <th key={label} className="whitespace-nowrap px-3 py-3 font-normal">{label}</th>)}</tr></thead><tbody>{a.channels.map(channel => <tr key={channel.channel} className="border-b last:border-0"><th scope="row" className="whitespace-nowrap px-3 py-4 text-left font-normal">{channel.channel}</th><td className="px-3 py-4 tabular-nums">{number(channel.sent)}</td><td className="px-3 py-4 tabular-nums">{number(channel.responded)}</td><td className="whitespace-nowrap px-3 py-4 tabular-nums">{rate(channel.responseRate)}</td><td className="px-3 py-4 tabular-nums">{number(channel.interviews)}</td></tr>)}</tbody></table></div> : <p className="text-sm text-muted-foreground">Channel comparisons will appear after you send outreach.</p>}
     </CardContent></Card>}
-    {show("pending") && <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-primary/20 bg-primary/5 p-5 text-sm"><div className="flex items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-card text-primary"><Clock3 className="h-5 w-5" /></span><div className="space-y-1"><p>{number(a.awaiting)} awaiting a response</p><p className="text-xs text-muted-foreground">{number(a.overdue)} with overdue follow-ups now</p></div></div><Button variant="outline" size="sm" className="bg-card" asChild><Link href="/follow-ups">Open follow-ups<ArrowUpRight className="h-4 w-4" /></Link></Button></div>}
-    <aside aria-label="How statistics are counted" className="space-y-3 rounded-2xl border border-dashed px-5 py-4 text-xs leading-relaxed text-muted-foreground">
-      <p className="flex items-center gap-2 text-foreground"><Info className="h-3.5 w-3.5" />How to read your statistics</p>
-      <p>One outreach record is counted once, even with multiple contacts. Recorded responses include <strong className="text-foreground">Replied, Interview, and Offer</strong>; interviews include offers. Rejected and Closed records have no confirmed reply history, so they aren’t counted as responses.</p>
-      <p>As of {date(asOf, true)} · Date filters use sent-date cohorts in your device timezone, with drafts grouped by creation date. Outcomes reflect today’s saved statuses; this app does not currently store reply timestamps or a full status history.</p>
-    </aside>
   </div>;
 }

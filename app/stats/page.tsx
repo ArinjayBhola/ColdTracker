@@ -18,7 +18,7 @@ async function StatsContent() {
           <div className="space-y-1"><p className="eyebrow">Keep the momentum</p><h2 id="goals-heading" className="text-xl">Goals & consistency</h2></div>
           <p className="text-sm text-muted-foreground">Small steps, every day. Track your targets and streaks.</p>
         </div>
-        <GoalsStreaksCard dailyProgress={goals.daily} weeklyProgress={goals.weekly} streakData={goals.streak} last7Days={goals.last7Days} />
+        <GoalsStreaksCard dailyProgress={goals.daily} weeklyProgress={goals.weekly} streakData={goals.streak} />
       </section>
     </div>
   );

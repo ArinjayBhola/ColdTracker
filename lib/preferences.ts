@@ -11,13 +11,19 @@ export const NAV_GROUPS: { label: string; paths: readonly string[] }[] = [
   { label: "Library", paths: ["/templates", "/startups", "/stats"] },
 ];
 export const TABLE_COLUMNS = ["role", "status", "date", "followUp", "actions"] as const;
-export const STATS_WIDGETS = ["metrics", "comparison", "heatmap", "funnel", "pipeline", "channels", "pending"] as const;
+export const STATS_WIDGETS = ["metrics", "comparison", "heatmap", "funnel", "pipeline", "channels"] as const;
+const statsWidgets = z.preprocess(value => {
+  // Retire the old widget without resetting saved date ranges or other choices.
+  if (!Array.isArray(value) || !value.includes("pending")) return value;
+  const remaining = value.filter(widget => widget !== "pending");
+  return remaining.length ? remaining : [...STATS_WIDGETS];
+}, z.array(z.enum(STATS_WIDGETS)).min(1).max(STATS_WIDGETS.length));
 const route = z.enum(NAV_ITEMS.map(item => item.href));
 export const preferencesSchema = z.object({
   appearance: z.object({ colorTheme: z.preprocess(value => value === "orange" || value === "graphite" ? "default" : value, z.enum(["default", "blue", "purple", "green", "rose", "teal"])), font: z.string().max(40), fontWeight: z.number().int().min(200).max(800), fontSize: z.number().min(12).max(24), reducedMotion: z.boolean() }).transform(value => parseAppearance(JSON.stringify(value))).default(DEFAULT_APPEARANCE),
   mode: z.enum(["light", "dark", "system"]).default("light"),
   navigation: z.object({ order: z.array(route).max(7), hidden: z.array(route).max(7), landing: route }).default({ order: NAV_ITEMS.map(item => item.href), hidden: [], landing: "/dashboard" }),
-  stats: z.object({ range: z.enum(["7", "30", "90", "all"]), widgets: z.array(z.enum(STATS_WIDGETS)).min(1).max(7), weekStartsOn: z.union([z.literal(0), z.literal(1)]) }).default({ range: "30", widgets: [...STATS_WIDGETS], weekStartsOn: 1 }),
+  stats: z.object({ range: z.enum(["7", "30", "90", "all"]), widgets: statsWidgets, weekStartsOn: z.union([z.literal(0), z.literal(1)]) }).default({ range: "30", widgets: [...STATS_WIDGETS], weekStartsOn: 1 }),
   table: z.object({ columns: z.array(z.enum(TABLE_COLUMNS)).max(5), pageSize: z.union([z.literal(10), z.literal(20), z.literal(50)]), defaultMethod: z.enum(["ALL", "EMAIL", "LINKEDIN"]) }).default({ columns: [...TABLE_COLUMNS], pageSize: 10, defaultMethod: "ALL" }),
   followUp: z.object({ firstDelay: z.number().int().min(1).max(90), secondDelay: z.number().int().min(1).max(90), skipWeekends: z.boolean() }).default({ firstDelay: 5, secondDelay: 10, skipWeekends: false }),
 });
