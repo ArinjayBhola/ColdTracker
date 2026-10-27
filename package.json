@@ -16,7 +16,8 @@
     "db:migrate:time-zone": "node scripts/migrate-time-zone.mjs",
     "db:migrate:preferences": "node scripts/migrate-preferences.mjs",
     "db:migrate:performance": "node scripts/migrate-performance.mjs",
-    "db:migrate:notifications": "node scripts/migrate-notifications.mjs"
+    "db:migrate:notifications": "node scripts/migrate-notifications.mjs",
+    "db:migrate:follow-ups": "node scripts/simplify-follow-up-templates.cjs --apply"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",

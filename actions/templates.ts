@@ -7,13 +7,17 @@ import { templateSchema, type TemplateInput } from "@/lib/template-validation";
 import { and, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { ensureFollowUpTemplates } from "@/lib/follow-up-template-store";
+import { followUpTemplateStage } from "@/lib/follow-up-template-slots";
 
 export async function getTemplates() {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
-  return db.select().from(messageTemplates)
+  await ensureFollowUpTemplates(session.user.id);
+  const templates = await db.select().from(messageTemplates)
     .where(eq(messageTemplates.userId, session.user.id))
     .orderBy(desc(messageTemplates.pinned), desc(messageTemplates.createdAt));
+  return templates.map(template => ({ ...template, followUpStage: followUpTemplateStage(session.user.id, template.id) }));
 }
 
 export async function saveTemplate(input: TemplateInput, id?: string) {
@@ -29,6 +33,7 @@ export async function saveTemplate(input: TemplateInput, id?: string) {
       : await db.insert(messageTemplates).values({ ...parsed.data, userId: session.user.id }).returning();
     if (!template) return { error: "Template not found." };
     revalidatePath("/templates");
+    revalidatePath("/outreach/[id]", "page");
     return { template };
   } catch {
     return { error: "Could not save the template. Please try again." };
@@ -39,6 +44,7 @@ export async function deleteTemplate(id: string) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Please sign in again." };
   if (!z.uuid().safeParse(id).success) return { error: "Invalid template." };
+  if (followUpTemplateStage(session.user.id, id)) return { error: "This follow-up is linked to your outreach pages. Edit its message instead." };
   try {
     const deleted = await db.delete(messageTemplates)
       .where(and(eq(messageTemplates.id, id), eq(messageTemplates.userId, session.user.id)))

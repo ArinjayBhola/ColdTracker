@@ -187,5 +187,19 @@ polling pauses in hidden tabs. This is an in-app inbox, not browser push when th
 app is closed. Detections are image loads, not confirmation of who read an email.
 The bell stays available during request failures and offers a retry.
 
+## Follow-up templates
+
+Each account has one editable Follow-up 1 template and one editable Follow-up 2
+template. The outreach page and Templates library use the same saved messages;
+clicking Edit this template on an outreach opens the matching editor. Insert
+`{{companyName}}`, `{{personName}}`, and `{{role}}` from the template editor.
+On an outreach, they fill from the company, selected contact, and target role.
+
+Run `npm run db:migrate:follow-ups` to remove old Seen and Not seen variants from
+saved follow-up templates. Existing Unknown wording and settings stay attached to
+the two linked slots. If one is missing, the migration preserves the most recently
+edited older variant for that stage. It removes only variant slots whose IDs
+ColdTrack generated; unrelated Templates library messages remain untouched.
+
 Run `node scripts/check-notifications.mjs` for database integration checks. It
 creates synthetic records in a transaction and rolls everything back.

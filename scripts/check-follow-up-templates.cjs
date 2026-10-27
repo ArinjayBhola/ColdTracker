@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Standalone Node checks. */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -9,12 +10,12 @@ function load(relative) {
   const js = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   }).outputText;
-  const module = { exports: {} };
+  const testModule = { exports: {} };
   new Function('require', 'module', 'exports', js)(request => {
     if (request === '@/lib/user-calendar') return load('lib/user-calendar.ts');
     throw new Error(`Unexpected dependency: ${request}`);
-  }, module, module.exports);
-  return module.exports;
+  }, testModule, testModule.exports);
+  return testModule.exports;
 }
 
 const { suggestedFollowUpStage, personalizeFollowUp, DEFAULT_FOLLOW_UP_TEMPLATES } = load('lib/follow-up-templates.ts');
@@ -23,10 +24,14 @@ assert.equal(suggestedFollowUpStage({ followUpSentAt: '2026-10-20' }), 2, 'Sugge
 assert.equal(suggestedFollowUpStage({ followUp2SentAt: '2026-10-26' }), 2, 'Keep templates accessible after completion');
 assert.equal(personalizeFollowUp('Hi {{personName}} at {{ companyName }}: {{roleTargeted}}', { personName: 'Alice', companyName: 'A $& B', roleTargeted: 'Engineer' }), 'Hi Alice at A $& B: Engineer');
 assert.equal(personalizeFollowUp('Hi {{personName}}', { companyName: 'Acme', personName: '  ' }), 'Hi there');
-assert.equal(new Set(DEFAULT_FOLLOW_UP_TEMPLATES.map(t => `${t.stage}:${t.variant}`)).size, 6);
+assert.equal(DEFAULT_FOLLOW_UP_TEMPLATES.length, 2);
+assert.deepEqual(DEFAULT_FOLLOW_UP_TEMPLATES.map(t => t.stage), [1, 2]);
+assert.equal(personalizeFollowUp('{{companyname}} | {{PERSONNAME}} | {{ role }} | {{roleTargeted}}', { companyName: 'A $& B', personName: 'Alice', roleTargeted: 'Product Designer' }), 'A $& B | Alice | Product Designer | Product Designer');
+assert.equal(personalizeFollowUp('{{role}}', { companyName: 'Acme', roleTargeted: '  ' }), 'opportunities');
+assert.equal(personalizeFollowUp('{{unrecognized}}', { companyName: 'Acme' }), '{{unrecognized}}');
 for (const template of DEFAULT_FOLLOW_UP_TEMPLATES) {
-  const body = personalizeFollowUp(template.body, { companyName: 'Acme', personName: 'Alice' });
-  assert.ok(body.includes('Acme') && body.includes('Alice'));
+  const body = personalizeFollowUp(template.body, { companyName: 'Acme', personName: 'Alice', roleTargeted: 'Engineer' });
+  assert.ok(body.includes('Acme') && body.includes('Alice') && body.includes('Engineer'));
   assert.ok(!body.includes('{{'));
 }
 console.log('Follow-up stage and personalization checks passed.');

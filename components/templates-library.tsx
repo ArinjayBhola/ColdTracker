@@ -6,6 +6,7 @@ import type { messageTemplates } from "@/db/schema";
 import { deleteTemplate, saveTemplate, setTemplateFavorite, setTemplatePinned } from "@/actions/templates";
 import { TemplateOptionPicker } from "@/components/template-option-picker";
 import { characterCount, templateSchema, type TemplateInput } from "@/lib/template-validation";
+import { FOLLOW_UP_PLACEHOLDERS, type FollowUpStage } from "@/lib/follow-up-templates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,7 +18,7 @@ import { Check, ChevronDown, Copy, FileText, Plus, Search, Star, Pencil, Trash2,
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-type Template = typeof messageTemplates.$inferSelect;
+type Template = typeof messageTemplates.$inferSelect & { followUpStage?: FollowUpStage | null };
 const empty: TemplateInput = { title: "", subject: "", body: "", category: "", tags: [], characterLimit: null, favorite: false, pinned: false };
 
 function TemplateCopyButton({ body, subject, onError }: {
@@ -48,16 +49,29 @@ function TemplateCopyButton({ body, subject, onError }: {
   </DropdownMenuContent></DropdownMenu> : button;
 }
 
-export function TemplatesLibrary({ initialTemplates }: { initialTemplates: Template[] }) {
+export function TemplatesLibrary({ initialTemplates, initialFollowUpStage }: { initialTemplates: Template[]; initialFollowUpStage?: FollowUpStage }) {
   const queryClient = useQueryClient();
+  const channel = useRef<BroadcastChannel | null>(null);
+  const subjectInput = useRef<HTMLInputElement>(null);
+  const bodyInput = useRef<HTMLTextAreaElement>(null);
+  const activeField = useRef<"subject" | "body">("body");
+  useEffect(() => {
+    if (typeof BroadcastChannel === "undefined") return;
+    channel.current = new BroadcastChannel("coldtrack-templates");
+    return () => { channel.current?.close(); channel.current = null; };
+  }, []);
+  const initialFollowUpTemplate = initialTemplates.find(template => template.followUpStage === initialFollowUpStage);
   const [templates, setTemplates] = useState(initialTemplates);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [tag, setTag] = useState("");
   const [favorites, setFavorites] = useState(false);
   const [view, setView] = useState<"grid" | "column">("grid");
-  const [editor, setEditor] = useState<{ id?: string; value: TemplateInput } | null>(null);
-  const [limitText, setLimitText] = useState("");
+  const [editor, setEditor] = useState<{ id?: string; value: TemplateInput } | null>(() => initialFollowUpTemplate ? {
+    id: initialFollowUpTemplate.id,
+    value: { title: initialFollowUpTemplate.title, subject: initialFollowUpTemplate.subject, body: initialFollowUpTemplate.body, category: initialFollowUpTemplate.category, tags: initialFollowUpTemplate.tags, characterLimit: initialFollowUpTemplate.characterLimit, favorite: initialFollowUpTemplate.favorite, pinned: initialFollowUpTemplate.pinned },
+  } : null);
+  const [limitText, setLimitText] = useState(initialFollowUpTemplate?.characterLimit?.toString() ?? "");
   const [deleting, setDeleting] = useState<Template | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -71,6 +85,7 @@ export function TemplatesLibrary({ initialTemplates }: { initialTemplates: Templ
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() || a.id.localeCompare(b.id));
 
   function openEditor(template?: Template, duplicate = false) {
+    activeField.current = "body";
     setError("");
     setEditor({
       id: duplicate ? undefined : template?.id, value: template ? {
@@ -88,7 +103,18 @@ export function TemplatesLibrary({ initialTemplates }: { initialTemplates: Templ
   }
 
   function upsert(template: Template) {
-    setTemplates(current => [...current.filter(t => t.id !== template.id), template]);
+    setTemplates(current => [...current.filter(t => t.id !== template.id), { ...current.find(t => t.id === template.id), ...template }]);
+  }
+
+  function insertPlaceholder(token: string) {
+    if (!editor) return;
+    const field = activeField.current;
+    const input = field === "subject" ? subjectInput.current : bodyInput.current;
+    const value = editor.value[field];
+    const start = input?.selectionStart ?? value.length;
+    const end = input?.selectionEnd ?? start;
+    update({ [field]: value.slice(0, start) + token + value.slice(end) });
+    requestAnimationFrame(() => { input?.focus(); input?.setSelectionRange(start + token.length, start + token.length); });
   }
 
   function save() {
@@ -103,6 +129,7 @@ export function TemplatesLibrary({ initialTemplates }: { initialTemplates: Templ
         if (result.error) { setError(result.error); return; }
         if (result.template) upsert(result.template);
         void queryClient.invalidateQueries({ queryKey: ["follow-up-templates"] });
+        channel.current?.postMessage("updated");
         setEditor(null);
         setNotice("Template saved.");
       } catch { setError("Could not save. Please try again."); }
@@ -164,7 +191,7 @@ export function TemplatesLibrary({ initialTemplates }: { initialTemplates: Templ
           const exceeded = template.characterLimit !== null && length > template.characterLimit;
           return <article key={template.id} className="flex h-[420px] min-w-0 flex-col gap-2 rounded-xl border bg-card p-3.5 [&>div]:shrink-0 [&>p]:shrink-0">
             <div className="flex flex-wrap items-start justify-between gap-2">
-              <div className="min-w-0 flex-1"><h2 className="line-clamp-2 break-words text-base font-semibold" title={template.title}>{template.title}</h2>{template.category && <p className="mt-0.5 truncate text-xs text-muted-foreground" title={template.category}>{template.category}</p>}</div>
+              <div className="min-w-0 flex-1"><h2 className="line-clamp-2 break-words text-base font-semibold" title={template.title}>{template.title}</h2>{template.followUpStage ? <p className="mt-1 text-xs font-medium text-primary">Linked to Follow-up {template.followUpStage}</p> : template.category && <p className="mt-0.5 truncate text-xs text-muted-foreground" title={template.category}>{template.category}</p>}</div>
               <div className="flex shrink-0 flex-wrap justify-end gap-1">
                 <Button size="icon" className="h-7 w-7" title={template.pinned ? "Unpin" : "Pin to top"} variant="ghost" disabled={pending} aria-label={`${template.pinned ? "Unpin" : "Pin"} ${template.title}`} aria-pressed={template.pinned} onClick={() => startTransition(async () => {
                   try {
@@ -191,8 +218,10 @@ export function TemplatesLibrary({ initialTemplates }: { initialTemplates: Templ
               <TemplateCopyButton body={template.body} subject={template.subject} onError={setNotice} />
               <div className="flex shrink-0 items-center gap-1">
               <Button size="icon" className="h-7 w-7" title="Edit" aria-label={`Edit ${template.title}`} variant="ghost" onClick={() => openEditor(template)}><Pencil className="h-3.5 w-3.5" /></Button>
-              <Button size="icon" className="h-7 w-7" title="Duplicate" aria-label={`Duplicate ${template.title}`} variant="ghost" onClick={() => openEditor(template, true)}><FilePlus2 className="h-3.5 w-3.5" /></Button>
-              <Button size="icon" className="h-7 w-7" title="Delete" variant="ghost" aria-label={`Delete ${template.title}`} onClick={() => { setError(""); setDeleting(template); }}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+              {!template.followUpStage && <>
+                <Button size="icon" className="h-7 w-7" title="Duplicate" aria-label={`Duplicate ${template.title}`} variant="ghost" onClick={() => openEditor(template, true)}><FilePlus2 className="h-3.5 w-3.5" /></Button>
+                <Button size="icon" className="h-7 w-7" title="Delete" variant="ghost" aria-label={`Delete ${template.title}`} onClick={() => { setError(""); setDeleting(template); }}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+              </>}
               </div>
             </div>
           </article>;
@@ -205,8 +234,13 @@ export function TemplatesLibrary({ initialTemplates }: { initialTemplates: Templ
           {editor && <form className="flex min-h-0 flex-1 flex-col" onSubmit={e => { e.preventDefault(); save(); }}>
             <div className="flex-1 overflow-y-auto px-6 py-5"><fieldset disabled={pending} className="space-y-4">
               <div className="space-y-2"><Label htmlFor="template-title">Title</Label><Input id="template-title" placeholder="e.g. LinkedIn introduction" required maxLength={200} autoFocus value={editor.value.title} onChange={e => update({ title: e.target.value })} /></div>
-              <div className="space-y-2"><Label htmlFor="template-subject">Subject (optional)</Label><Input id="template-subject" placeholder="e.g. Exploring opportunities at [Company]" maxLength={500} value={editor.value.subject} onChange={e => update({ subject: e.target.value })} /></div>
-              <div className="space-y-2"><Label htmlFor="template-body">Message</Label><Textarea id="template-body" placeholder={"Hi [Name],\n\nI would love to connect about [opportunity] at [Company]..."} required rows={9} value={editor.value.body} onChange={e => update({ body: e.target.value })} aria-describedby="template-count" /><p id="template-count" aria-live="polite" className={`text-sm ${overLimit ? "text-destructive" : "text-muted-foreground"}`}>{count}{limit !== null && Number.isFinite(limit) ? ` / ${limit}` : ""} characters{overLimit ? ` — ${count - limit!} over the limit. You can still save this draft.` : ""}</p></div>
+              <div className="space-y-2"><Label htmlFor="template-subject">Subject (optional)</Label><Input ref={subjectInput} id="template-subject" onFocus={() => { activeField.current = "subject"; }} placeholder="e.g. Following up at {{companyName}}" maxLength={500} value={editor.value.subject} onChange={e => update({ subject: e.target.value })} /></div>
+              <div className="space-y-2 rounded-xl bg-primary/5 p-3">
+                <p className="text-xs font-medium">Personalize your follow-up</p>
+                <div className="flex flex-wrap gap-2">{FOLLOW_UP_PLACEHOLDERS.map(({ token, label }) => <Button key={token} type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" aria-label={`Insert ${label.toLowerCase()} placeholder`} onMouseDown={event => event.preventDefault()} onClick={() => insertPlaceholder(token)}>{token}</Button>)}</div>
+                <p className="text-xs leading-relaxed text-muted-foreground">Linked follow-ups fill these from the outreach. Role is the target position. Select a spot in the subject or message, then insert a field.</p>
+              </div>
+              <div className="space-y-2"><Label htmlFor="template-body">Message</Label><Textarea ref={bodyInput} id="template-body" onFocus={() => { activeField.current = "body"; }} placeholder={"Hi {{personName}},\n\nFollowing up about {{role}} at {{companyName}}..."} required rows={9} value={editor.value.body} onChange={e => update({ body: e.target.value })} aria-describedby="template-count" /><p id="template-count" aria-live="polite" className={`text-sm ${overLimit ? "text-destructive" : "text-muted-foreground"}`}>{count}{limit !== null && Number.isFinite(limit) ? ` / ${limit}` : ""} characters{overLimit ? ` — ${count - limit!} over the limit. You can still save this draft.` : ""}</p></div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2"><Label htmlFor="template-category">Category</Label><TemplateOptionPicker id="template-category" label="Category" options={categories} values={editor.value.category ? [editor.value.category] : []} onChange={values => update({ category: values[0] ?? "" })} maxLength={80} disabled={pending} /></div>
                 <div className="space-y-2"><Label htmlFor="template-limit">Character limit</Label><Input id="template-limit" type="number" min={1} max={50000} step={1} placeholder="No limit" value={limitText} onChange={e => setLimitText(e.target.value)} /><p className="text-xs text-muted-foreground">Applies to the message body.</p></div>
