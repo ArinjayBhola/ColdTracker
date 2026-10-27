@@ -17,6 +17,8 @@ type ToasterToast = ToastProps & {
   title?: React.ReactNode
   description?: React.ReactNode
   action?: ToastActionElement
+  href?: string
+  onNavigate?: () => void
 }
 
 const actionTypes = {

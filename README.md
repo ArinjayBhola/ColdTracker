@@ -154,3 +154,38 @@ Per-message activity can appear directly on `/outreach/[id]`. It is disabled pen
 migration approval and deployment verification. See [configuration, limitations
 and isolated tests](docs/email-open-tracking.md). No email or migration is run by
 opening the page, and existing emails are not retrospectively tracked.
+
+## In-app notifications
+
+A notification bell appears beside the help button on every signed-in app route.
+Each recorded email-open detection creates a persistent inbox item saying
+"Open detected for [contact]", using the recipient email when a name is unavailable.
+Clicking it marks it read, closes the inbox, and opens the outreach's Email activity
+section. The envelope button toggles read/unread with a fading background without
+navigating. The inbox supports unread counts, mark all read, and loading older
+notifications. Read status syncs across tabs and devices. Dates, times, subjects,
+and other email details stay in the outreach's Email activity section.
+
+New detections also show a clickable toast at the bottom right. Opening that toast
+marks its notification read and opens the same outreach. Old inbox items do not
+produce toasts when signing in or refreshing. Clear individual items with the X
+button or use Clear all. Clearing is saved across devices, preserves email activity,
+and keeps a deduplication record so delayed tracking updates cannot restore old items.
+
+Run `npm run db:migrate:notifications` against the app database before deploying.
+The email tracking tables must already exist. This additive, rerunnable migration
+installs database triggers so collector and ERP writes both produce notifications,
+including detections recorded before provider acceptance or outreach linkage.
+It uses fixed-path definer functions so the collector needs no new table grants.
+Existing detections are imported as read history. New detections are unread.
+Notifications survive raw-event retention but are removed when their outreach or
+account is deleted. Use this migration even when managing tables with Drizzle:
+`db:push` alone does not install the triggers.
+
+The open app checks for updates every five seconds and on window focus; background
+polling pauses in hidden tabs. This is an in-app inbox, not browser push when the
+app is closed. Detections are image loads, not confirmation of who read an email.
+The bell stays available during request failures and offers a retry.
+
+Run `node scripts/check-notifications.mjs` for database integration checks. It
+creates synthetic records in a transaction and rolls everything back.

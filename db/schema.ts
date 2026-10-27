@@ -196,6 +196,25 @@ export const outreachEmailOpenEvents = pgTable("outreach_email_open_events", {
   observedAt: timestamp("observed_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
 }, table => ({ messageTime: index("outreach_email_open_events_message_time_idx").on(table.messageId, table.observedAt) }));
 
+// Durable inbox: event IDs deduplicate notifications without tying their retention
+// to the raw tracking event log. Deleting an outreach removes its notifications.
+export const notifications = pgTable("notifications", {
+  id: uuid("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  outreachId: uuid("outreach_id").notNull().references(() => outreach.id, { onDelete: "cascade" }),
+  recipient: text("recipient").notNull(),
+  subject: varchar("subject", { length: 300 }).notNull(),
+  observedAt: timestamp("observed_at", { withTimezone: true, mode: "date" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+  readAt: timestamp("read_at", { withTimezone: true, mode: "date" }),
+  clearedAt: timestamp("cleared_at", { withTimezone: true, mode: "date" }),
+}, table => ({
+  ownerTime: index("notifications_owner_time_idx").on(table.userId, table.createdAt, table.id),
+  ownerUnread: index("notifications_owner_unread_idx").on(table.userId, table.createdAt).where(sql`${table.readAt} IS NULL`),
+  ownerVisible: index("notifications_owner_visible_idx").on(table.userId, table.createdAt, table.id).where(sql`${table.clearedAt} IS NULL`),
+  outreachIdx: index("notifications_outreach_idx").on(table.outreachId),
+}));
+
 // --- Personal message templates ---
 export const messageTemplates = pgTable("message_templates", {
   id: uuid("id").defaultRandom().primaryKey(),

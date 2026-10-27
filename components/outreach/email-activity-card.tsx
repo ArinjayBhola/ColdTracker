@@ -44,7 +44,7 @@ export function EmailActivityCard({ outreachId }: { outreachId: string }) {
       if (!response.ok) throw new Error("Activity unavailable");
       return response.json();
     }, staleTime: 10000, refetchInterval: 30000, refetchIntervalInBackground: false, retry: 1 });
-  return <Card className="overflow-hidden rounded-3xl border-2 shadow-sm"><CardHeader className="gap-2 px-5 pb-3">
+  return <Card id="email-activity" className="scroll-mt-20 overflow-hidden rounded-3xl border-2 shadow-sm"><CardHeader className="gap-2 px-5 pb-3">
     <div className="flex items-center justify-between gap-2">
       <CardTitle className="flex items-center gap-2 text-lg font-bold"><FiActivity className="h-5 w-5 shrink-0 text-primary" /> Email activity</CardTitle>
       <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-full" aria-label="Refresh email activity" disabled={query.isFetching} onClick={() => void query.refetch()}><FiRefreshCw className={`h-4 w-4 ${query.isFetching ? "animate-spin" : ""}`} /></Button>
