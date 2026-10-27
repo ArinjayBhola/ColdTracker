@@ -1,0 +1,20 @@
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  gap: 2.5rem;
+}
+
+/* Keep the treatment local to Stats, including its shared goal cards. */
+.workspace :global(.shadow-soft) {
+  border-radius: 1rem;
+  box-shadow: none;
+}
+
+.workspace :global(h3) {
+  font-size: var(--text-base);
+}
+
+.workspace :global(table tbody tr):hover {
+  background: color-mix(in oklab, var(--primary) 4%, transparent);
+}

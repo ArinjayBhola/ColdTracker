@@ -3,7 +3,7 @@
 import { usePreferences } from "@/components/preferences-provider";
 import { useMemo, useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { ArrowUpRight, BarChart3, Download, MessageCircle, Send, Target, Trophy, Clock3 } from "lucide-react";
+import { ArrowUpRight, BarChart3, Download, MessageCircle, Send, Target, Trophy, Clock3, SlidersHorizontal, CalendarDays, Info } from "lucide-react";
 import { buildOutreachAnalytics, percent, type AnalyticsRecord, type AnalyticsRange, type OutreachAnalytics } from "@/lib/outreach-analytics";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,7 @@ function ComparisonChart({ analytics }: { analytics: OutreachAnalytics }) {
     <CardHeader className="gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-2"><CardTitle>Sent → response</CardTitle><CardDescription>Compare outreach volume with recorded responses in each sent-date cohort.</CardDescription></div>
-        <div role="group" aria-label="Chart view" className="flex flex-wrap gap-1 rounded-lg border p-1">
+        <div role="group" aria-label="Chart view" className="flex flex-wrap gap-1 rounded-xl bg-muted/60 p-1">
           <Button size="sm" variant={mode === "count" ? "default" : "ghost"} aria-pressed={mode === "count"} onClick={() => setMode("count")}>Counts</Button>
           <Button size="sm" variant={mode === "rate" ? "default" : "ghost"} aria-pressed={mode === "rate"} onClick={() => setMode("rate")}>Response rate</Button>
         </div>
@@ -77,7 +77,7 @@ function ComparisonChart({ analytics }: { analytics: OutreachAnalytics }) {
           })}
         </svg>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/20 px-4 py-3 text-sm" aria-live="polite">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-muted/50 px-4 py-3 text-sm" aria-live="polite">
         <span className="text-muted-foreground">{date(selected.start)} – {date(selected.end, true)}</span>
         <span>{number(selected.sent)} sent · {number(selected.responded)} responses · <strong>{selected.sent ? rate(selected.responseRate) : "No outreach"}</strong></span>
       </div>
@@ -134,18 +134,28 @@ function LocalOutreachAnalytics({ records, asOf }: { records: AnalyticsRecord[];
   }
 
   return <div className="space-y-6">
-    <div className="flex flex-wrap items-start justify-between gap-4">
-      <div className="space-y-2"><p className="text-xs uppercase tracking-wider text-primary">Outreach intelligence</p><h1 className="text-3xl tracking-tight">Statistics</h1><p className="text-sm text-muted-foreground">Understand what you send, what gets a response, and what moves forward.</p></div>
-      <div className="flex flex-wrap items-center gap-2">
-        <Select value={range} onValueChange={value => setRange(value as AnalyticsRange)}><SelectTrigger className="w-auto min-w-[10em]" aria-label="Statistics date range"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(rangeLabels).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select>
-        <Button variant="outline" onClick={exportSummary}><Download className="h-4 w-4" />Export CSV</Button>
+    <header className="space-y-7">
+      <div className="flex flex-wrap items-end justify-between gap-5">
+        <div className="max-w-xl space-y-3"><p className="eyebrow flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-primary" />Outreach intelligence</p><h1 className="text-3xl tracking-tight md:text-4xl">Statistics</h1><p className="text-sm leading-relaxed text-muted-foreground">Understand what you send, what gets a response, and what moves forward.</p></div>
+        <Button variant="outline" size="sm" className="rounded-lg" asChild><Link href="/settings?tab=statistics"><SlidersHorizontal className="h-4 w-4" />Customize stats</Link></Button>
       </div>
-    </div>
-    <div className="rounded-xl border bg-muted/20 px-4 py-3 text-xs leading-relaxed text-muted-foreground">One outreach record is counted once, even with multiple contacts. Recorded responses include <strong className="text-foreground">Replied, Interview, and Offer</strong>; interviews include offers. Rejected and Closed records have no confirmed reply history, so they aren’t counted as responses.</div>
-    {show("metrics") && <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,240px),1fr))] gap-4">
-      {metrics.map(metric => <Card key={metric.label}><CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 pb-3"><CardTitle className="text-sm [overflow-wrap:normal]">{metric.label}</CardTitle><metric.icon className="h-5 w-5 shrink-0 text-primary" /></CardHeader><CardContent className="space-y-2"><p className="text-3xl tabular-nums">{metric.value}</p><p className="text-xs text-muted-foreground">{metric.detail}</p></CardContent></Card>)}
-    </div>}
-    {show("metrics") && a.previous && <p className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground"><span>Previous {range} days: {number(a.previous.sent)} sent · {rate(percent(a.previous.responded, a.previous.sent))} recorded response rate</span>{change !== null && <span className="inline-flex items-center gap-1 text-foreground"><ArrowUpRight className={`h-3.5 w-3.5 ${change < 0 ? "rotate-90" : ""}`} />{change > 0 ? "+" : ""}{change.toFixed(1)} percentage points</span>}</p>}
+      <div className="flex flex-wrap items-center justify-between gap-4 border-y py-4">
+        <div className="flex items-center gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><CalendarDays className="h-4 w-4" /></span><div><p className="text-sm">Your performance overview</p><p className="text-xs text-muted-foreground">{rangeLabels[range]} · {date(asOf, true)}</p></div></div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={range} onValueChange={value => setRange(value as AnalyticsRange)}><SelectTrigger className="w-auto min-w-[10em] rounded-lg bg-card" aria-label="Statistics date range"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(rangeLabels).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select>
+          <Button variant="outline" className="rounded-lg bg-card" onClick={exportSummary}><Download className="h-4 w-4" />Export CSV</Button>
+        </div>
+      </div>
+    </header>
+    {show("metrics") && <section aria-label="Summary metrics" className="overflow-hidden rounded-2xl border bg-card">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,210px),1fr))]">
+        {metrics.map((metric, index) => <div key={metric.label} className={`min-w-0 space-y-5 p-5 md:p-6 ${index === 0 ? "bg-primary/5" : ""}`}>
+          <div className="flex items-start justify-between gap-3"><p className="text-sm text-muted-foreground">{metric.label}</p><metric.icon aria-hidden="true" className="h-4 w-4 shrink-0 text-primary" /></div>
+          <div className="space-y-2"><p className="num-display text-4xl">{metric.value}</p><p className="text-xs leading-relaxed text-muted-foreground">{metric.detail}</p></div>
+        </div>)}
+      </div>
+      {a.previous && <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-muted/25 px-5 py-3 text-xs text-muted-foreground"><span>Previous {range} days: {number(a.previous.sent)} sent · {rate(percent(a.previous.responded, a.previous.sent))} recorded response rate</span>{change !== null && <span className="inline-flex items-center gap-1 rounded-md border bg-card px-2 py-1 text-foreground"><ArrowUpRight className={`h-3.5 w-3.5 ${change < 0 ? "rotate-90" : ""}`} />{change > 0 ? "+" : ""}{change.toFixed(1)} percentage points</span>}</div>}
+    </section>}
 
     {show("comparison") && (a.sent === 0 ? <Card><CardContent className="space-y-3 py-10 text-center"><BarChart3 className="mx-auto h-9 w-9 text-muted-foreground" /><h2 className="text-xl">No sent outreach in this period</h2><p className="text-sm text-muted-foreground">{records.length ? "Choose a wider date range, or send an outreach to start seeing trends." : "Add your first outreach to build your performance picture."}</p><Button asChild><Link href="/outreach/new">Add outreach</Link></Button></CardContent></Card> : <ComparisonChart analytics={a} />)}
 
@@ -153,15 +163,19 @@ function LocalOutreachAnalytics({ records, asOf }: { records: AnalyticsRecord[];
 
     {(show("funnel") || show("pipeline")) && <div className={`grid min-w-0 gap-6 ${show("funnel") && show("pipeline") ? "xl:grid-cols-2" : ""}`}>
       {show("funnel") && <Card><CardHeader><CardTitle>Conversion funnel</CardTitle><CardDescription>Each stage includes the later stages we can confirm.</CardDescription></CardHeader><CardContent className="space-y-5">
-        {[{ label: "Sent", count: a.sent }, { label: "Recorded response", count: a.responded }, { label: "Interview or offer", count: a.interviews }, { label: "Offer", count: a.offers }].map(stage => <div key={stage.label} className="space-y-2"><div className="flex flex-wrap justify-between gap-2 text-sm"><span>{stage.label}</span><span className="tabular-nums">{number(stage.count)} <span className="text-muted-foreground">· {rate(percent(stage.count, a.sent))}</span></span></div><div role="meter" aria-label={stage.label} aria-valuenow={stage.count} aria-valuemin={0} aria-valuemax={Math.max(1, a.sent)} className="h-2.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${percent(stage.count, a.sent)}%` }} /></div></div>)}
+        {[{ label: "Sent", count: a.sent }, { label: "Recorded response", count: a.responded }, { label: "Interview or offer", count: a.interviews }, { label: "Offer", count: a.offers }].map((stage, index) => <div key={stage.label} className="space-y-2"><div className="flex flex-wrap justify-between gap-2 text-sm"><span className="inline-flex items-center gap-2"><span className="text-xs tabular-nums text-muted-foreground">0{index + 1}</span>{stage.label}</span><span className="tabular-nums">{number(stage.count)} <span className="text-muted-foreground">· {rate(percent(stage.count, a.sent))}</span></span></div><div role="meter" aria-label={stage.label} aria-valuenow={stage.count} aria-valuemin={0} aria-valuemax={Math.max(1, a.sent)} className="h-3 overflow-hidden rounded-md bg-muted"><div className="h-full rounded-md bg-primary" style={{ width: `${percent(stage.count, a.sent)}%`, opacity: 1 - index * 0.15 }} /></div></div>)}
         <p className="border-t pt-4 text-xs text-muted-foreground">Interview → offer conversion: {a.interviews ? rate(a.interviewToOfferRate) : "No interviews recorded yet"}.</p>
       </CardContent></Card>}
-      {show("pipeline") && <Card><CardHeader><CardTitle>Current pipeline</CardTitle><CardDescription>Latest status of records in this period.</CardDescription></CardHeader><CardContent className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,170px),1fr))] gap-3">{a.statuses.map(item => <div key={item.status} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3"><StatusBadge status={item.status} /><span className="tabular-nums">{number(item.count)}</span></div>)}</CardContent></Card>}
+      {show("pipeline") && <Card><CardHeader><CardTitle>Current pipeline</CardTitle><CardDescription>Latest status of records in this period.</CardDescription></CardHeader><CardContent className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,170px),1fr))] gap-3">{a.statuses.map(item => <div key={item.status} className="min-w-0 space-y-3 rounded-xl bg-muted/35 p-3"><div className="flex items-center justify-between gap-3"><StatusBadge status={item.status} /><span className="text-lg tabular-nums">{number(item.count)}</span></div><div aria-hidden="true" className="h-1 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary/60" style={{ width: `${percent(item.count, a.sent + a.drafts)}%` }} /></div></div>)}</CardContent></Card>}
     </div>}
     {show("channels") && <Card><CardHeader><CardTitle>Performance by channel</CardTitle><CardDescription>Each outreach belongs to one channel. Multiple contact methods appear under Mixed.</CardDescription></CardHeader><CardContent>
       {a.channels.length ? <div className="relative overflow-x-auto"><table className="w-full text-sm [overflow-wrap:normal]"><caption className="sr-only">Outreach conversion by contact channel</caption><thead><tr className="border-b text-left text-muted-foreground">{["Channel", "Sent", "Responses", "Response rate", "Interview / offer"].map(label => <th key={label} className="whitespace-nowrap px-3 py-3 font-normal">{label}</th>)}</tr></thead><tbody>{a.channels.map(channel => <tr key={channel.channel} className="border-b last:border-0"><th scope="row" className="whitespace-nowrap px-3 py-4 text-left font-normal">{channel.channel}</th><td className="px-3 py-4 tabular-nums">{number(channel.sent)}</td><td className="px-3 py-4 tabular-nums">{number(channel.responded)}</td><td className="whitespace-nowrap px-3 py-4 tabular-nums">{rate(channel.responseRate)}</td><td className="px-3 py-4 tabular-nums">{number(channel.interviews)}</td></tr>)}</tbody></table></div> : <p className="text-sm text-muted-foreground">Channel comparisons will appear after you send outreach.</p>}
     </CardContent></Card>}
-    {show("pending") && <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-muted/20 p-4 text-sm"><p className="inline-flex items-center gap-2"><Clock3 className="h-4 w-4 shrink-0 text-primary" />{number(a.awaiting)} awaiting a response · {number(a.overdue)} with overdue follow-ups now</p><Button variant="outline" size="sm" asChild><Link href="/follow-ups">Open follow-ups</Link></Button></div>}
-    <p className="text-xs text-muted-foreground">As of {date(asOf, true)} · Date filters use sent-date cohorts in your device timezone, with drafts grouped by creation date. Outcomes reflect today’s saved statuses; this app does not currently store reply timestamps or a full status history.</p>
+    {show("pending") && <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-primary/20 bg-primary/5 p-5 text-sm"><div className="flex items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-card text-primary"><Clock3 className="h-5 w-5" /></span><div className="space-y-1"><p>{number(a.awaiting)} awaiting a response</p><p className="text-xs text-muted-foreground">{number(a.overdue)} with overdue follow-ups now</p></div></div><Button variant="outline" size="sm" className="bg-card" asChild><Link href="/follow-ups">Open follow-ups<ArrowUpRight className="h-4 w-4" /></Link></Button></div>}
+    <aside aria-label="How statistics are counted" className="space-y-3 rounded-2xl border border-dashed px-5 py-4 text-xs leading-relaxed text-muted-foreground">
+      <p className="flex items-center gap-2 text-foreground"><Info className="h-3.5 w-3.5" />How to read your statistics</p>
+      <p>One outreach record is counted once, even with multiple contacts. Recorded responses include <strong className="text-foreground">Replied, Interview, and Offer</strong>; interviews include offers. Rejected and Closed records have no confirmed reply history, so they aren’t counted as responses.</p>
+      <p>As of {date(asOf, true)} · Date filters use sent-date cohorts in your device timezone, with drafts grouped by creation date. Outcomes reflect today’s saved statuses; this app does not currently store reply timestamps or a full status history.</p>
+    </aside>
   </div>;
 }
