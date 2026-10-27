@@ -1,8 +1,9 @@
 "use client";
+import { useId, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FiActivity, FiRefreshCw, FiEye } from "react-icons/fi";
+import { FiActivity, FiRefreshCw, FiEye, FiChevronDown } from "react-icons/fi";
 
 interface Message {
   id: string; recipient: string; subject: string; kind: string; deliveryState: string;
@@ -15,7 +16,28 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
 });
 const date = (value: string | null) => value ? dateFormatter.format(new Date(value)) : "None detected";
+const dayFormatter = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" });
+const timeFormatter = new Intl.DateTimeFormat("en-GB", { hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true });
+
+function groupEvents(events: Message["recentEvents"]) {
+  const groups = new Map<string, Message["recentEvents"]>();
+  for (const event of events) {
+    const day = dayFormatter.format(new Date(event.observedAt));
+    const group = groups.get(day) ?? [];
+    group.push(event);
+    groups.set(day, group);
+  }
+  return Array.from(groups.entries());
+}
 export function EmailActivityCard({ outreachId }: { outreachId: string }) {
+  const activityId = useId();
+  const [expandedMessages, setExpandedMessages] = useState<Set<string>>(() => new Set());
+  const toggleActivity = (messageId: string) => setExpandedMessages(previous => {
+    const next = new Set(previous);
+    if (next.has(messageId)) next.delete(messageId);
+    else next.add(messageId);
+    return next;
+  });
   const query = useQuery<Activity>({ queryKey: ["outreach-email-activity", outreachId],
     queryFn: async ({ signal }) => {
       const response = await fetch(`/api/outreach/${outreachId}/email-activity`, { cache: "no-store", signal });
@@ -28,35 +50,47 @@ export function EmailActivityCard({ outreachId }: { outreachId: string }) {
       <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-full" aria-label="Refresh email activity" disabled={query.isFetching} onClick={() => void query.refetch()}><FiRefreshCw className={`h-4 w-4 ${query.isFetching ? "animate-spin" : ""}`} /></Button>
     </div>
     <p className="text-xs text-muted-foreground">Across all company contacts</p>
-  </CardHeader><CardContent className="space-y-3 px-4 pb-5">
+  </CardHeader><CardContent className="space-y-3 px-5 pb-5">
     {query.isPending ? <p className="text-sm">Loading activity…</p> : query.isError ? <p role="alert" className="text-sm text-destructive">Activity temporarily unavailable. Previously displayed counts may be stale.</p> : !query.data?.available ?
       <p className="text-sm text-muted-foreground">Email tracking is not configured yet. Existing emails are not retrospectively tracked.</p> : <>
       {!query.data.collectionEnabled && <p className="text-sm text-muted-foreground">Collection is currently disabled. Historical activity is preserved.</p>}
       {!query.data.messages.length && <p className="text-sm text-muted-foreground">No tracked emails linked to this outreach. This does not mean your existing emails were unread.</p>}
-      {query.data.messages.map(message => <article key={message.id} className="min-w-0 space-y-3 overflow-hidden rounded-2xl border bg-muted/10 p-4">
+      {query.data.messages.map(message => <article key={message.id} className="min-w-0 space-y-4 py-4 first:pt-1 [&+article]:border-t [&+article]:pt-5">
         <div className="space-y-2">
-          <span className="inline-flex rounded-md bg-primary/10 px-2 py-1 text-[10px] font-bold capitalize tracking-wide text-primary">{message.kind.replaceAll("_", " ")}</span>
+          <span className="inline-flex rounded-md bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">{message.kind === "initial" ? "Initial email" : message.kind.replaceAll("_", " ")}</span>
           <p className="break-words text-sm font-semibold leading-snug">{message.subject || "(No subject)"}</p>
           <p className="break-all text-xs text-muted-foreground">To {message.recipient}</p>
           <p className="text-xs text-muted-foreground">{message.deliveryState === "accepted" ? "Provider accepted" : message.deliveryState === "ambiguous" ? "Send outcome uncertain" : message.deliveryState}</p>
           <p className="text-xs text-muted-foreground">{message.sentAt ? `Sent ${date(message.sentAt)}` : "No confirmed send date"}</p>
         </div>
         {message.deliveryState === "accepted" ? <>
-          <div className="flex items-center justify-between gap-2 rounded-xl bg-primary/5 px-3 py-2.5">
-            <span className="flex items-center gap-2 text-xs font-medium"><FiEye className="h-4 w-4 text-primary" />Detected opens</span>
-            <span className="text-xl font-bold tabular-nums text-primary">{message.openCount ?? "—"}</span>
+          <div className="flex items-center gap-2.5 rounded-xl bg-primary/5 px-3 py-3 text-primary">
+            <FiEye className="h-4 w-4 shrink-0" />
+            <span className="text-sm font-semibold"><span className="tabular-nums">{message.openCount ?? "—"}</span> detected opens</span>
           </div>
           <dl className="space-y-2 text-xs">
-            <div className="flex flex-wrap justify-between gap-x-3 gap-y-1"><dt className="text-muted-foreground">First detected</dt><dd className="font-medium">{date(message.firstOpenAt)}</dd></div>
-            <div className="flex flex-wrap justify-between gap-x-3 gap-y-1"><dt className="text-muted-foreground">Last detected</dt><dd className="font-medium">{date(message.lastOpenAt)}</dd></div>
+            <div className="space-y-1"><dt className="text-muted-foreground">First detected</dt><dd className="font-medium tabular-nums">{date(message.firstOpenAt)}</dd></div>
+            <div className="space-y-1"><dt className="text-muted-foreground">Last detected</dt><dd className="font-medium tabular-nums">{date(message.lastOpenAt)}</dd></div>
           </dl>
           {!message.trackingEnabled && <p className="text-xs text-muted-foreground">Tracking disabled for this message.</p>}
           {message.collectionExpired && <p className="text-xs text-muted-foreground">Collection window expired (90 days).</p>}
           {(message.openCount ?? 0) >= 10000 && <p className="text-xs text-muted-foreground">Safety event limit reached. Count is capped.</p>}
-          <details className="border-t pt-3 text-xs"><summary className="cursor-pointer font-medium text-muted-foreground">Recent activity</summary>
-            <p className="mt-2 text-[10px] text-muted-foreground">Up to 20 detected image loads</p>
-            {message.recentEvents.length ? <ol className="mt-3 ml-1 space-y-3 border-l border-primary/20 pl-4">{message.recentEvents.map((event, index) => <li className="relative before:absolute before:top-1 before:-left-[21px] before:h-2 before:w-2 before:rounded-full before:bg-primary/50" key={`${event.observedAt}-${index}`}>{date(event.observedAt)}</li>)}</ol> : <p className="mt-2 text-muted-foreground">No recent activity detected.</p>}
-          </details>
+          <div className="border-t pt-3 text-xs">
+            <button type="button" aria-expanded={expandedMessages.has(message.id)} aria-controls={`${activityId}-${message.id}`} onClick={() => toggleActivity(message.id)} className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-sm py-1 text-left font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">
+              Recent activity<FiChevronDown className={`h-3.5 w-3.5 transition-transform duration-300 motion-reduce:transition-none ${expandedMessages.has(message.id) ? "rotate-180" : ""}`} />
+            </button>
+            <div id={`${activityId}-${message.id}`} aria-hidden={!expandedMessages.has(message.id)} inert={!expandedMessages.has(message.id)} className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out motion-reduce:transition-none ${expandedMessages.has(message.id) ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+              <div className="min-h-0 overflow-hidden">
+            <p className="mt-2 text-[10px] text-muted-foreground">Latest detected image loads (up to 20)</p>
+            {message.recentEvents.length ? <ol className="mt-4 space-y-4">{groupEvents(message.recentEvents).map(([day, events]) => (
+              <li key={day}>
+                <div className="flex flex-wrap items-center justify-between gap-1"><p className="font-semibold">{day}</p><span className="text-[10px] text-muted-foreground">{events.length} {events.length === 1 ? "detection" : "detections"}</span></div>
+                <ol className="mt-3 ml-1 space-y-3 border-l border-primary/20 pl-4">{events.map((event, index) => <li className="relative tabular-nums text-muted-foreground before:absolute before:top-1 before:-left-[20px] before:h-1.5 before:w-1.5 before:rounded-full before:bg-primary/40" key={`${event.observedAt}-${index}`}><time dateTime={event.observedAt}>{timeFormatter.format(new Date(event.observedAt))}</time></li>)}</ol>
+              </li>
+            ))}</ol> : <p className="mt-2 text-muted-foreground">No recent activity detected.</p>}
+              </div>
+            </div>
+          </div>
         </> : <p className="text-xs text-muted-foreground">Image requests are not evidence of a successful send. Activity is withheld until provider acceptance is recorded.</p>}
       </article>)}
       {query.data.messages.length === 50 && <p className="text-xs text-muted-foreground">Showing the latest 50 tracked emails.</p>}
