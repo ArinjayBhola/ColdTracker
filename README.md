@@ -118,20 +118,32 @@ follow-ups. Integrations updating follow-ups should use the contact's JSON field
 and retain its stable ID. Drafts, replies, interviews, rejections, offers, and
 closed outreach do not receive follow-up reminders.
 
-Settings → Notifications now accepts a local reminder time (default 17:00), using
-the saved device timezone. Configure `CRON_SECRET` on the server and have the
-scheduler send `Authorization: Bearer <CRON_SECRET>`; missing configuration refuses
-requests with 503, and invalid credentials return 401. The Vercel schedule checks
-every five minutes. Hosting must support that frequency; otherwise configure an
-external scheduler with the same interval and authentication. Delivery occurs on
-the first check after the selected time, with catch-up until local midnight.
+The default reminder schedule is compatible with Vercel Hobby: one check daily
+at `0 12 * * *` (12:00 UTC / 17:30 India time). Vercel Hobby may invoke it up to
+an hour later. No paid plan or additional scheduler is required. Settings shows
+this daily schedule instead of offering a custom delivery time the daily job
+cannot honor. Daily mode evaluates the current day in each user's saved device
+timezone, regardless of their previously saved preferred time, so reminders are
+not skipped indefinitely.
+
+Configure `CRON_SECRET` on the server; Vercel sends
+`Authorization: Bearer <CRON_SECRET>`. Missing configuration refuses requests
+with 503, and invalid credentials return 401. If a separate, more frequent
+authenticated scheduler is configured later, set `REMINDER_SCHEDULE_MODE=frequent`
+to enable per-user local reminder times (default 17:00). Otherwise leave that
+variable unset. Frequent mode sends on the first check after the chosen time,
+with catch-up until local midnight. Do not increase the Vercel cron frequency
+on the Hobby plan.
 
 The database stores one delivery per account, local date, and reminder kind.
 Atomic claims prevent concurrent sends; failed or interrupted attempts can retry
-after five minutes with the same frozen content, recipient, and provider
+on another invocation after five minutes with the same frozen content, recipient, and provider
 idempotency key. Sent entries are retained to prevent repeat delivery. Uncertain
 attempts expire after 23 hours, before Resend's 24-hour key window ends, to avoid
 duplicate sends. The log records provider acceptance rather than inbox delivery.
+The built-in daily schedule does not provide five-minute retries. A failed daily
+attempt may expire before the next scheduled run; the next day evaluates whether
+a new reminder is needed.
 Set `RESEND_API_KEY`, optionally `REMINDER_FROM` for your verified sender, and
 `NEXTAUTH_URL` for links. The manual test-email button intentionally sends a new
 test message on each click.

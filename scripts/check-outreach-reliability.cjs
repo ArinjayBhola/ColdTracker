@@ -52,6 +52,32 @@ test("reminder clocks follow daylight saving changes", () => {
   assert.equal(reminderDay("America/New_York", "09:00", new Date("2026-03-08T12:59:00Z")), null);
   assert.equal(reminderDay("America/New_York", "09:00", new Date("2026-03-08T13:00:00Z")), "2026-03-08");
 });
+test("Hobby-compatible daily schedule does not skip later saved reminder times", () => {
+  const config = require("../vercel.json");
+  assert.equal(config.crons.length, 1);
+  assert.equal(config.crons[0].schedule, "0 12 * * *");
+  assert.equal(reminderDay("Asia/Kolkata", "23:59", new Date(now), "daily"), "2026-10-29");
+  assert.equal(reminderDay("America/Los_Angeles", "23:59", new Date(now), "daily"), "2026-10-29");
+  assert.equal(reminderDay("Asia/Kolkata", "23:59", new Date(now), "frequent"), null);
+  assert.equal(reminderDay("invalid", "17:00", new Date(now), "daily"), null);
+});
+test("daily reminder settings keep the email editable without promising a custom time", () => {
+  const React = require("react");
+  const { renderToStaticMarkup } = require("react-dom/server");
+  const { NotificationSettings } = createLoader({
+    react: { ...React, useTransition: () => [false, () => {}] },
+    "@/actions/settings": { updateNotificationSettingsAction() {}, sendTestEmailAction() {} },
+    "@/hooks/use-toast": { useToast: () => ({ toast() {} }) },
+  })("components/settings/notification-settings.tsx");
+  const props = { initialEmail: "synthetic@example.invalid", initialReceiveNotifications: true, initialReminderTime: "23:00" };
+  const daily = renderToStaticMarkup(React.createElement(NotificationSettings, props));
+  assert.match(daily, /type="email"[^>]*name="notificationEmail"|name="notificationEmail"[^>]*type="email"/);
+  assert.match(daily, /synthetic@example.invalid/);
+  assert.match(daily, /Daily reminder schedule/);
+  assert.doesNotMatch(daily, /type="time"/);
+  const frequent = renderToStaticMarkup(React.createElement(NotificationSettings, { ...props, customTimeEnabled: true }));
+  assert.match(frequent, /type="time"/);
+});
 test("scheduler refuses missing and incorrect secrets before querying or sending", async () => {
   const previous = process.env.CRON_SECRET;
   let queried = false;

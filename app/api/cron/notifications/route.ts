@@ -29,7 +29,8 @@ export async function GET(request: Request) {
     let sent = 0;
     let failed = 0;
     for (const user of activeUsers) {
-      const day = reminderDay(user.timeZone, user.reminderTime);
+      const mode = process.env.REMINDER_SCHEDULE_MODE === "frequent" ? "frequent" : "daily";
+      const day = reminderDay(user.timeZone, user.reminderTime, new Date(), mode);
       if (!day || !user.timeZone) continue;
       try {
         const bounds = userDayBounds(user.timeZone);
