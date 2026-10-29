@@ -52,6 +52,7 @@ export const users = pgTable("user", {
   preferences: jsonb("preferences").$type<import("@/lib/preferences").AppPreferences>(),
   notificationEmail: text("notification_email"),
   receiveNotifications: boolean("receive_notifications").default(true),
+  reminderTime: varchar("reminder_time", { length: 5 }).notNull().default("17:00"),
   keyboardShortcuts: jsonb("keyboard_shortcuts").$type<import("@/lib/keyboard-shortcuts").ShortcutPreferences>(),
 }, (table) => ({ emailIdx: index("user_email_idx").on(table.email) }));
 
@@ -101,6 +102,7 @@ export const verificationTokens = pgTable(
 
 
 export type OutreachContact = {
+  id?: string;
   personName: string;
   personRole: string;
   contactMethod: string;
@@ -113,7 +115,13 @@ export type OutreachContact = {
   emailThreadUrl?: string | null;
   messageSentAt?: string | Date;
   followUpDueAt?: string | Date;
+  followUpSentAt?: string | Date | null;
+  followUp2DueAt?: string | Date | null;
+  followUp2SentAt?: string | Date | null;
+  followUpHistory?: { stage: 1 | 2; action: "sent" | "reverted" | "rescheduled"; at: string; date: string | null }[];
 };
+
+export type StatusEvent = { status: string; at: string; source: "baseline" | "observed" };
 
 // --- Outreach Schema ---
 export const outreach = pgTable("outreach", {
@@ -131,6 +139,7 @@ export const outreach = pgTable("outreach", {
   followUp2DueAt: timestamp("follow_up_2_due_at", { mode: "date" }),
   followUp2SentAt: timestamp("follow_up_2_sent_at", { mode: "date" }),
   status: statusEnum("status").default("DRAFT").notNull(),
+  statusHistory: jsonb("status_history").$type<StatusEvent[]>().notNull().default([]),
   notes: text("notes"),
   contacts: jsonb("contacts").$type<OutreachContact[]>().default([]).notNull(),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
@@ -142,6 +151,24 @@ export const outreach = pgTable("outreach", {
   // Covers status-filtered list + getStats grouping. Its (userId) and (userId,status)
   // prefixes also serve those narrower lookups, so no standalone indexes are needed.
   userIdStatusCreatedAtIdx: index("outreach_user_id_status_created_at_idx").on(table.userId, table.status, table.createdAt),
+}));
+
+export const reminderDeliveries = pgTable("reminder_deliveries", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  day: varchar("day", { length: 10 }).notNull(),
+  kind: text("kind").notNull(),
+  payload: jsonb("payload").$type<{ from: string; to: string[]; subject: string; html: string }>().notNull(),
+  state: text("state").notNull().default("pending"),
+  providerId: text("provider_id"),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+  attemptedAt: timestamp("attempted_at", { withTimezone: true, mode: "date" }),
+  sentAt: timestamp("sent_at", { withTimezone: true, mode: "date" }),
+  attempts: integer("attempts").notNull().default(0),
+}, table => ({
+  dailyKind: unique("reminder_deliveries_daily_kind_key").on(table.userId, table.day, table.kind),
+  stateCheck: check("reminder_deliveries_state_check", sql`${table.state} IN ('pending', 'sending', 'sent', 'failed', 'expired')`),
+  kindCheck: check("reminder_deliveries_kind_check", sql`${table.kind} IN ('daily', 'follow_up')`),
 }));
 
 // Existing automation ledger, created externally. outreach_id deliberately has

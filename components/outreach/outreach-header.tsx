@@ -1,26 +1,28 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { FiMail, FiLinkedin, FiUser, FiBriefcase } from "react-icons/fi";
+import { FiMail, FiLinkedin } from "react-icons/fi";
 import { cn } from "@/lib/utils";
 import { AddContactDialog } from "@/components/add-contact-dialog";
 import { StatusBadge } from "@/components/status-badge";
 import { OutreachActions } from "@/components/outreach-actions";
 import { DeleteArchiveActions } from "@/components/delete-archive-actions";
 import { DetailHeader } from "@/components/details/detail-header";
-import { contactDisplayName } from "@/lib/contact-display";
 import { AutomationOutreachBadge } from "@/components/automation-outreach-badge";
+import { OutreachContactPicker } from "@/components/outreach/outreach-contact-picker";
+import type { OutreachContact } from "@/db/schema";
 
 interface OutreachHeaderProps {
   id: string;
   companyName: string;
   roleTargeted: string;
   status: string;
-  contacts: any[];
+  contacts: OutreachContact[];
   activeContactIndex: number;
   isRefreshing: boolean;
   onRefresh: () => void;
-  outreachData: any;
+  outreachData: { isAutomated?: boolean };
+  onSelectContact: (index: number) => void;
+  onDeleteContact: (index: number) => void;
 }
 
 export function OutreachHeader({
@@ -33,11 +35,11 @@ export function OutreachHeader({
   isRefreshing,
   onRefresh,
   outreachData,
+  onSelectContact,
+  onDeleteContact,
 }: OutreachHeaderProps) {
-  const activeContact = contacts[activeContactIndex] || contacts[0] || {};
+  const activeContact: Partial<OutreachContact> = contacts[activeContactIndex] || contacts[0] || {};
   const contactMethod = activeContact.contactMethod || "EMAIL";
-  const personName = contactDisplayName(activeContact);
-  const personRole = activeContact.personRole || "N/A";
 
   return (
     <DetailHeader
@@ -63,26 +65,14 @@ export function OutreachHeader({
         </span>
       }
       infoBar={
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border border-border/50">
-          <FiUser className="w-4 h-4 text-primary" />
-          <span className="font-bold text-foreground text-sm">
-            {personName}
-            {contacts.length > 1 && (
-              <span className="text-muted-foreground font-medium ml-1">
-                ({activeContactIndex + 1} of {contacts.length})
-              </span>
-            )}
-          </span>
-          <span className="text-muted-foreground/30">•</span>
-          <span className="text-sm font-semibold">{personRole}</span>
-        </div>
+        <OutreachContactPicker contacts={contacts} activeIndex={activeContactIndex} onSelect={onSelectContact} onDelete={onDeleteContact} />
       }
       actions={
         <>
           <AddContactDialog outreachId={id} />
           <div className="h-8 w-px bg-border mx-1 hidden md:block" />
           <StatusBadge status={status} />
-          <OutreachActions id={id} currentStatus={status} />
+          <OutreachActions id={id} currentStatus={status} compact />
           <DeleteArchiveActions id={id} />
         </>
       }

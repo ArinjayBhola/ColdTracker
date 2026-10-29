@@ -36,23 +36,27 @@ export function ExportExcel({ fileName = "outreach-data", label = "Export to Exc
       const formattedData = data.flatMap((item) => {
         const contacts = Array.isArray(item.contacts) && item.contacts.length > 0
           ? item.contacts 
-          : [];
+          : [null];
 
         return contacts.map((contact) => ({
           Company: item.companyName,
-          "Contact Count": item.contacts?.length || 1,
+          "Contact Count": item.contacts?.length || 0,
           Role: item.roleTargeted,
           Website: item.companyLink || "",
           "Application Source": item.applicationSource || "Direct email",
           "Application URL": item.applicationUrl || "",
           "Application Status": item.applicationStatus || "",
-          "Person Name": contact.personName || "",
-          "Person Role": contact.personRole || "",
+          "Person Name": contact?.personName || "",
+          "Person Role": contact?.personRole || "",
           Status: item.status,
-          "Sent Date": contact.messageSentAt ? format(new Date(contact.messageSentAt), "yyyy-MM-dd") : "",
-          "Follow Up Due": contact.followUpDueAt ? format(new Date(contact.followUpDueAt), "yyyy-MM-dd") : "",
-          "Contact Method": contact.contactMethod || "",
-          "Email": contact.emailAddress || "",
+          "Sent Date": contact?.messageSentAt ? format(new Date(contact.messageSentAt), "yyyy-MM-dd") : "",
+          "Follow Up Due": contact?.followUpDueAt ? format(new Date(contact.followUpDueAt), "yyyy-MM-dd") : "",
+          "Follow Up 1 Sent": contact?.followUpSentAt ? format(new Date(contact.followUpSentAt), "yyyy-MM-dd") : "",
+          "Follow Up 2 Due": contact?.followUp2DueAt ? format(new Date(contact.followUp2DueAt), "yyyy-MM-dd") : "",
+          "Follow Up 2 Sent": contact?.followUp2SentAt ? format(new Date(contact.followUp2SentAt), "yyyy-MM-dd") : "",
+          "Contact Method": contact?.contactMethod || "",
+          "Email": contact?.emailAddress || "",
+          "LinkedIn URL": contact?.linkedinProfileUrl || "",
           "Notes": item.notes || ""
         }));
       });

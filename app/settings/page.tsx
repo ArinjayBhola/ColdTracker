@@ -103,7 +103,7 @@ export default async function SettingsPage({
             { id: "appearance", label: "Appearance", content: <AppearanceSettings /> },
             { id: "navigation", label: "Navigation", content: <NavigationSettings /> },
             { id: "shortcuts", label: "Shortcuts", content: <KeyboardShortcutSettings /> },
-            { id: "notifications", label: "Notifications", content: <NotificationSettings initialEmail={fullUser?.notificationEmail || null} initialReceiveNotifications={fullUser?.receiveNotifications ?? true} /> },
+            { id: "notifications", label: "Notifications", content: <NotificationSettings initialEmail={fullUser?.notificationEmail || null} initialReceiveNotifications={fullUser?.receiveNotifications ?? true} initialReminderTime={fullUser?.reminderTime} timeZone={fullUser?.timeZone} /> },
             { id: "workflow", label: "Follow-up rules", content: <FollowUpSettings /> },
             { id: "tables", label: "Tables", content: <TableSettings /> },
             { id: "statistics", label: "Statistics", content: <StatsSettings /> },

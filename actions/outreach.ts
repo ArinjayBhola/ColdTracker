@@ -11,6 +11,9 @@ import { scheduleFollowUp } from "@/lib/follow-up-rules";
 import { getAccountPreferences } from "@/actions/preferences";
 import { DEFAULT_PREFERENCES, parsePreferences } from "@/lib/preferences";
 import { readDashboardPage } from "@/lib/dashboard-query";
+import { getOutreachAnalyticsRecords } from "@/actions/analytics";
+import { reachedStage } from "@/lib/outreach-analytics";
+import { earliestContactDue } from "@/lib/contact-follow-ups";
 
 export async function getDashboardOutreachPage(page = 1, filter = "", options: { q?: string; start?: string; end?: string; origin?: string } = {}) {
   const session = await auth();
@@ -122,7 +125,7 @@ export async function createOutreachAction(prevState: ActionState, formData: For
     if (existing) {
       // Append new contacts to existing ones
       const updatedContacts = [...existing.contacts, ...processedContacts];
-      await db.update(outreach)
+      const [merged] = await db.update(outreach)
         .set({
           contacts: updatedContacts,
           roleTargeted,
@@ -134,7 +137,9 @@ export async function createOutreachAction(prevState: ActionState, formData: For
           status: status || existing.status,
           updatedAt: new Date(),
         })
-        .where(eq(outreach.id, existing.id));
+        .where(and(eq(outreach.id, existing.id), eq(outreach.userId, session.user.id), sql`${outreach.contacts} = ${JSON.stringify(existing.contacts)}::jsonb`))
+        .returning({ id: outreach.id });
+      if (!merged) return { error: "Contacts changed while saving. Refresh and try again." };
       
       revalidatePath("/dashboard");
       return { success: true, outreachId: existing.id };
@@ -179,24 +184,13 @@ export async function getOutreachItems() {
 export async function getStats() {
     const session = await auth();
     if (!session?.user?.id) return { sent: 0, replies: 0, interviews: 0, offers: 0 };
-
-    const stats = await db.select({
-        status: outreach.status,
-        count: sql<number>`count(*)`
-    })
-    .from(outreach)
-    .where(eq(outreach.userId, session.user.id))
-    .groupBy(outreach.status);
-
-    const result = { sent: 0, replies: 0, interviews: 0, offers: 0 };
-    stats.forEach(s => {
-        result.sent += Number(s.count);
-        if (s.status === 'REPLIED') result.replies = Number(s.count);
-        if (s.status === 'INTERVIEW') result.interviews = Number(s.count);
-        if (s.status === 'OFFER') result.offers = Number(s.count);
-    });
-
-    return result;
+    const records = await getOutreachAnalyticsRecords();
+    return {
+      sent: records.filter(row => reachedStage(row, new Set(STATUSES.filter(status => status !== "DRAFT")))).length,
+      replies: records.filter(row => reachedStage(row, new Set(["REPLIED", "INTERVIEW", "OFFER"])) ).length,
+      interviews: records.filter(row => reachedStage(row, new Set(["INTERVIEW", "OFFER"])) ).length,
+      offers: records.filter(row => reachedStage(row, new Set(["OFFER"])) ).length,
+    };
 }
 export async function getGroupedOutreachByCompany(page: number = 1, limit: number = 10, filter: string = "ALL") {
   const session = await auth();
@@ -237,8 +231,8 @@ export async function getGroupedOutreachByCompany(page: number = 1, limit: numbe
         personRole: item.contacts[0]?.personRole || "N/A",
         status: item.status,
         messageSentAt: item.contacts[0]?.messageSentAt || item.createdAt, 
-        followUpDueAt: item.contacts[0]?.followUpDueAt || item.createdAt,
-        followUpSentAt: item.followUpSentAt,
+        followUpDueAt: earliestContactDue(item.contacts),
+        followUpSentAt: item.contacts[0]?.followUpSentAt ?? null,
         contactMethod: item.contacts[0]?.contactMethod || "EMAIL",
         contactCount: item.contacts.length,
         contacts: item.contacts,
@@ -275,6 +269,9 @@ export async function updateOutreachStatus(id: string, newStatus: string) {
         
         if (!updated) return { error: "Outreach not found" };
         revalidatePath("/dashboard");
+        revalidatePath("/stats");
+        revalidatePath("/follow-ups");
+        revalidatePath(`/outreach/${id}`);
         return { success: true };
     } catch (error) {
         console.error("Failed to update status:", error);
@@ -383,12 +380,14 @@ export async function addContactToCompanyAction(outreachId: string, formData: Fo
             followUpDueAt: scheduleFollowUp(new Date(), rules.firstDelay, timeZone, rules.skipWeekends),
         };
 
-        await db.update(outreach)
+        const [saved] = await db.update(outreach)
             .set({
                 contacts: [...existing.contacts, newContact],
                 updatedAt: new Date(),
             })
-            .where(eq(outreach.id, outreachId));
+            .where(and(eq(outreach.id, outreachId), eq(outreach.userId, session.user.id), sql`${outreach.contacts} = ${JSON.stringify(existing.contacts)}::jsonb`))
+            .returning({ id: outreach.id });
+        if (!saved) return { error: "Contacts changed while saving. Refresh and try again." };
 
     } catch (error) {
         console.error("Failed to add contact:", error);
@@ -432,7 +431,7 @@ export async function updateOutreachInlineAction(outreachId: string, contactInde
             return { error: "Contact not found. Refresh the page and try again." };
         }
 
-        await db.update(outreach)
+        const [saved] = await db.update(outreach)
             .set({
                 companyName: values.companyName ?? existing.companyName,
                 applicationSource: values.applicationSource ?? existing.applicationSource,
@@ -443,7 +442,9 @@ export async function updateOutreachInlineAction(outreachId: string, contactInde
                 contacts: updatedContacts,
                 updatedAt: new Date(),
             })
-            .where(and(eq(outreach.id, outreachId), eq(outreach.userId, session.user.id)));
+            .where(and(eq(outreach.id, outreachId), eq(outreach.userId, session.user.id), sql`${outreach.contacts} = ${JSON.stringify(existing.contacts)}::jsonb`))
+            .returning({ id: outreach.id });
+        if (!saved) return { error: "Contacts changed while saving. Refresh and try again." };
 
         revalidatePath("/dashboard");
         revalidatePath("/follow-ups");
@@ -480,12 +481,14 @@ export async function deleteContactAction(outreachId: string, contactIndex: numb
 
         updatedContacts.splice(contactIndex, 1);
 
-        await db.update(outreach)
+        const [saved] = await db.update(outreach)
             .set({
                 contacts: updatedContacts,
                 updatedAt: new Date(),
             })
-            .where(eq(outreach.id, outreachId));
+            .where(and(eq(outreach.id, outreachId), eq(outreach.userId, session.user.id), sql`${outreach.contacts} = ${JSON.stringify(existing.contacts)}::jsonb`))
+            .returning({ id: outreach.id });
+        if (!saved) return { error: "Contacts changed while saving. Refresh and try again." };
 
         revalidatePath("/dashboard");
         revalidatePath(`/outreach/${outreachId}`);

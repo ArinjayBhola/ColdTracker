@@ -49,7 +49,7 @@ function ComparisonChart({ analytics }: { analytics: OutreachAnalytics }) {
       <div className="overflow-x-auto" role="region" aria-label="Scrollable outreach chart" tabIndex={0}>
         <svg viewBox={`0 0 ${width} ${height}`} className="block w-full min-w-[640px]" role="group" aria-label={mode === "count" ? "Sent outreach and recorded response counts by sent date" : "Recorded response rate by sent date"}>
           <title>Outreach performance by sent date</title>
-          <desc>Focus or hover a group to inspect exact counts. Response outcomes reflect current statuses, not the date a reply arrived.</desc>
+          <desc>Focus or hover a group to inspect exact counts. Responses include recorded stage history and remain counted after rejection or closure.</desc>
           {[0, 1, 2, 3, 4].map(index => {
             const value = index * max / 4;
             return <g key={index}><line x1={left} x2={width - right} y1={y(value)} y2={y(value)} className="stroke-border" strokeDasharray="4 4" /><text x={left - 10} y={y(value) + 4} textAnchor="end" fontSize="12" className="fill-muted-foreground">{value}{mode === "rate" ? "%" : ""}</text></g>;
@@ -81,7 +81,7 @@ function ComparisonChart({ analytics }: { analytics: OutreachAnalytics }) {
         <span className="text-muted-foreground">{date(selected.start)} – {date(selected.end, true)}</span>
         <span>{number(selected.sent)} sent · {number(selected.responded)} responses · <strong>{selected.sent ? rate(selected.responseRate) : "No outreach"}</strong></span>
       </div>
-      <p className="text-xs text-muted-foreground">Groups use the first saved sent date, falling back to creation date. These are current outcomes of that outreach—not replies received during that week.</p>
+      <p className="text-xs text-muted-foreground">Groups use the first saved sent date, falling back to creation date. Responses include recorded history, even after rejection or closure. Older unrecorded replies cannot be recovered.</p>
     </CardContent>
   </Card>;
 }
@@ -126,7 +126,7 @@ function LocalOutreachAnalytics({ records, asOf }: { records: AnalyticsRecord[];
   ];
 
   function exportSummary() {
-    const rows: (string | number)[][] = [["Period", rangeLabels[range]], ["As of", asOf], ["Metric", "Count"], ["Sent", a.sent], ["Recorded responses", a.responded], ["Interview or offer", a.interviews], ["Offers", a.offers], ["Response rate (%)", a.responseRate.toFixed(1)], [], ["Sent cohort start", "Sent cohort end", "Sent", "Current recorded responses", "Response rate (%)"], ...a.buckets.map(bucket => [bucket.start, bucket.end, bucket.sent, bucket.responded, bucket.responseRate.toFixed(1)])];
+    const rows: (string | number)[][] = [["Period", rangeLabels[range]], ["As of", asOf], ["Metric", "Count"], ["Sent", a.sent], ["Recorded responses", a.responded], ["Interview or offer", a.interviews], ["Offers", a.offers], ["Response rate (%)", a.responseRate.toFixed(1)], [], ["Sent cohort start", "Sent cohort end", "Sent", "Recorded responses including history", "Response rate (%)"], ...a.buckets.map(bucket => [bucket.start, bucket.end, bucket.sent, bucket.responded, bucket.responseRate.toFixed(1)])];
     const csv = rows.map(row => row.map(value => `"${String(value).replaceAll('"', '""')}"`).join(",")).join("\r\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a"); link.href = url; link.download = `coldtrack-stats-${range}-${asOf.slice(0, 10)}.csv`; link.click();

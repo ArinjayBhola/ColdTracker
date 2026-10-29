@@ -93,12 +93,14 @@ export async function promoteLeadToOutreachAction(id: string, values: PromoteLea
           ? [...(existing.contacts as OutreachContact[]), ...(formattedContacts as OutreachContact[])]
           : [...(formattedContacts as OutreachContact[])];
 
-        await tx.update(outreach)
+        const [saved] = await tx.update(outreach)
           .set({
             contacts: updatedContacts,
             updatedAt: new Date(),
           })
-          .where(eq(outreach.id, existing.id));
+          .where(and(eq(outreach.id, existing.id), eq(outreach.userId, session.user.id), sql`${outreach.contacts} = ${JSON.stringify(existing.contacts)}::jsonb`))
+          .returning({ id: outreach.id });
+        if (!saved) throw new Error("Contacts changed while saving. Refresh and try again.");
         
         newOutreachId = existing.id;
       } else {

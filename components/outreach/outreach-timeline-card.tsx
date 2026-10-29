@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FiCalendar, FiClock, FiEdit2, FiCheckCircle, FiRefreshCw, FiX } from "react-icons/fi";
-import { format } from "date-fns";
+import { displayDate } from "@/lib/display-date";
 import { cn } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/date-picker";
 
@@ -25,6 +25,10 @@ interface OutreachTimelineCardProps {
   setIsEditingSentDate: (val: number | null) => void;
   newSentDate?: Date;
   setNewSentDate: (val?: Date) => void;
+  contactCount?: number;
+  bulkStage?: 1 | 2;
+  allContactsComplete?: boolean;
+  onMarkAllSent?: () => Promise<void>;
 }
 
 export function OutreachTimelineCard({
@@ -45,6 +49,10 @@ export function OutreachTimelineCard({
   setIsEditingSentDate,
   newSentDate,
   setNewSentDate,
+  contactCount = 1,
+  bulkStage = 1,
+  allContactsComplete = false,
+  onMarkAllSent,
 }: OutreachTimelineCardProps) {
   const activeFollowUpDue = followUpSentAt ? followUp2DueAt : followUpDueAt;
   const currentStage = !followUpSentAt ? 1 : 2;
@@ -55,7 +63,7 @@ export function OutreachTimelineCard({
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg font-bold">
           <FiCalendar className="w-5 h-5 text-primary" />
-          Timeline
+          Contact timeline
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -68,7 +76,7 @@ export function OutreachTimelineCard({
             <div className="flex-1">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Sent Date</p>
               <p className="font-bold text-sm mt-0.5">
-                {messageSentAt ? format(new Date(messageSentAt), "MMMM d, yyyy") : "Date not set"}
+                {messageSentAt ? displayDate(messageSentAt) : "Date not set"}
               </p>
             </div>
           </div>
@@ -140,7 +148,7 @@ export function OutreachTimelineCard({
                           "font-bold text-sm mt-0.5",
                           isOverdue && "text-destructive"
                         )}>
-                          {activeFollowUpDue ? format(new Date(activeFollowUpDue), "MMMM d, yyyy") : "Date not set"}
+                          {activeFollowUpDue ? displayDate(activeFollowUpDue) : "Date not set"}
                         </p>
                         {isOverdue && (
                           <p className="text-[10px] text-destructive font-extrabold mt-1 tracking-wider uppercase">Action Overdue</p>
@@ -200,7 +208,7 @@ export function OutreachTimelineCard({
                       </div>
                   ) : (
                       <p className="font-bold text-sm mt-0.5">
-                        {followUpSentAt ? format(new Date(followUpSentAt), "MMM d, yyyy") : "Not sent yet"}
+                        {followUpSentAt ? displayDate(followUpSentAt) : "Not sent yet"}
                       </p>
                   )}
                 </div>
@@ -258,7 +266,7 @@ export function OutreachTimelineCard({
                           </div>
                       ) : (
                           <p className="font-bold text-sm mt-0.5">
-                            {followUp2SentAt ? format(new Date(followUp2SentAt), "MMM d, yyyy") : "Not sent yet"}
+                            {followUp2SentAt ? displayDate(followUp2SentAt) : "Not sent yet"}
                           </p>
                       )}
                     </div>
@@ -289,6 +297,14 @@ export function OutreachTimelineCard({
               isAllSent ? "Mark as Unsent" : (followUpSentAt ? "Mark Sent (Stage 2)" : "Mark as Sent")
             )}
           </Button>
+
+          {contactCount > 1 && onMarkAllSent && <div className="space-y-1.5 border-t border-primary/15 pt-3">
+            <Button variant="outline" size="sm" className="h-auto min-h-11 w-full gap-2 px-3 py-2 font-bold" onClick={onMarkAllSent} disabled={isUpdatingFollowUp || allContactsComplete}>
+              <FiCheckCircle className="h-4 w-4 shrink-0" />
+              {allContactsComplete ? "All contacts completed" : `Mark follow-up ${bulkStage} sent for all`}
+            </Button>
+            <p className="text-center text-xs text-muted-foreground">{allContactsComplete ? `Both follow-ups recorded for ${contactCount} contacts.` : `Record follow-up ${bulkStage} for all ${contactCount} contacts. Already marked contacts stay unchanged.`}</p>
+          </div>}
 
           {followUpSentAt && !isAllSent && (
               <Button

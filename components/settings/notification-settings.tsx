@@ -15,9 +15,11 @@ import { sendTestEmailAction } from "@/actions/settings";
 interface NotificationSettingsProps {
   initialEmail: string | null;
   initialReceiveNotifications: boolean;
+  initialReminderTime?: string;
+  timeZone?: string | null;
 }
 
-export function NotificationSettings({ initialEmail, initialReceiveNotifications }: NotificationSettingsProps) {
+export function NotificationSettings({ initialEmail, initialReceiveNotifications, initialReminderTime = "17:00", timeZone }: NotificationSettingsProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -91,6 +93,11 @@ export function NotificationSettings({ initialEmail, initialReceiveNotifications
             </p>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="reminderTime">Daily reminder time</Label>
+            <Input id="reminderTime" name="reminderTime" type="time" required defaultValue={initialReminderTime} />
+            <p className="text-xs text-muted-foreground">Uses your device timezone{timeZone ? ` (${timeZone})` : ""}. Reminders arrive on the next scheduled check after this time.</p>
+          </div>
           <div className="flex items-start space-x-3 bg-primary/5 p-4 rounded-xl border border-primary/10">
             <Checkbox
               id="receiveNotifications"
@@ -107,7 +114,7 @@ export function NotificationSettings({ initialEmail, initialReceiveNotifications
                 Enable Email Notifications
               </label>
               <p className="text-xs text-muted-foreground font-medium">
-                Receive reminders at 5:00 PM IST if no outreach is uploaded or if follow-ups are due.
+                Receive reminders at your chosen time if no outreach was sent today or if contact follow-ups are due.
               </p>
             </div>
           </div>

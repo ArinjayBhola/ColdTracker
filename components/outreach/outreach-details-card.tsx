@@ -13,6 +13,8 @@ import {
   FiCheck,
 } from "react-icons/fi";
 import { DetailContentCard, DetailItem } from "@/components/details/detail-content-card";
+import { APPLICATION_SOURCES, APPLICATION_STATUSES } from "@/lib/validations";
+import { displayDate } from "@/lib/display-date";
 
 interface OutreachDetailsCardProps {
   companyName: string;
@@ -23,6 +25,12 @@ interface OutreachDetailsCardProps {
   contactMethod?: string | null;
   emailAddress?: string | null;
   linkedinProfileUrl?: string | null;
+  emailThreadUrl?: string | null;
+  applicationSource?: string;
+  applicationStatus?: string;
+  applicationUrl?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
   editable?: boolean;
   onSave?: (data: Record<string, string>) => Promise<void>;
 }
@@ -36,6 +44,12 @@ export function OutreachDetailsCard({
   contactMethod,
   emailAddress,
   linkedinProfileUrl,
+  emailThreadUrl,
+  applicationSource = "DIRECT_EMAIL",
+  applicationStatus = "SENT",
+  applicationUrl,
+  createdAt,
+  updatedAt,
   editable,
   onSave,
 }: OutreachDetailsCardProps) {
@@ -50,6 +64,10 @@ export function OutreachDetailsCard({
     ["Contact method", contactMethod],
     ["Email", emailAddress],
     ["LinkedIn profile", linkedinProfileUrl],
+    ["Application source", applicationSource],
+    ["Application status", applicationStatus],
+    ["Application link", applicationUrl],
+    ["Email thread", emailThreadUrl],
   ].map(([label, value]) => `${label}: ${value?.trim() || "Not provided"}`).join("\n");
   const copied = copiedText === copyText;
   const copyDetails = async () => {
@@ -142,7 +160,17 @@ export function OutreachDetailsCard({
     return item ? [{ ...item, fullWidth: id === "companyLink" }] : [];
   });
 
-  return <DetailContentCard items={orderedItems} editable={editable} onSave={onSave} action={
+  const label = (value: string) => value.toLowerCase().replaceAll("_", " ").replace(/^./, character => character.toUpperCase());
+  const moreItems: DetailItem[] = [
+    { id: "applicationSource", label: "Application source", value: label(applicationSource), copyValue: applicationSource, inputType: "select", options: APPLICATION_SOURCES.map(value => ({ value, label: label(value) })) },
+    { id: "applicationStatus", label: "Application status", value: label(applicationStatus), copyValue: applicationStatus, inputType: "select", options: APPLICATION_STATUSES.map(value => ({ value, label: label(value) })) },
+    { id: "applicationUrl", label: "Application link", value: applicationUrl ? "Open application" : "Not added", copyValue: applicationUrl || "", isLink: !!applicationUrl, href: applicationUrl || undefined, inputType: "text", fullWidth: true, icon: <FiExternalLink className="h-3.5 w-3.5" /> },
+    { id: "emailThreadUrl", label: "Email thread", value: emailThreadUrl ? "Open conversation" : "Not added", copyValue: emailThreadUrl || "", isLink: !!emailThreadUrl, href: emailThreadUrl || undefined, inputType: "text", fullWidth: true, icon: <FiMail className="h-3.5 w-3.5" /> },
+    ...(createdAt ? [{ id: "createdAt", label: "Created", value: displayDate(createdAt), readOnly: true }] : []),
+    ...(updatedAt ? [{ id: "updatedAt", label: "Updated", value: displayDate(updatedAt), readOnly: true }] : []),
+  ];
+
+  return <DetailContentCard items={orderedItems} moreItems={moreItems} editable={editable} onSave={onSave} action={
     <div className="flex flex-wrap items-center justify-end gap-2">
       {gmailAction}
       <Button type="button" variant="outline" size="sm" onClick={copyDetails} aria-label="Copy all outreach details" className="h-7 rounded-full px-3 text-[10px] font-bold border-border/80">

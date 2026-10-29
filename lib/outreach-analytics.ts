@@ -6,22 +6,27 @@ export type AnalyticsRecord = {
   sentAt: string;
   channel: "Email" | "LinkedIn" | "Mixed" | "Unspecified";
   followUpDueAt: string | null;
+  statusHistory?: { status: string; at: string; source: string }[];
 };
 export type AnalyticsRange = "7" | "30" | "90" | "all";
 export const ANALYTICS_STATUSES = ["DRAFT", "SENT", "REPLIED", "INTERVIEW", "OFFER", "REJECTED", "GHOSTED", "CLOSED"] as const;
 const DAY = 86_400_000;
 const responses = new Set(["REPLIED", "INTERVIEW", "OFFER"]);
 const interviews = new Set(["INTERVIEW", "OFFER"]);
+const offers = new Set(["OFFER"]);
+const sentStages = new Set<string>(ANALYTICS_STATUSES.filter(status => status !== "DRAFT"));
+export const reachedStage = (record: Pick<AnalyticsRecord, "status" | "statusHistory">, stages: ReadonlySet<string>) =>
+  stages.has(record.status) || !!record.statusHistory?.some(event => stages.has(event.status));
 export const percent = (part: number, total: number) => total ? part / total * 100 : 0;
 const dayStart = (date: Date, zone: string) => Date.parse(`${calendarKey(date, zone)}T00:00:00Z`);
 
 function summarize(records: AnalyticsRecord[], todayStart: number) {
-  const sent = records.filter(record => record.status !== "DRAFT");
+  const sent = records.filter(record => reachedStage(record, sentStages));
   return {
     sent: sent.length,
-    responded: sent.filter(record => responses.has(record.status)).length,
-    interviews: sent.filter(record => interviews.has(record.status)).length,
-    offers: sent.filter(record => record.status === "OFFER").length,
+    responded: sent.filter(record => reachedStage(record, responses)).length,
+    interviews: sent.filter(record => reachedStage(record, interviews)).length,
+    offers: sent.filter(record => reachedStage(record, offers)).length,
     drafts: records.filter(record => record.status === "DRAFT").length,
     awaiting: sent.filter(record => record.status === "SENT" || record.status === "GHOSTED").length,
     overdue: sent.filter(record => (record.status === "SENT" || record.status === "GHOSTED") && record.followUpDueAt && Date.parse(record.followUpDueAt) < todayStart).length,
@@ -40,14 +45,14 @@ export function buildOutreachAnalytics(records: AnalyticsRecord[], range: Analyt
   const today = dayStart(new Date(now), timeZone);
   const days = range === "all" ? null : Number(range);
   const start = days === null ? null : today - (days - 1) * DAY;
-  const instant = (record: AnalyticsRecord) => Date.parse(record.status === "DRAFT" ? record.createdAt : record.sentAt);
-  const recordDate = (record: AnalyticsRecord) => localDay(record.status === "DRAFT" ? record.createdAt : record.sentAt);
+  const instant = (record: AnalyticsRecord) => Date.parse(reachedStage(record, sentStages) ? record.sentAt : record.createdAt);
+  const recordDate = (record: AnalyticsRecord) => localDay(reachedStage(record, sentStages) ? record.sentAt : record.createdAt);
   const current = records.filter(record => instant(record) <= now && (start === null || recordDate(record) >= start));
   const previous = days !== null && start !== null
     ? summarize(records.filter(record => recordDate(record) >= start - days * DAY && recordDate(record) < start), todayStart)
     : null;
   const summary = summarize(current, todayStart);
-  const sentRecords = current.filter(record => record.status !== "DRAFT");
+  const sentRecords = current.filter(record => reachedStage(record, sentStages));
   const firstDate = sentRecords.reduce((earliest, record) => Math.min(earliest, localDay(record.sentAt)), today);
   const chartStart = start ?? firstDate;
   const span = Math.max(1, Math.round((today - chartStart) / DAY) + 1);
@@ -62,7 +67,7 @@ export function buildOutreachAnalytics(records: AnalyticsRecord[], range: Analyt
     const index = Math.floor((localDay(record.sentAt) - chartStart) / (bucketDays * DAY));
     if (buckets[index]) {
       buckets[index].sent++;
-      if (responses.has(record.status)) buckets[index].responded++;
+      if (reachedStage(record, responses)) buckets[index].responded++;
     }
   }
   for (const bucket of buckets) bucket.responseRate = percent(bucket.responded, bucket.sent);

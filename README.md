@@ -95,6 +95,58 @@ The ColdTrack Lead Capture extension allows you to save LinkedIn profiles direct
 - `hooks/`: Custom React hooks.
 - `lib/`: Utility functions and shared library configurations.
 
+## Outreach history, contact follow-ups, and reliable reminders
+
+Before deploying these changes to an existing database, run
+`npm run db:migrate:reliability`. This transactional, rerunnable migration installs
+the status-history trigger, contact IDs, reminder time, and delivery log.
+`db:push` alone does not install the trigger or migrate legacy follow-up data.
+
+Status changes are recorded in the same transaction as the outreach update,
+including writes from external automation. Response, interview, and offer metrics
+retain previously recorded stages after rejection or closure. Charts remain grouped
+by initial sent date. The migration records the current status as a baseline;
+earlier unrecorded replies cannot be reconstructed. Status history is visible on
+the outreach page and included in JSON backups.
+
+Follow-up completion, second due dates, and history now belong to each contact.
+The queue shows one row per contact, and opening it selects that person. Existing
+company-level follow-up dates are preserved on the first contact only because
+the old data does not identify the recipient; review these assignments if needed.
+Legacy company-level columns remain for backup compatibility but no longer control
+follow-ups. Integrations updating follow-ups should use the contact's JSON fields
+and retain its stable ID. Drafts, replies, interviews, rejections, offers, and
+closed outreach do not receive follow-up reminders.
+
+Settings → Notifications now accepts a local reminder time (default 17:00), using
+the saved device timezone. Configure `CRON_SECRET` on the server and have the
+scheduler send `Authorization: Bearer <CRON_SECRET>`; missing configuration refuses
+requests with 503, and invalid credentials return 401. The Vercel schedule checks
+every five minutes. Hosting must support that frequency; otherwise configure an
+external scheduler with the same interval and authentication. Delivery occurs on
+the first check after the selected time, with catch-up until local midnight.
+
+The database stores one delivery per account, local date, and reminder kind.
+Atomic claims prevent concurrent sends; failed or interrupted attempts can retry
+after five minutes with the same frozen content, recipient, and provider
+idempotency key. Sent entries are retained to prevent repeat delivery. Uncertain
+attempts expire after 23 hours, before Resend's 24-hour key window ends, to avoid
+duplicate sends. The log records provider acceptance rather than inbox delivery.
+Set `RESEND_API_KEY`, optionally `REMINDER_FROM` for your verified sender, and
+`NEXTAUTH_URL` for links. The manual test-email button intentionally sends a new
+test message on each click.
+
+Excel exports include outreach with zero contacts, LinkedIn URLs, and each
+contact's follow-up dates. JSON backups preserve stage and contact history and the
+chosen reminder time; older version-1 backups are still accepted. Delivery logs
+are operational records and are not restored from backups.
+
+Checks: `npm run test:reliability` runs offline regression checks.
+`npm run test:reliability:db` creates synthetic objects inside a private PostgreSQL
+schema and always rolls back the transaction, including the schema. It never
+updates application tables or sends emails. A database role with schema creation
+permission is required for this integration check.
+
 ## Message templates
 
 Open `/templates` from the sidebar to create a private message library. Templates

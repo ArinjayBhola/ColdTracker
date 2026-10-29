@@ -6,13 +6,13 @@ import type { getOutreachById } from "@/actions/get-outreach";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FiFileText } from "react-icons/fi";
 import { NotesEditor } from "@/components/notes-editor";
-import { useState } from "react";
-import { toggleFollowUpSentAction, updateFollowUpDateAction } from "@/actions/follow-ups";
+import { useState, useEffect, useRef } from "react";
+import { toggleFollowUpSentAction, updateFollowUpDateAction, markAllFollowUpsSentAction } from "@/actions/follow-ups";
 import { useToast } from "@/hooks/use-toast";
 import { OutreachHeader } from "@/components/outreach/outreach-header";
 import { OutreachDetailsCard } from "@/components/outreach/outreach-details-card";
 import { OutreachTimelineCard } from "@/components/outreach/outreach-timeline-card";
-import { OutreachContactsCard } from "@/components/outreach/outreach-contacts-card";
+import { OutreachHistory } from "@/components/outreach/outreach-history";
 import { type OutreachContact } from "@/db/schema";
 import { FollowUpMessageCard } from "@/components/outreach/follow-up-message-card";
 import { EmailActivityCard } from "@/components/outreach/email-activity-card";
@@ -53,11 +53,28 @@ export function OutreachDetailClient({ initialData, id }: OutreachDetailClientPr
 
   const [isEditingSentDate, setIsEditingSentDate] = useState<number | null>(null); // null, 1 or 2
   const [newSentDate, setNewSentDate] = useState<Date | undefined>(undefined);
+  const appliedContactLink = useRef<string | null>(null);
+  useEffect(() => {
+    if (appliedContactLink.current === id || !item) return;
+    appliedContactLink.current = id;
+    const selectedId = new URLSearchParams(window.location.search).get("contact");
+    const index = item?.contacts.findIndex(contact => contact.id === selectedId) ?? -1;
+    if (index >= 0) setActiveContactIndex(index);
+  }, [id, item]);
+  useEffect(() => {
+    setIsEditingDate(false);
+    setIsEditingSentDate(null);
+    setNewDueDate(undefined);
+    setNewSentDate(undefined);
+  }, [activeContactIndex]);
 
   const onToggleAction = async (isMarkingSent: boolean, date?: Date) => {
     if (!item) return;
     setIsUpdatingFollowUp(true);
-    const res = await toggleFollowUpSentAction(item.id, isMarkingSent, date);
+    const contact = item.contacts[activeContactIndex];
+    const stage = isEditingSentDate === 1 || isEditingSentDate === 2 ? isEditingSentDate :
+      isMarkingSent ? (contact?.followUpSentAt ? 2 : 1) : (contact?.followUp2SentAt ? 2 : 1);
+    const res = await toggleFollowUpSentAction(item.id, isMarkingSent, date, contact?.id, stage);
     
     if (res.success) {
       toast({
@@ -82,7 +99,8 @@ export function OutreachDetailClient({ initialData, id }: OutreachDetailClientPr
     if (!item || !newDueDate) return;
     
     setIsUpdatingFollowUp(true);
-    const res = await updateFollowUpDateAction(item.id, newDueDate);
+    const contact = item.contacts[activeContactIndex];
+    const res = await updateFollowUpDateAction(item.id, newDueDate, contact?.id, contact?.followUpSentAt ? 2 : 1);
     
     if (res.success) {
       toast({
@@ -101,6 +119,24 @@ export function OutreachDetailClient({ initialData, id }: OutreachDetailClientPr
       });
     }
     setIsUpdatingFollowUp(false);
+  };
+
+  const handleMarkAllSent = async () => {
+    if (!item || isUpdatingFollowUp) return;
+    const stage = item.contacts.some(contact => !contact.followUpSentAt) ? 1 : 2;
+    setIsUpdatingFollowUp(true);
+    try {
+      const result = await markAllFollowUpsSentAction(item.id, stage);
+      if (!result.success) throw new Error(result.error || "Could not update follow-ups.");
+      if (result.item) queryClient.setQueryData(["outreach", id], { ...result.item, isAutomated: item.isAutomated });
+      else await refetchItem();
+      void queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
+      setIsEditingSentDate(null);
+      setIsEditingDate(false);
+      toast({ title: `Follow-up ${stage} marked sent`, description: `${result.updatedCount ?? 0} contacts updated.` });
+    } catch (error) {
+      toast({ title: "Could not update follow-ups", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" });
+    } finally { setIsUpdatingFollowUp(false); }
   };
 
   const handleSaveDetails = async (data: Record<string, string>) => {
@@ -152,15 +188,15 @@ export function OutreachDetailClient({ initialData, id }: OutreachDetailClientPr
     );
   }
 
-  const activeContact = item.contacts?.[activeContactIndex] || item.contacts?.[0] || {};
+  const activeContact: Partial<OutreachContact> = item.contacts?.[activeContactIndex] || item.contacts?.[0] || {};
   const messageSentAt = activeContact.messageSentAt;
   const followUpDueAt = activeContact.followUpDueAt;
   
-  const pendingDue = item.followUpSentAt ? item.followUp2DueAt : followUpDueAt;
-  const isOverdue = !item.followUp2SentAt && pendingDue && isBeforeLocalToday(pendingDue);
+  const pendingDue = activeContact.followUpSentAt ? activeContact.followUp2DueAt : followUpDueAt;
+  const isOverdue = !activeContact.followUp2SentAt && pendingDue && isBeforeLocalToday(pendingDue);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 md:space-y-8 pt-16 md:pt-0">
+    <div className="mx-auto min-w-0 max-w-5xl space-y-6 pt-16 md:space-y-8 md:pt-0">
       <OutreachHeader 
         id={item.id}
         companyName={item.companyName}
@@ -171,10 +207,12 @@ export function OutreachDetailClient({ initialData, id }: OutreachDetailClientPr
         isRefreshing={isRefreshing}
         onRefresh={handleRefresh}
         outreachData={item}
+        onSelectContact={setActiveContactIndex}
+        onDeleteContact={handleDeleteContact}
       />
 
       <div className="grid gap-6 md:gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6 md:space-y-8">
+        <div className="min-w-0 space-y-6 md:space-y-8 lg:col-span-2">
           <OutreachDetailsCard
             key={`${item.id}-${activeContactIndex}`}
             companyName={item.companyName}
@@ -182,24 +220,30 @@ export function OutreachDetailClient({ initialData, id }: OutreachDetailClientPr
             personRole={activeContact.personRole}
             roleTargeted={item.roleTargeted}
             companyLink={item.companyLink}
+            applicationSource={item.applicationSource}
+            applicationStatus={item.applicationStatus}
+            applicationUrl={item.applicationUrl}
+            createdAt={item.createdAt}
+            updatedAt={item.updatedAt}
             contactMethod={item.contacts?.[activeContactIndex]?.contactMethod || (item as unknown as {contactMethod?: string}).contactMethod}
             emailAddress={item.contacts?.[activeContactIndex]?.emailAddress || (item as unknown as {emailAddress?: string}).emailAddress}
             linkedinProfileUrl={item.contacts?.[activeContactIndex]?.linkedinProfileUrl || (item as unknown as {linkedinProfileUrl?: string}).linkedinProfileUrl}
+            emailThreadUrl={activeContact.emailThreadUrl}
             editable={true}
             onSave={handleSaveDetails}
           />
 
           <FollowUpMessageCard
-            key={`${item.id}-${activeContactIndex}-${item.followUpSentAt ? 2 : 1}`}
+            key={`${item.id}-${activeContactIndex}-${activeContact.followUpSentAt ? 2 : 1}`}
             companyName={item.companyName}
             personName={activeContact.personName}
             roleTargeted={item.roleTargeted}
             status={item.status}
             contactMethod={activeContact.contactMethod}
             firstDue={followUpDueAt}
-            followUpSentAt={item.followUpSentAt}
-            followUp2DueAt={item.followUp2DueAt}
-            followUp2SentAt={item.followUp2SentAt}
+            followUpSentAt={activeContact.followUpSentAt ?? null}
+            followUp2DueAt={activeContact.followUp2DueAt ?? null}
+            followUp2SentAt={activeContact.followUp2SentAt ?? null}
           />
 
           <Card className="border-2 shadow-sm">
@@ -236,13 +280,13 @@ export function OutreachDetailClient({ initialData, id }: OutreachDetailClientPr
           </Card>
         </div>
 
-        <div className="space-y-6">
-          <OutreachTimelineCard 
+        <div className="min-w-0 space-y-6">
+          {activeContact.id && <OutreachTimelineCard
             messageSentAt={messageSentAt}
             followUpDueAt={followUpDueAt}
-            followUpSentAt={item.followUpSentAt}
-            followUp2DueAt={item.followUp2DueAt}
-            followUp2SentAt={item.followUp2SentAt}
+            followUpSentAt={activeContact.followUpSentAt ?? null}
+            followUp2DueAt={activeContact.followUp2DueAt ?? null}
+            followUp2SentAt={activeContact.followUp2SentAt ?? null}
             isOverdue={!!isOverdue}
             isEditingDate={isEditingDate}
             setIsEditingDate={setIsEditingDate}
@@ -255,14 +299,13 @@ export function OutreachDetailClient({ initialData, id }: OutreachDetailClientPr
             setIsEditingSentDate={setIsEditingSentDate}
             newSentDate={newSentDate}
             setNewSentDate={setNewSentDate}
-          />
+            contactCount={item.contacts.length}
+            bulkStage={item.contacts.some(contact => !contact.followUpSentAt) ? 1 : 2}
+            allContactsComplete={item.contacts.every(contact => !!contact.followUp2SentAt)}
+            onMarkAllSent={handleMarkAllSent}
+          />}
 
-          <OutreachContactsCard
-            contacts={item.contacts || []}
-            activeIndex={activeContactIndex}
-            onSelect={setActiveContactIndex}
-            onDelete={handleDeleteContact}
-          />
+          <OutreachHistory statusHistory={item.statusHistory} followUpHistory={activeContact.followUpHistory} />
 
           <EmailActivityCard outreachId={item.id} />
         </div>

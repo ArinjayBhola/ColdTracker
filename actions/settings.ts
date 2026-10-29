@@ -8,6 +8,7 @@ import { eq, count } from "drizzle-orm";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { validReminderTime } from "@/lib/reminder-schedule";
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
@@ -159,13 +160,17 @@ export async function updateNotificationSettingsAction(formData: FormData) {
 
   const notificationEmail = formData.get("notificationEmail") as string;
   const receiveNotifications = formData.get("receiveNotifications") === "true";
+  const reminderTime = formData.get("reminderTime");
+  if (!validReminderTime(reminderTime)) return { error: "Choose a valid reminder time." };
 
   try {
     const updateData: {
       receiveNotifications: boolean;
       notificationEmail?: string | null;
+      reminderTime: string;
     } = {
       receiveNotifications,
+      reminderTime,
     };
 
     if (notificationEmail) {

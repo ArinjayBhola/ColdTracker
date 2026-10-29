@@ -33,13 +33,13 @@ export async function exportAccountBackup() {
         tx.select().from(messageTemplates).where(eq(messageTemplates.userId, userId)),
         tx.select().from(extensionLeads).where(eq(extensionLeads.userId, userId)),
         tx.select().from(startupTracking).where(eq(startupTracking.userId, userId)),
-        tx.query.users.findFirst({ where: eq(users.id, userId), columns: { preferences: true, keyboardShortcuts: true, notificationEmail: true, receiveNotifications: true } }),
+        tx.query.users.findFirst({ where: eq(users.id, userId), columns: { preferences: true, keyboardShortcuts: true, notificationEmail: true, receiveNotifications: true, reminderTime: true } }),
         tx.query.goals.findFirst({ where: eq(goals.userId, userId) }),
       ]);
       if (!user) throw new Error("Account not found.");
       const shortcuts = shortcutPreferencesSchema.safeParse(user.keyboardShortcuts);
       return { format: "coldtrack-backup", version: 1, exportedAt: new Date().toISOString(), outreach: records, templates, extensionLeads: leads, startupTracking: tracking,
-        settings: { preferences: parsePreferences(user.preferences), keyboardShortcuts: shortcuts.success ? shortcuts.data : defaultShortcutPreferences, notificationEmail: user.notificationEmail, receiveNotifications: user.receiveNotifications ?? true, goals: goal ? { dailyTarget: goal.dailyTarget, weeklyTarget: goal.weeklyTarget } : null } };
+        settings: { preferences: parsePreferences(user.preferences), keyboardShortcuts: shortcuts.success ? shortcuts.data : defaultShortcutPreferences, notificationEmail: user.notificationEmail, receiveNotifications: user.receiveNotifications ?? true, reminderTime: user.reminderTime, goals: goal ? { dailyTarget: goal.dailyTarget, weeklyTarget: goal.weeklyTarget } : null } };
     }, { isolationLevel: "repeatable read", accessMode: "read only" });
     // Schema strips ownership fields; credentials and OAuth tokens are never exported.
     return { success: true as const, data: readBackup(JSON.parse(JSON.stringify(data))) };
@@ -66,7 +66,11 @@ export async function restoreAccountBackup(input: unknown, includeSettings: bool
     ]);
     const owned = (rows: { id: string }[]) => new Set(rows.map(row => row.id));
     const outreachIds = owned(existingOutreach), templateIds = owned(existingTemplates), leadIds = owned(existingLeads), trackingIds = owned(existingTracking);
-    const records = backup.outreach.map(row => ({ ...row, id: restoreId(userId, row.id, outreachIds), userId, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt), followUpSentAt: asDate(row.followUpSentAt), followUp2DueAt: asDate(row.followUp2DueAt), followUp2SentAt: asDate(row.followUp2SentAt) }));
+    const records = backup.outreach.map(row => ({ ...row,
+      contacts: row.contacts.map((contact, index) => index === 0 && contact.followUpSentAt === undefined ? {
+        ...contact, followUpSentAt: row.followUpSentAt, followUp2DueAt: row.followUp2DueAt, followUp2SentAt: row.followUp2SentAt,
+      } : contact),
+      id: restoreId(userId, row.id, outreachIds), userId, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt), followUpSentAt: asDate(row.followUpSentAt), followUp2DueAt: asDate(row.followUp2DueAt), followUp2SentAt: asDate(row.followUp2SentAt) }));
     for (const batch of chunks(records)) await tx.insert(outreach).values(batch).onConflictDoUpdate({ target: outreach.id, set: excluded(outreach), setWhere: eq(outreach.userId, userId) });
     const templates = backup.templates.map(row => ({ ...row, id: restoreId(userId, row.id, templateIds), userId, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }));
     for (const batch of chunks(templates)) await tx.insert(messageTemplates).values(batch).onConflictDoUpdate({ target: messageTemplates.id, set: excluded(messageTemplates), setWhere: eq(messageTemplates.userId, userId) });
@@ -78,7 +82,7 @@ export async function restoreAccountBackup(input: unknown, includeSettings: bool
     for (const batch of chunks(tracking)) await tx.insert(startupTracking).values(batch).onConflictDoUpdate({ target: [startupTracking.userId, startupTracking.startupId], set: { outreachDone: sql`excluded.outreach_done`, notes: sql`excluded.notes`, followUpDate: sql`excluded.follow_up_date`, updatedAt: sql`excluded.updated_at` } });
     if (includeSettings === true) {
       const settings = backup.settings;
-      await tx.update(users).set({ preferences: settings.preferences, keyboardShortcuts: settings.keyboardShortcuts, notificationEmail: settings.notificationEmail, receiveNotifications: settings.receiveNotifications }).where(eq(users.id, userId));
+      await tx.update(users).set({ preferences: settings.preferences, keyboardShortcuts: settings.keyboardShortcuts, notificationEmail: settings.notificationEmail, receiveNotifications: settings.receiveNotifications, ...(settings.reminderTime ? { reminderTime: settings.reminderTime } : {}) }).where(eq(users.id, userId));
       if (settings.goals) {
         const goal = await tx.query.goals.findFirst({ where: eq(goals.userId, userId) });
         if (goal) await tx.update(goals).set({ ...settings.goals, updatedAt: new Date() }).where(eq(goals.userId, userId));

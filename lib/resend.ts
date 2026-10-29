@@ -1,80 +1,39 @@
-import { Resend } from 'resend';
+import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+type ReminderEmail = { from: string; to: string[]; subject: string; html: string };
+const escapeHtml = (value: string) => value.replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!);
+
+export function buildReminderEmail(kind: "daily" | "follow_up", to: string, name: string, pendingCount = 0): ReminderEmail {
+  const base = (process.env.NEXTAUTH_URL || "https://cold-track.arinjay.dev").replace(/\/$/, "");
+  const followUp = kind === "follow_up";
+  const href = escapeHtml(`${base}/${followUp ? "follow-ups" : "outreach/new"}`);
+  return {
+    from: process.env.REMINDER_FROM || "ColdTracker <notifications@resend.dev>",
+    to: [to],
+    subject: followUp ? `Pending Follow-ups Reminder (${pendingCount})` : "Daily Outreach Reminder",
+    html: `<div style="font-family:sans-serif;max-width:600px;margin:auto;padding:20px">
+      <h2>Hi ${escapeHtml(name)},</h2>
+      <p>${followUp ? `You have <strong>${pendingCount}</strong> contact follow-ups due today or overdue.` : "You haven't recorded any outreach sent today."}</p>
+      <p><a href="${href}">${followUp ? "View follow-up queue" : "Log today's outreach"}</a></p>
+      <p>Happy tracking,<br>The ColdTracker Team</p></div>`,
+  };
+}
+
+export async function sendReminderEmail(payload: ReminderEmail, idempotencyKey?: string) {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  return resend.emails.send(payload, idempotencyKey ? { idempotencyKey } : undefined);
+}
 
 export async function sendDailyOutreachReminder(to: string, name: string) {
   try {
-    const { data, error } = await resend.emails.send({
-      from: 'ColdTracker <notifications@resend.dev>', // Replace with your verified domain
-      to: [to],
-      subject: 'Daily Outreach Reminder 🚀',
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
-          <h2 style="color: #0f172a;">Hi ${name},</h2>
-          <p style="font-size: 16px; line-height: 1.6; color: #334155;">
-            You haven't uploaded any outreach activity today. Consistency is key to landing your dream role!
-          </p>
-          <div style="margin-top: 30px;">
-            <a href="cold-track.arinjay.dev/outreach/new" 
-               style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
-              Log Today's Outreach
-            </a>
-          </div>
-          <p style="margin-top: 40px; font-size: 14px; color: #64748b;">
-            Happy tracking,<br>
-            The ColdTracker Team
-          </p>
-        </div>
-      `,
-    });
-
-    if (error) {
-      console.error('Error sending daily outreach reminder email:', error);
-      return { success: false, error };
-    }
-
-    return { success: true, data };
-  } catch (error) {
-    console.error('Unexpected error sending daily outreach reminder email:', error);
-    return { success: false, error };
-  }
+    const result = await sendReminderEmail(buildReminderEmail("daily", to, name));
+    return { success: !result.error && !!result.data?.id, ...result };
+  } catch (error) { return { success: false, error }; }
 }
 
 export async function sendFollowUpReminder(to: string, name: string, pendingCount: number) {
   try {
-    const { data, error } = await resend.emails.send({
-      from: 'ColdTracker <notifications@resend.dev>', // Replace with your verified domain
-      to: [to],
-      subject: `Pending Follow-ups Reminder (${pendingCount}) 📬`,
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
-          <h2 style="color: #0f172a;">Hi ${name},</h2>
-          <p style="font-size: 16px; line-height: 1.6; color: #334155;">
-            You have <strong>${pendingCount}</strong> follow-up${pendingCount > 1 ? 's' : ''} due today or overdue. 
-            Don't let these opportunities slip away!
-          </p>
-          <div style="margin-top: 30px;">
-            <a href="${process.env.NEXTAUTH_URL}/follow-ups" 
-               style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
-              View Follow-up Queue
-            </a>
-          </div>
-          <p style="margin-top: 40px; font-size: 14px; color: #64748b;">
-            Happy tracking,<br>
-            The ColdTracker Team
-          </p>
-        </div>
-      `,
-    });
-
-    if (error) {
-      console.error('Error sending follow-up reminder email:', error);
-      return { success: false, error };
-    }
-
-    return { success: true, data };
-  } catch (error) {
-    console.error('Unexpected error sending follow-up reminder email:', error);
-    return { success: false, error };
-  }
+    const result = await sendReminderEmail(buildReminderEmail("follow_up", to, name, pendingCount));
+    return { success: !result.error && !!result.data?.id, ...result };
+  } catch (error) { return { success: false, error }; }
 }

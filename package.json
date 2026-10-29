@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:reliability": "node scripts/check-outreach-reliability.cjs",
+    "test:reliability:db": "node scripts/check-outreach-reliability-db.cjs",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:generate": "drizzle-kit generate",
@@ -17,6 +19,7 @@
     "db:migrate:preferences": "node scripts/migrate-preferences.mjs",
     "db:migrate:performance": "node scripts/migrate-performance.mjs",
     "db:migrate:notifications": "node scripts/migrate-notifications.mjs",
+    "db:migrate:reliability": "node scripts/migrate-outreach-reliability.mjs",
     "db:migrate:follow-ups": "node scripts/simplify-follow-up-templates.cjs --apply"
   },
   "dependencies": {

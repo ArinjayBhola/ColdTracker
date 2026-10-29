@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { FiExternalLink } from "react-icons/fi";
+import { FiExternalLink, FiChevronDown, FiChevronUp } from "react-icons/fi";
 import { CopyButton } from "../copy-button";
 import Link from "next/link";
 import { ReactNode } from "react";
@@ -32,11 +32,13 @@ export interface DetailItem {
   href?: string;
   fullWidth?: boolean;
   required?: boolean;
+  readOnly?: boolean;
 }
 
 interface DetailContentCardProps {
   title?: string;
   items: DetailItem[];
+  moreItems?: DetailItem[];
   action?: ReactNode;
   editable?: boolean;
   highlightIds?: string[];
@@ -46,6 +48,7 @@ interface DetailContentCardProps {
 export function DetailContentCard({
   title = "Details",
   items,
+  moreItems = [],
   action,
   editable = false,
   highlightIds = [],
@@ -56,11 +59,15 @@ export function DetailContentCard({
   const [isSaving, setIsSaving] = useState(false);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
   const [saveError, setSaveError] = useState("");
+  const [showMore, setShowMore] = useState(false);
+  const fieldsId = useId();
+  const allItems = [...items, ...moreItems];
+  const visibleItems = showMore || isEditing ? allItems : items;
 
   const handleEditStart = () => {
     setSaveError("");
     const initialValues: Record<string, string> = {};
-    items.forEach(item => {
+    allItems.filter(item => !item.readOnly).forEach(item => {
       // Use copyValue (even if empty string) or raw string as the editable source
       initialValues[item.id] = (item.copyValue ?? (typeof item.value === 'string' ? item.value : "")) as string;
     });
@@ -69,7 +76,7 @@ export function DetailContentCard({
   };
 
   const handleSave = async () => {
-    const missing = items.find(item => item.required && !editValues[item.id]?.trim());
+    const missing = allItems.find(item => item.required && !item.readOnly && !editValues[item.id]?.trim());
     if (missing) { setSaveError(`${missing.label} is required.`); return; }
     setSaveError("");
     setIsSaving(true);
@@ -99,6 +106,9 @@ export function DetailContentCard({
           {title}
         </CardTitle>
         <div className="flex flex-wrap items-center gap-2">
+          {moreItems.length > 0 && !isEditing && <Button type="button" variant="ghost" size="sm" onClick={() => setShowMore(value => !value)} aria-expanded={showMore} aria-controls={fieldsId} className="h-auto min-h-8 gap-1 rounded-full px-3 py-1 text-xs">
+            {showMore ? "Less details" : "More details"}{showMore ? <FiChevronUp className="h-3 w-3" /> : <FiChevronDown className="h-3 w-3" />}
+          </Button>}
           {editable && !isEditing && (
             <Button 
               variant="outline" 
@@ -139,8 +149,8 @@ export function DetailContentCard({
 
       <CardContent className="pt-3 px-4 pb-4">
         {saveError && <p role="alert" className="mb-3 text-sm text-destructive">{saveError}</p>}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {items.map((item, index) => {
+        <div id={fieldsId} className="grid min-w-0 grid-cols-1 gap-2 md:grid-cols-2">
+          {visibleItems.map((item, index) => {
             const isHighlighted = highlightIds.includes(item.id);
             return (
             <div 
@@ -161,7 +171,7 @@ export function DetailContentCard({
               </label>
 
               <div className="flex items-center gap-2 font-semibold text-sm text-foreground transition-all group min-h-[20px] pl-0.5">
-                {isEditing ? (
+                {isEditing && !item.readOnly ? (
                   item.inputType === "date" ? (
                     <DatePicker 
                       value={editValues[item.id] && !isNaN(new Date(editValues[item.id]).getTime()) ? new Date(editValues[item.id]) : undefined}

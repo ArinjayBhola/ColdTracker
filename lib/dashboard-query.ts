@@ -2,8 +2,9 @@ import { db } from "@/db";
 import { calendarKey, calendarMidnight, shiftCalendarKey } from "@/lib/user-calendar";
 import { sql } from "drizzle-orm";
 import type { outreach } from "@/db/schema";
+import { earliestContactDue, FOLLOW_UP_STOP_STATUSES } from "@/lib/contact-follow-ups";
 
-type PageRow = Pick<typeof outreach.$inferSelect, "id" | "companyName" | "companyLink" | "roleTargeted" | "applicationSource" | "applicationUrl" | "applicationStatus" | "status" | "contacts"> & { isAutomated: boolean; createdAt: string; updatedAt: string; followUpSentAt: string | null; followUp2DueAt: string | null; followUp2SentAt: string | null };
+type PageRow = Pick<typeof outreach.$inferSelect, "id" | "companyName" | "companyLink" | "roleTargeted" | "applicationSource" | "applicationUrl" | "applicationStatus" | "status" | "contacts"> & { isAutomated: boolean; createdAt: string; updatedAt: string };
 
 // Read preferences, count and a clamped page in one snapshot/round trip. The
 // non-materialized CTE lets PostgreSQL retain index access for count and paging.
@@ -52,9 +53,7 @@ export async function readDashboardPage(userId: string, page = 1, filter = "", o
       coalesce((SELECT jsonb_agg(to_jsonb(p) ORDER BY p."createdAt" DESC, p.id DESC) FROM (
         SELECT id, company_name AS "companyName", company_link AS "companyLink", role_targeted AS "roleTargeted",
                application_source AS "applicationSource", application_url AS "applicationUrl", application_status AS "applicationStatus",
-               status, contacts, "isAutomated", created_at AT TIME ZONE 'UTC' AS "createdAt", updated_at AT TIME ZONE 'UTC' AS "updatedAt",
-               follow_up_sent_at AT TIME ZONE 'UTC' AS "followUpSentAt",
-               follow_up_2_due_at AT TIME ZONE 'UTC' AS "followUp2DueAt", follow_up_2_sent_at AT TIME ZONE 'UTC' AS "followUp2SentAt"
+               status, contacts, "isAutomated", created_at AT TIME ZONE 'UTC' AS "createdAt", updated_at AT TIME ZONE 'UTC' AS "updatedAt"
         FROM filtered ORDER BY created_at DESC, id DESC
         LIMIT (SELECT page_size FROM paging)
         OFFSET (SELECT (current_page - 1) * page_size FROM paging)
@@ -73,14 +72,13 @@ export async function readDashboardPage(userId: string, page = 1, filter = "", o
         const day = calendarKey(contact.messageSentAt || item.createdAt, zone);
         return (!start || day >= start) && (!end || day <= end);
       }) ?? item.contacts[0];
-      const finished = item.followUp2SentAt || ["DRAFT", "REPLIED", "OFFER", "REJECTED", "CLOSED"].includes(item.status);
-      const firstDue = item.contacts.map(contact => contact.followUpDueAt).filter((value): value is string | Date => !!value).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0];
+      const finished = FOLLOW_UP_STOP_STATUSES.includes(item.status);
       return ({
       id: item.id, isAutomated: item.isAutomated, companyName: item.companyName, companyLink: item.companyLink, roleTargeted: item.roleTargeted,
       applicationSource: item.applicationSource, applicationUrl: item.applicationUrl, applicationStatus: item.applicationStatus,
       status: item.status, personName: selected?.personName || "No Contact", personRole: selected?.personRole || "N/A",
-      messageSentAt: selected?.messageSentAt || new Date(item.createdAt), followUpDueAt: finished ? null : item.followUpSentAt ? item.followUp2DueAt : firstDue ?? null,
-      followUpSentAt: item.followUpSentAt ? new Date(item.followUpSentAt) : null,
+      messageSentAt: selected?.messageSentAt || new Date(item.createdAt), followUpDueAt: finished ? null : earliestContactDue(item.contacts),
+      followUpSentAt: selected?.followUpSentAt ? new Date(selected.followUpSentAt) : null,
       contactMethod: selected?.contactMethod || "EMAIL", contactCount: item.contacts.length, contacts: item.contacts,
       date: new Date(item.createdAt), updatedAt: new Date(item.updatedAt),
     }); }),

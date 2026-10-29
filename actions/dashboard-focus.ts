@@ -15,9 +15,11 @@ export async function getDashboardFocus() {
   const [row] = await db.execute<{ daily: number; weekly: number; due: number; dailyTarget: number; weeklyTarget: number }>(sql`
     SELECT count(*) FILTER (WHERE created_at >= ${day.start.toISOString()}::timestamptz AT TIME ZONE 'UTC' AND created_at < ${day.end.toISOString()}::timestamptz AT TIME ZONE 'UTC')::int AS daily,
       count(*) FILTER (WHERE created_at >= ${week}::timestamptz AT TIME ZONE 'UTC' AND created_at < ${weekEnd}::timestamptz AT TIME ZONE 'UTC')::int AS weekly,
-      count(*) FILTER (WHERE status NOT IN ('DRAFT','REPLIED','REJECTED','OFFER','CLOSED') AND follow_up_2_sent_at IS NULL AND
-        CASE WHEN follow_up_sent_at IS NOT NULL THEN (follow_up_2_due_at AT TIME ZONE 'UTC') < ${day.end.toISOString()}::timestamptz
-        ELSE EXISTS (SELECT 1 FROM jsonb_array_elements(contacts) c WHERE nullif(c->>'followUpDueAt', '')::timestamptz < ${day.end.toISOString()}::timestamptz) END)::int AS due,
+      coalesce(sum(CASE WHEN status NOT IN ('DRAFT','REPLIED','INTERVIEW','REJECTED','OFFER','CLOSED') THEN
+        (SELECT count(*) FROM jsonb_array_elements(contacts) c WHERE nullif(c->>'followUp2SentAt', '') IS NULL AND
+          (CASE WHEN nullif(c->>'followUpSentAt', '') IS NOT NULL THEN nullif(c->>'followUp2DueAt', '')::timestamptz
+           ELSE nullif(c->>'followUpDueAt', '')::timestamptz END) < ${day.end.toISOString()}::timestamptz)
+        ELSE 0 END), 0)::int AS due,
       coalesce((SELECT daily_target FROM goals WHERE user_id = ${userId} LIMIT 1), 3) AS "dailyTarget",
       coalesce((SELECT weekly_target FROM goals WHERE user_id = ${userId} LIMIT 1), 10) AS "weeklyTarget"
     FROM outreach WHERE "userId" = ${userId}

@@ -7,7 +7,7 @@ import { calendarKey } from "@/lib/user-calendar";
 import type { getPaginatedFollowUpItemsAction } from "@/actions/follow-ups";
 import { cn } from "@/lib/utils";
 import { FiCalendar, FiClock, FiMail, FiLinkedin, FiRefreshCw, FiCheckCircle, FiSearch, FiFilter, FiX } from "react-icons/fi";
-import { format } from "date-fns";
+import { displayDate } from "@/lib/display-date";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -98,9 +98,9 @@ export function InfiniteOutreachList({
     if (node) observer.current.observe(node);
   }, [isFetchingNextPage, hasNextPage, fetchNextPage]);
 
-  const handleToggleFollowUp = async (id: string, currentlySent: boolean) => {
-    setUpdatingId(id);
-    const res = await toggleFollowUpSentAction(id, !currentlySent);
+  const handleToggleFollowUp = async (id: string, currentlySent: boolean, contactId: string, stage: 1 | 2) => {
+    setUpdatingId(contactId);
+    const res = await toggleFollowUpSentAction(id, !currentlySent, undefined, contactId, stage);
     
     if (res.success) {
       toast({
@@ -155,10 +155,10 @@ export function InfiniteOutreachList({
   const hasActiveFilters = !!(searchTerm || methodFilter !== "ALL" || statusFilter !== "ALL" || stageFilter !== "ALL");
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       {/* Tabs UI */}
       <div className="border-b border-border/50">
-        <div className="flex gap-8 overflow-x-auto no-scrollbar">
+        <div className="flex gap-6 overflow-x-auto no-scrollbar">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -243,8 +243,7 @@ export function InfiniteOutreachList({
           </SelectContent>
         </Select>
 
-        <div className="flex gap-2">
-          {hasActiveFilters && (
+        {hasActiveFilters && <div className="col-span-full flex gap-2">
             <Button 
                 variant="ghost" 
                 size="sm" 
@@ -254,8 +253,7 @@ export function InfiniteOutreachList({
               <FiX className="w-4 h-4" />
               Clear Filters
             </Button>
-          )}
-        </div>
+        </div>}
       </div>
 
       {/* List */}
@@ -291,11 +289,12 @@ export function InfiniteOutreachList({
             <div className="divide-y divide-border/30">
               {filteredItems.map((item, index) => (
                 <div 
-                  key={item.id}
+                  key={`${item.id}-${item.contactId}`}
                   ref={index === filteredItems.length - 1 ? lastElementRef : null}
-                  className="p-4 md:p-6 flex flex-col md:flex-row md:items-center justify-between hover:bg-muted/30 transition-all duration-200 group gap-4 md:gap-0"
+                  data-follow-up-row
+                  className="grid min-w-0 gap-4 p-4 transition-colors hover:bg-muted/30 md:p-6 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center"
                 >
-                    <div className="flex items-start gap-4 md:gap-6 flex-1">
+                    <div className="flex min-w-0 items-start gap-3 md:gap-4">
                         <div className="flex flex-col items-center gap-2 pt-1 md:pt-0">
                             <div className={cn(
                                 "w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center border-2 shrink-0",
@@ -319,26 +318,26 @@ export function InfiniteOutreachList({
                         </div>
 
                         <div className="flex-1 space-y-2 min-w-0">
-                            <div className="flex flex-wrap items-start justify-between gap-2">
-                                <div className="space-y-0.5 md:space-y-1 min-w-0">
-                                    <h3 className="text-base md:text-lg font-bold tracking-tight group-hover:text-primary transition-colors truncate">
-                                        {item.companyName}
-                                        <span className="ml-2 text-[10px] uppercase tracking-wider bg-muted px-1.5 py-0.5 rounded text-muted-foreground font-medium">
+                            <div className="space-y-2">
+                                <div className="min-w-0 space-y-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <h3 className="min-w-0 text-base font-bold tracking-tight [overflow-wrap:anywhere] md:text-lg">{item.companyName}</h3>
+                                        <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                                             {item.followUpSentAt ? "Follow-up 2" : "Follow-up 1"}
                                         </span>
-                                    </h3>
-                                    <p className="text-xs md:text-sm text-muted-foreground truncate">
+                                    </div>
+                                    <p className="line-clamp-2 text-xs text-muted-foreground [overflow-wrap:anywhere] md:text-sm" title={`${item.personName} · ${item.roleTargeted}`}>
                                         {item.personName} {item.contacts.length > 1 ? `(+${item.contacts.length - 1} more)` : ""} • {item.roleTargeted}
                                     </p>
                                 </div>
-                                <div className="scale-90 md:scale-100 origin-top-right shrink-0">
+                                <div>
                                     <StatusBadge status={item.status} />
                                 </div>
                             </div>
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
                                 <span className="flex items-center gap-1">
                                     <FiClock className="w-3.5 h-3.5" />
-                                    {item.followUpDueAt ? format(new Date(item.followUpDueAt), "MMM d, yyyy") : "N/A"}
+                                    {item.followUpDueAt ? displayDate(item.followUpDueAt) : "N/A"}
                                 </span>
                                 <span className={cn(
                                     "flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold border",
@@ -353,17 +352,17 @@ export function InfiniteOutreachList({
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-end gap-2 md:gap-3 pl-12 md:pl-6 w-full md:w-auto">
-                        <OutreachActions id={item.id} currentStatus={item.status} />
+                    <div data-follow-up-actions className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+                        <OutreachActions id={item.id} currentStatus={item.status} compact />
                         {category !== "SENT" && (
                             <Button 
                                 variant="outline" 
                                 size="sm" 
-                                className="h-9 gap-2 font-bold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-200"
-                                onClick={() => handleToggleFollowUp(item.id, false)}
-                                disabled={updatingId === item.id}
+                                className="h-auto min-h-10 shrink-0 gap-2 whitespace-nowrap border-emerald-200 py-2 font-bold text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                                onClick={() => handleToggleFollowUp(item.id, false, item.contactId, item.followUpSentAt ? 2 : 1)}
+                                disabled={updatingId === item.contactId}
                             >
-                                {updatingId === item.id ? (
+                                {updatingId === item.contactId ? (
                                     <FiRefreshCw className="w-4 h-4 animate-spin" />
                                 ) : (
                                     <FiCheckCircle className="w-4 h-4" />
@@ -371,8 +370,8 @@ export function InfiniteOutreachList({
                                 Mark Sent
                             </Button>
                         )}
-                        <Button variant="outline" size="sm" asChild className="h-9">
-                            <Link href={`/outreach/${item.id}`}>View</Link>
+                        <Button variant="outline" size="sm" asChild className="h-auto min-h-10 shrink-0 py-2">
+                            <Link href={`/outreach/${item.id}?contact=${item.contactId}`}>View</Link>
                         </Button>
                         <DeleteArchiveActions id={item.id} />
                     </div>

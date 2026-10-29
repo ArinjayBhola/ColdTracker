@@ -16,6 +16,7 @@ import { FiCheckCircle, FiRefreshCw } from "react-icons/fi";
 
 type FollowUpItem = {
   id: string;
+  contactId: string;
   companyName: string;
   personName: string;
   roleTargeted: string;
@@ -23,6 +24,7 @@ type FollowUpItem = {
   followUpDueAt: Date | string;
   contactMethod: string;
   followUpSentAt?: Date | string | null;
+  followUp2SentAt?: Date | string | null;
 };
 
 type FollowUpSectionProps = {
@@ -59,9 +61,9 @@ export function FollowUpSections({
     }));
   };
 
-  const handleToggleFollowUp = async (id: string, currentlySent: boolean) => {
-    setUpdatingId(id);
-    const res = await toggleFollowUpSentAction(id, !currentlySent);
+  const handleToggleFollowUp = async (id: string, currentlySent: boolean, contactId: string, stage: 1 | 2) => {
+    setUpdatingId(contactId);
+    const res = await toggleFollowUpSentAction(id, !currentlySent, undefined, contactId, stage);
     
     if (res.success) {
       toast({
@@ -125,9 +127,9 @@ export function FollowUpSections({
           // If it's the "Sent" section, we only show sent items.
           // For other sections, we only show non-sent items (already handled by getFollowUpItems, but double checking here)
           if (section.title === "Sent") {
-            if (!item.followUpSentAt) return false;
+            if (!item.followUp2SentAt) return false;
           } else {
-            if (item.followUpSentAt) return false;
+            if (item.followUp2SentAt) return false;
           }
           
           if (filter === "ALL") return true;
@@ -173,7 +175,7 @@ export function FollowUpSections({
                 <div className="divide-y divide-border/30">
                   {filteredItems.map((item, index) => (
                     <div 
-                      key={item.id} 
+                      key={`${item.id}-${item.contactId}`}
                       className="p-4 md:p-6 flex flex-col md:flex-row md:items-center justify-between hover:bg-muted/30 transition-all duration-200 group gap-4 md:gap-0"
                     >
                       <div className="flex items-start gap-4 md:gap-6 flex-1">
@@ -249,10 +251,10 @@ export function FollowUpSections({
                             variant="outline" 
                             size="sm" 
                             className="h-9 gap-2 font-bold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-200"
-                            onClick={() => handleToggleFollowUp(item.id, false)}
-                            disabled={updatingId === item.id}
+                            onClick={() => handleToggleFollowUp(item.id, false, item.contactId, item.followUpSentAt ? 2 : 1)}
+                            disabled={updatingId === item.contactId}
                           >
-                            {updatingId === item.id ? (
+                            {updatingId === item.contactId ? (
                               <FiRefreshCw className="w-4 h-4 animate-spin" />
                             ) : (
                               <FiCheckCircle className="w-4 h-4" />
@@ -265,10 +267,10 @@ export function FollowUpSections({
                             variant="outline" 
                             size="sm" 
                             className="h-9 gap-2 font-bold text-muted-foreground hover:text-destructive hover:bg-destructive/5 hover:border-destructive/20"
-                            onClick={() => handleToggleFollowUp(item.id, true)}
-                            disabled={updatingId === item.id}
+                            onClick={() => handleToggleFollowUp(item.id, true, item.contactId, 2)}
+                            disabled={updatingId === item.contactId}
                           >
-                            {updatingId === item.id ? (
+                            {updatingId === item.contactId ? (
                               <FiRefreshCw className="w-4 h-4 animate-spin" />
                             ) : (
                               <FiX className="w-4 h-4" />

@@ -1,5 +1,7 @@
 import { calendarKey, shiftCalendarKey } from "@/lib/user-calendar";
 import type { AnalyticsRecord } from "@/lib/outreach-analytics";
+import { reachedStage, ANALYTICS_STATUSES } from "@/lib/outreach-analytics";
+const sentStages = new Set<string>(ANALYTICS_STATUSES.filter(status => status !== "DRAFT"));
 
 export function buildActivityHeatmap(records: AnalyticsRecord[], year: number, asOf: string, timeZone: string, weekStartsOn: 0 | 1 = 1) {
   const now = Date.parse(asOf);
@@ -7,7 +9,7 @@ export function buildActivityHeatmap(records: AnalyticsRecord[], year: number, a
   const counts = new Map<string, number>();
   for (const record of records) {
     const sent = Date.parse(record.sentAt);
-    if (record.status === "DRAFT" || !Number.isFinite(sent) || sent > now) continue;
+    if (!reachedStage(record, sentStages) || !Number.isFinite(sent) || sent > now) continue;
     const key = calendarKey(record.sentAt, timeZone);
     if (Number(key.slice(0, 4)) === year) counts.set(key, (counts.get(key) ?? 0) + 1);
   }
