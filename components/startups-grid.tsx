@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import Link from "next/link";
 import { DeleteStartupButton } from "@/components/delete-startup-button";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type StartupItem = {
   id: string;
@@ -27,16 +28,18 @@ type StartupItem = {
 
 type StartupsGridProps = {
   items: StartupItem[];
+  selectedIds: string[];
+  onSelect: (id: string, checked: boolean) => void;
 };
 
-export function StartupsGrid({ items }: StartupsGridProps) {
+export function StartupsGrid({ items, selectedIds, onSelect }: StartupsGridProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {items.map((item) => (
         <div key={item.id} className="group">
           <Card className="h-full border-border/50 bg-card hover:bg-muted/30 hover:border-primary/20 transition-all duration-300 rounded-2xl overflow-hidden relative group-hover:shadow-xl group-hover:shadow-primary/5">
             <Link href={`/startups/${item.id}`} className="block">
-            <CardHeader className="p-6 pb-2 pr-16 flex flex-row items-start justify-between space-y-0">
+            <CardHeader className="p-6 pb-2 pr-24 flex flex-row items-start justify-between space-y-0">
               <div className="flex items-center gap-4">
                 <Avatar className="h-12 w-12 border-2 border-muted shrink-0 rounded-xl">
                   <AvatarImage src={item.logoUrl || ""} alt={item.name} className="object-cover" />
@@ -98,6 +101,12 @@ export function StartupsGrid({ items }: StartupsGridProps) {
 
             </CardContent>
             </Link>
+            <Checkbox
+              className="absolute right-14 top-6"
+              aria-label={`Select ${item.name}`}
+              checked={selectedIds.includes(item.id)}
+              onCheckedChange={checked => onSelect(item.id, checked === true)}
+            />
             <DeleteStartupButton
               startupId={item.id}
               startupName={item.name}

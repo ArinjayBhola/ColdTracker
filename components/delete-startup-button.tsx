@@ -73,7 +73,7 @@ export function DeleteStartupButton({
             Delete <span className="font-bold text-primary">{startupName}</span>?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            This permanently removes the startup, its team members, and its tracking data.
+            This permanently removes the startup from the shared catalog for all users, including its team members and tracking data.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

@@ -4,6 +4,8 @@ import { motion } from "framer-motion";
 
 import { FiCheckCircle, FiCircle, FiExternalLink, FiLinkedin, FiMail, FiEye } from "react-icons/fi";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DeleteStartupButton } from "@/components/delete-startup-button";
 import Link from "next/link";
 import { TableShell, TableContent } from "@/components/ui/data-table/table-shell";
 import { TableHeader } from "@/components/ui/data-table/table-header";
@@ -40,9 +42,11 @@ type StartupsTableProps = {
   items: StartupItem[];
   totalCount: number;
   currentPage: number;
+  selectedIds: string[];
+  onSelect: (id: string, checked: boolean) => void;
 };
 
-export function StartupsTable({ items, totalCount, currentPage }: StartupsTableProps) {
+export function StartupsTable({ items, totalCount, currentPage, selectedIds, onSelect }: StartupsTableProps) {
   const { toast } = useToast();
   const router = useRouter();
   const itemsPerPage = 21;
@@ -88,6 +92,7 @@ export function StartupsTable({ items, totalCount, currentPage }: StartupsTableP
       <TableContent>
         <thead className="border-b border-border/50 bg-muted/30">
           <tr>
+            <th className="w-12 px-4"><span className="sr-only">Select startups</span></th>
             <th className="h-12 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Startup</th>
             <th className="h-12 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Founders</th>
             <th className="h-12 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wider text-muted-foreground">Status</th>
@@ -107,7 +112,7 @@ export function StartupsTable({ items, totalCount, currentPage }: StartupsTableP
         >
           {filteredItems.length === 0 ? (
             <tr>
-              <td colSpan={4} className="p-12 text-center text-muted-foreground italic">
+              <td colSpan={5} className="p-12 text-center text-muted-foreground italic">
                 No startups found.
               </td>
             </tr>
@@ -123,6 +128,9 @@ export function StartupsTable({ items, totalCount, currentPage }: StartupsTableP
                   }}
                   className="border-b border-border/30 transition-all hover:bg-muted/30 group"
                 >
+                  <td className="px-4 align-middle">
+                    <Checkbox aria-label={`Select ${item.name}`} checked={selectedIds.includes(item.id)} onCheckedChange={checked => onSelect(item.id, checked === true)} />
+                  </td>
                   <td className="p-6 align-middle">
                     <div className="flex items-center gap-4">
                       <Avatar className="h-10 w-10 border-2 border-muted shrink-0 rounded-xl">
@@ -181,6 +189,7 @@ export function StartupsTable({ items, totalCount, currentPage }: StartupsTableP
                   </td>
                   <td className="p-6 align-middle text-right">
                     <div className="flex items-center justify-end gap-1">
+                      <DeleteStartupButton startupId={item.id} startupName={item.name} className="h-8 w-8 text-muted-foreground hover:text-destructive" />
                       <Button variant="ghost" size="icon" asChild title="View startup" className="h-8 w-8">
                         <Link href={`/startups/${item.id}`}>
                           <FiEye className="w-4 h-4" />

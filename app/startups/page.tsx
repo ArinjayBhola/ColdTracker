@@ -1,18 +1,19 @@
 import { Sidebar } from "@/components/sidebar";
 import { StartupsExplorer } from "@/components/startups-explorer";
 import { getStartupsAction } from "@/actions/startups";
+import { FiBriefcase, FiCheckCircle, FiCircle } from "react-icons/fi";
 
 
 export default async function StartupsPage(
   props: {
-    searchParams: Promise<{ page?: string; q?: string; sort?: string }>;
+    searchParams: Promise<{ page?: string; q?: string; sort?: string; size?: string }>;
   }
 ) {
   const searchParams = await props.searchParams;
   const page = Math.max(1, Number(searchParams.page) || 1);
   const search = searchParams.q || "";
   const sort = searchParams.sort || "NOT_OUTREACHED";
-  const { items, totalCount } = await getStartupsAction(page, 21, search, sort);
+  const { items, totalCount, summary, teamSizeCounts, selectedTeamSize } = await getStartupsAction(page, 21, search, sort, searchParams.size);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -29,6 +30,24 @@ export default async function StartupsPage(
             </div>
           </div>
 
+          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3" aria-label="Your startup outreach summary">
+            {[
+              { label: "Total startups", value: summary.total, icon: FiBriefcase, color: "bg-primary/10 text-primary" },
+              { label: "Outreach done", value: summary.done, icon: FiCheckCircle, color: "bg-emerald-500/10 text-emerald-600" },
+              { label: "Outreach left", value: summary.left, icon: FiCircle, color: "bg-amber-500/10 text-amber-600" },
+            ].map(({ label, value, icon: Icon, color }) => (
+              <div key={label} className="flex items-center gap-4 rounded-2xl border border-border/50 bg-card p-5">
+                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${color}`}>
+                  <Icon className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
+                  <dd className="mt-1 text-3xl font-bold tabular-nums tracking-tight">{value.toLocaleString("en-US")}</dd>
+                </div>
+              </div>
+            ))}
+          </dl>
+
           {/* Explorer */}
           <StartupsExplorer 
             items={items} 
@@ -36,6 +55,8 @@ export default async function StartupsPage(
             currentPage={page} 
             initialSearch={search}
             initialSort={sort}
+            teamSizeCounts={teamSizeCounts}
+            selectedTeamSize={selectedTeamSize}
           />
         </div>
       </main>

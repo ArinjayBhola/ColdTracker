@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { FiGrid, FiList, FiSearch } from "react-icons/fi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DeleteStartupsButton } from "@/components/delete-startups-button";
 import { StartupsGrid } from "./startups-grid";
 import { StartupsTable } from "./startups-table";
 import { TablePagination } from "@/components/ui/data-table/table-pagination";
@@ -39,12 +41,24 @@ type StartupsExplorerProps = {
   currentPage: number;
   initialSearch: string;
   initialSort: string;
+  teamSizeCounts: { value: string; label: string; count: number }[];
+  selectedTeamSize: string;
 };
 
-export function StartupsExplorer({ items, totalCount, currentPage, initialSearch, initialSort }: StartupsExplorerProps) {
+export function StartupsExplorer({ items, totalCount, currentPage, initialSearch, initialSort, teamSizeCounts, selectedTeamSize }: StartupsExplorerProps) {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [sort, setSort] = useState(initialSort);
+  const selectionScope = JSON.stringify([currentPage, initialSearch, initialSort, selectedTeamSize, items.map(item => item.id)]);
+  const [selection, setSelection] = useState<{ scope: string; ids: string[] }>({ scope: selectionScope, ids: [] });
+  const selectedIds = selection.scope === selectionScope ? selection.ids : [];
+  const selectedItems = items.filter(item => selectedIds.includes(item.id));
+  const toggleSelection = (id: string, checked: boolean) => {
+    setSelection(previous => {
+      const ids = previous.scope === selectionScope ? previous.ids : [];
+      return { scope: selectionScope, ids: checked ? [...new Set([...ids, id])] : ids.filter(value => value !== id) };
+    });
+  };
   const isFirstSearchEffect = useRef(true);
   const router = useRouter();
 
@@ -119,12 +133,68 @@ export function StartupsExplorer({ items, totalCount, currentPage, initialSearch
         </div>
       </div>
 
+      <div className="space-y-3">
+        <p className="text-sm font-semibold">Team size <span className="font-normal text-muted-foreground">· employees</span></p>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter startups by team size">
+          {[{ value: "all", label: "All sizes", count: teamSizeCounts.reduce((sum, filter) => sum + filter.count, 0) }, ...teamSizeCounts].map(filter => (
+            <Button
+              key={filter.value}
+              variant={selectedTeamSize === filter.value ? "default" : "outline"}
+              size="sm"
+              className="gap-2 rounded-xl"
+              aria-pressed={selectedTeamSize === filter.value}
+              onClick={() => {
+                const params = new URLSearchParams(window.location.search);
+                if (filter.value === "all") params.delete("size");
+                else params.set("size", filter.value);
+                if (searchQuery.trim()) params.set("q", searchQuery.trim());
+                else params.delete("q");
+                params.set("sort", sort);
+                params.set("page", "1");
+                router.push(`/startups?${params.toString()}`);
+              }}
+            >
+              {filter.label}
+              <span className={cn(
+                "inline-flex min-w-6 items-center justify-center rounded-md px-1.5 py-0.5 text-xs font-semibold tabular-nums",
+                selectedTeamSize === filter.value ? "bg-background/20" : "bg-muted text-muted-foreground"
+              )}>{filter.count}</span>
+            </Button>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground">Reported ranges are grouped by their upper limit. Open-ended sizes include values such as 100+.</p>
+      </div>
+
+      {selectedItems.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/50 bg-muted/20 p-4">
+          <label className="flex cursor-pointer items-center gap-3 text-sm font-medium">
+            <Checkbox
+              checked={selectedItems.length === items.length ? true : selectedItems.length ? "indeterminate" : false}
+              onCheckedChange={checked => setSelection({ scope: selectionScope, ids: checked === true ? items.map(item => item.id) : [] })}
+            />
+            Select this page ({items.length})
+          </label>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground" aria-live="polite">{selectedItems.length} selected</span>
+            {selectedItems.length > 0 && <Button variant="ghost" size="sm" onClick={() => setSelection({ scope: selectionScope, ids: [] })}>Clear</Button>}
+            <DeleteStartupsButton items={selectedItems} onDeleted={count => {
+              setSelection({ scope: selectionScope, ids: [] });
+              const lastPage = Math.max(1, Math.ceil((totalCount - count) / pageSize));
+              if (currentPage > lastPage) handlePageChange(lastPage);
+              router.refresh();
+            }} />
+          </div>
+        </div>
+      )}
+
       <div className="min-h-[400px]">
 
-        {view === "grid" ? (
-        <StartupsGrid items={items} />
+        {items.length === 0 ? (
+          <div className="rounded-2xl border border-border/50 p-12 text-center text-muted-foreground">No startups match your search and team size.</div>
+        ) : view === "grid" ? (
+        <StartupsGrid items={items} selectedIds={selectedIds} onSelect={toggleSelection} />
       ) : (
-          <StartupsTable items={items} totalCount={totalCount} currentPage={currentPage} />
+          <StartupsTable items={items} totalCount={totalCount} currentPage={currentPage} selectedIds={selectedIds} onSelect={toggleSelection} />
         )}
       </div>
 
