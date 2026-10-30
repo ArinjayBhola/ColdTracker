@@ -6,6 +6,7 @@ import { FiCheckCircle, FiCircle, FiExternalLink, FiLinkedin, FiMail, FiEye } fr
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DeleteStartupButton } from "@/components/delete-startup-button";
+import { StartupFormDialog } from "@/components/startup-form-dialog";
 import Link from "next/link";
 import { TableShell, TableContent } from "@/components/ui/data-table/table-shell";
 import { TableHeader } from "@/components/ui/data-table/table-header";
@@ -189,6 +190,7 @@ export function StartupsTable({ items, totalCount, currentPage, selectedIds, onS
                   </td>
                   <td className="p-6 align-middle text-right">
                     <div className="flex items-center justify-end gap-1">
+                      <StartupFormDialog startupId={item.id} startupName={item.name} compact />
                       <DeleteStartupButton startupId={item.id} startupName={item.name} className="h-8 w-8 text-muted-foreground hover:text-destructive" />
                       <Button variant="ghost" size="icon" asChild title="View startup" className="h-8 w-8">
                         <Link href={`/startups/${item.id}`}>

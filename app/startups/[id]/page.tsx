@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { OutreachToggle } from "@/components/outreach-toggle";
 import { DeleteStartupButton } from "@/components/delete-startup-button";
+import { StartupFormDialog } from "@/components/startup-form-dialog";
 
 
 export default async function StartupDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -53,7 +54,8 @@ export default async function StartupDetailPage({ params }: { params: Promise<{ 
                         </Badge>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <StartupFormDialog startupId={startup.id} startupName={startup.name} />
                       <OutreachToggle 
                         startupId={startup.id} 
                         initialStatus={startup.tracking?.[0]?.outreachDone || false} 
@@ -142,7 +144,7 @@ export default async function StartupDetailPage({ params }: { params: Promise<{ 
                 <div className="space-y-6">
                   <div className="space-y-2">
                     <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Stage</div>
-                    <div className="font-bold text-base">{startup.fundingRound || "Seed"}</div>
+                    <div className="font-bold text-base">{startup.fundingRound || "Undisclosed"}</div>
                   </div>
                   <div className="space-y-2">
                     <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Amount</div>

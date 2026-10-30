@@ -2,6 +2,7 @@ import { Sidebar } from "@/components/sidebar";
 import { StartupsExplorer } from "@/components/startups-explorer";
 import { getStartupsAction } from "@/actions/startups";
 import { FiBriefcase, FiCheckCircle, FiCircle } from "react-icons/fi";
+import { StartupFormDialog } from "@/components/startup-form-dialog";
 
 
 export default async function StartupsPage(
@@ -28,6 +29,7 @@ export default async function StartupsPage(
                 Discover and explore startups and their opportunities
               </p>
             </div>
+            <StartupFormDialog />
           </div>
 
           <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3" aria-label="Your startup outreach summary">

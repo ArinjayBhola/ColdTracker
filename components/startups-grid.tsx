@@ -5,7 +5,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import Link from "next/link";
-import { DeleteStartupButton } from "@/components/delete-startup-button";
 import { Checkbox } from "@/components/ui/checkbox";
 
 type StartupItem = {
@@ -39,7 +38,7 @@ export function StartupsGrid({ items, selectedIds, onSelect }: StartupsGridProps
         <div key={item.id} className="group">
           <Card className="h-full border-border/50 bg-card hover:bg-muted/30 hover:border-primary/20 transition-all duration-300 rounded-2xl overflow-hidden relative group-hover:shadow-xl group-hover:shadow-primary/5">
             <Link href={`/startups/${item.id}`} className="block">
-            <CardHeader className="p-6 pb-2 pr-24 flex flex-row items-start justify-between space-y-0">
+            <CardHeader className="p-6 pb-2 pt-16 flex flex-row items-start justify-between space-y-0">
               <div className="flex items-center gap-4">
                 <Avatar className="h-12 w-12 border-2 border-muted shrink-0 rounded-xl">
                   <AvatarImage src={item.logoUrl || ""} alt={item.name} className="object-cover" />
@@ -69,11 +68,11 @@ export function StartupsGrid({ items, selectedIds, onSelect }: StartupsGridProps
                 </div>
                 <div className="flex items-center gap-1.5">
                   <FiUsers className="w-3.5 h-3.5" />
-                  <span>{item.teamSize || "1-10"}</span>
+                  <span>{item.teamSize || "Size unknown"}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <FiDollarSign className="w-3.5 h-3.5" />
-                  <span>{item.fundingAmount || "Bootstrapped"}</span>
+                  <span>{item.fundingAmount || "Undisclosed"}</span>
                 </div>
               </div>
 
@@ -102,15 +101,10 @@ export function StartupsGrid({ items, selectedIds, onSelect }: StartupsGridProps
             </CardContent>
             </Link>
             <Checkbox
-              className="absolute right-14 top-6"
+              className="absolute left-6 top-6"
               aria-label={`Select ${item.name}`}
               checked={selectedIds.includes(item.id)}
               onCheckedChange={checked => onSelect(item.id, checked === true)}
-            />
-            <DeleteStartupButton
-              startupId={item.id}
-              startupName={item.name}
-              className="absolute right-4 top-4 h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
             />
           </Card>
         </div>

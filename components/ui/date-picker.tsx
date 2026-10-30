@@ -1,11 +1,12 @@
 "use client"
 
 import * as React from "react"
-import { format } from "date-fns"
+import { format, parse, isValid } from "date-fns"
 import { Calendar as CalendarIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import dynamic from "next/dynamic"
 const Calendar = dynamic(() => import("@/components/ui/calendar").then(module => module.Calendar), { loading: () => <div className="h-72 w-72 animate-pulse rounded-xl bg-muted" aria-label="Loading calendar" /> })
 import {
@@ -27,6 +28,20 @@ interface DatePickerProps {
 export function DatePicker({ value, onChange, placeholder = "Pick a date", className, name, id, displayFormat = "PPP" }: DatePickerProps) {
   const [date, setDate] = React.useState<Date | undefined>(value ? new Date(value) : undefined)
   const [open, setOpen] = React.useState(false)
+  const [manualDate, setManualDate] = React.useState("")
+  const [manualError, setManualError] = React.useState("")
+  const manualId = React.useId()
+
+  const applyManualDate = () => {
+    const text = manualDate.trim()
+    if (!text) { handleSelect(undefined); return }
+    const parsed = parse(text, "dd/MM/yyyy", new Date())
+    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(text) || !isValid(parsed) || format(parsed, "dd/MM/yyyy") !== text) {
+      setManualError("Enter a valid date as DD/MM/YYYY")
+      return
+    }
+    handleSelect(parsed)
+  }
 
   const timestamp = value?.getTime()
   React.useEffect(() => {
@@ -44,7 +59,13 @@ export function DatePicker({ value, onChange, placeholder = "Pick a date", class
   return (
     <div className={cn("grid gap-2", className)}>
       <input type="hidden" name={name} value={date && !isNaN(date.getTime()) ? date.toISOString() : ""} />
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={nextOpen => {
+        setOpen(nextOpen)
+        if (nextOpen) {
+          setManualDate(date && isValid(date) ? format(date, "dd/MM/yyyy") : "")
+          setManualError("")
+        }
+      }}>
         <PopoverTrigger asChild>
           <Button
             id={id}
@@ -60,9 +81,21 @@ export function DatePicker({ value, onChange, placeholder = "Pick a date", class
           </Button>
         </PopoverTrigger>
         <PopoverContent className="z-[180] w-auto max-w-[calc(100vw-1rem)] p-0 rounded-2xl border-border/50 bg-card/95 backdrop-blur-2xl shadow-premium animate-in zoom-in-95 duration-200" align="start">
+          <div className="space-y-2 border-b border-border/20 p-3">
+            <label htmlFor={manualId} className="text-xs font-medium text-muted-foreground">Enter date (DD/MM/YYYY)</label>
+            <div className="flex items-center gap-2">
+              <Input id={manualId} value={manualDate} placeholder="DD/MM/YYYY" maxLength={10}
+                className="h-9 min-w-0 flex-1" aria-invalid={!!manualError} aria-describedby={manualError ? `${manualId}-error` : undefined}
+                onChange={event => { setManualDate(event.target.value); setManualError("") }}
+                onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); event.stopPropagation(); applyManualDate() } }} />
+              <Button type="button" size="sm" className="h-9" onClick={applyManualDate}>Apply</Button>
+            </div>
+            {manualError && <p id={`${manualId}-error`} role="alert" className="text-xs text-destructive">{manualError}</p>}
+          </div>
           {open && <Calendar
             mode="single"
             selected={date}
+            defaultMonth={date}
             onSelect={handleSelect}
             initialFocus
             startMonth={new Date(new Date().getFullYear() - 100, 0)}
