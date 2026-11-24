@@ -3,12 +3,12 @@ import { getUserTimeZone, getUserDayBounds } from "@/lib/user-time-zone";
 import { getPaginatedFollowUpItemsAction } from "@/actions/follow-ups";
 import { Sidebar } from "@/components/sidebar";
 import { FiCheckCircle } from "react-icons/fi";
-import { InfiniteOutreachList } from "@/components/infinite-outreach-list";
+import { FollowUpList } from "@/components/follow-up-list";
 
 async function FollowUpContent() {
   const [timeZone, day] = await Promise.all([getUserTimeZone(), getUserDayBounds()]);
   const initialPage = timeZone && day ? await getPaginatedFollowUpItemsAction("ALL_ACTIVE", 1, 15, "ALL", timeZone, { key: day.key, start: day.start.toISOString(), end: day.end.toISOString() }) : undefined;
-  return <InfiniteOutreachList initialCategory="ALL_ACTIVE" initialPage={initialPage} initialTimeZone={timeZone} initialDay={day?.key} />;
+  return <FollowUpList initialCategory="ALL_ACTIVE" initialPage={initialPage} initialTimeZone={timeZone} initialDay={day?.key} />;
 }
 
 export default async function FollowUpsPage() {

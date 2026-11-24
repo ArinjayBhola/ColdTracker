@@ -241,6 +241,16 @@ the real follow-up mutation actions and reminder logic without sending emails.
 including a populated migration rerun; set `FOLLOW_UP_TEST_URL` for a different
 port. Its disposable source and lookup records are removed afterward.
 
+Follow-up search, contact method, and status filters apply on the server before
+pagination, so they cover the complete queue. Search matches company/contact
+names and treats `%`, `_`, and backslashes as literal text. Results use 15-row
+Previous/Next pages instead of an accumulating infinite list. Changing any
+filter starts at page one; inactive page caches expire after a minute. No
+additional migration is needed for these filters.
+`node scripts/check-follow-ups-browser.mjs` checks unloaded search matches,
+combined filters, bounded page navigation, debounce, and mobile layout in Chrome
+using a disposable account (and the same `FOLLOW_UP_TEST_URL` setting).
+
 ## Statistics performance
 
 Stats reads one database snapshot containing daily cohort counts, heatmap day

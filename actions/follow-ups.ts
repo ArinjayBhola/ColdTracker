@@ -7,7 +7,7 @@ import { eq, and } from "drizzle-orm";
 import { getUserTimeZone } from "@/lib/user-time-zone";
 import { scheduleFollowUp } from "@/lib/follow-up-rules";
 import { getAccountPreferences } from "@/actions/preferences";
-import { getFollowUpPage } from "@/lib/follow-up-query";
+import { getFollowUpPage, type FollowUpFilters } from "@/lib/follow-up-query";
 import { DEFAULT_PREFERENCES } from "@/lib/preferences";
 import { revalidatePath } from "next/cache";
 
@@ -119,8 +119,9 @@ export async function markAllFollowUpsSentAction(id: string, stage: 1 | 2): Prom
 export async function getPaginatedFollowUpItemsAction(
   category: "OVERDUE" | "TODAY" | "UPCOMING" | "SENT" | "ALL_ACTIVE",
   page = 1, limit = 15, stage: "ALL" | "1" | "2" = "ALL", timeZone?: string, browserDay?: BrowserDay,
+  filters: FollowUpFilters = {},
 ) {
   const session = await auth();
   if (!session?.user?.id) return { items: [], hasMore: false };
-  return getFollowUpPage(session.user.id, category, page, limit, stage, timeZone, browserDay);
+  return getFollowUpPage(session.user.id, category, page, limit, stage, timeZone, browserDay, filters);
 }

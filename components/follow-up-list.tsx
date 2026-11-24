@@ -1,7 +1,7 @@
 "use client";
 
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { toggleFollowUpSentAction } from "@/actions/follow-ups";
 import { calendarKey } from "@/lib/user-calendar";
 import type { getPaginatedFollowUpItemsAction } from "@/actions/follow-ups";
@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 
 type Category = "OVERDUE" | "TODAY" | "UPCOMING" | "SENT" | "ALL_ACTIVE";
 
-export function InfiniteOutreachList({ 
+export function FollowUpList({
   initialCategory, initialPage, initialTimeZone = null, initialDay
 }: {
   initialCategory: Category;
@@ -29,16 +29,19 @@ export function InfiniteOutreachList({
 }) {
   const [localDate, setLocalDate] = useState(initialDay || "");
   const [timeZone, setTimeZone] = useState<string | null>(initialTimeZone);
+  const [currentPage, setCurrentPage] = useState(1);
   useEffect(() => {
     const sync = () => {
       const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const date = calendarKey(new Date(), zone);
+      if (zone !== timeZone || date !== localDate) setCurrentPage(1);
       setTimeZone(zone);
-      setLocalDate(calendarKey(new Date(), zone));
+      setLocalDate(date);
     };
     sync();
     window.addEventListener("coldtrack-calendar-change", sync);
     return () => window.removeEventListener("coldtrack-calendar-change", sync);
-  }, []);
+  }, [timeZone, localDate]);
   const [category, setCategory] = useState<Category>(initialCategory);
   const [stageFilter, setStageFilter] = useState<"ALL" | "1" | "2">("ALL");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -49,54 +52,40 @@ export function InfiniteOutreachList({
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [initialUpdatedAt] = useState(Date.now);
 
-  // No debouncing needed for frontend-only search if we want instant feedback, 
-  // but let's keep it for performance if the list is large.
+  // One server request after typing settles, rather than loading history pages
+  // until a locally filtered match happens to appear.
   useEffect(() => {
+    if (searchTerm.trim() === debouncedSearch) return;
     const timer = setTimeout(() => {
-      setDebouncedSearch(searchTerm);
+      setDebouncedSearch(searchTerm.trim());
+      setCurrentPage(1);
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchTerm]);
+  }, [searchTerm, debouncedSearch]);
 
   const {
     data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
+    isFetching,
     isLoading,
     isError,
     refetch
-  } = useInfiniteQuery({
-    enabled: !!timeZone,
-    queryKey: ["follow-ups", category, stageFilter, timeZone, localDate],
-    queryFn: async ({ pageParam = 1, signal }) => {
-      const params = new URLSearchParams({ category, page: String(pageParam), stage: stageFilter, timeZone: timeZone! });
+  } = useQuery({
+    enabled: !!timeZone && !!localDate,
+    queryKey: ["follow-ups", category, stageFilter, timeZone, localDate, debouncedSearch, methodFilter, statusFilter, currentPage],
+    queryFn: async ({ signal }) => {
+      const params = new URLSearchParams({ category, page: String(currentPage), stage: stageFilter, timeZone: timeZone!, q: debouncedSearch, method: methodFilter, status: statusFilter });
       const response = await fetch(`/api/follow-ups?${params}`, { cache: "no-store", signal });
       if (!response.ok) throw new Error("Could not load follow-ups");
       return await response.json() as Awaited<ReturnType<typeof getPaginatedFollowUpItemsAction>>;
     },
-    initialData: initialPage && category === initialCategory && stageFilter === "ALL" && timeZone === initialTimeZone && localDate === initialDay ? { pages: [initialPage], pageParams: [1] } : undefined,
-    initialPageParam: 1,
-    getNextPageParam: (lastPage, allPages) => {
-      return lastPage.hasMore ? allPages.length + 1 : undefined;
-    },
+    initialData: initialPage && currentPage === 1 && !debouncedSearch && methodFilter === "ALL" && statusFilter === "ALL" && category === initialCategory && stageFilter === "ALL" && timeZone === initialTimeZone && localDate === initialDay ? initialPage : undefined,
+    initialDataUpdatedAt: initialUpdatedAt,
     staleTime: 5 * 60 * 1000,
+    gcTime: 60_000,
+    refetchOnMount: true,
   });
-
-  const observer = useRef<IntersectionObserver | null>(null);
-  const lastElementRef = useCallback((node: HTMLDivElement | null) => {
-    if (isFetchingNextPage) return;
-    if (observer.current) observer.current.disconnect();
-    
-    observer.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && hasNextPage) {
-        fetchNextPage();
-      }
-    });
-    
-    if (node) observer.current.observe(node);
-  }, [isFetchingNextPage, hasNextPage, fetchNextPage]);
 
   const handleToggleFollowUp = async (id: string, currentlySent: boolean, contactId: string, stage: 1 | 2) => {
     setUpdatingId(contactId);
@@ -120,9 +109,11 @@ export function InfiniteOutreachList({
 
   const clearFilters = () => {
     setSearchTerm("");
+    setDebouncedSearch("");
     setMethodFilter("ALL");
     setStatusFilter("ALL");
     setStageFilter("ALL");
+    setCurrentPage(1);
   };
 
   const tabs: { id: Category; label: string }[] = [
@@ -133,24 +124,7 @@ export function InfiniteOutreachList({
     { id: "ALL_ACTIVE", label: "Active Follow-ups" },
   ];
 
-  const allRawItems = data?.pages.flatMap(page => page.items) || [];
-
-  // Frontend Filtering logic (Same pattern as dashboard)
-  const filteredItems = allRawItems.filter((item) => {
-    // Search Filter
-    const matchesSearch = 
-        !debouncedSearch || 
-        item.companyName.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-        item.personName.toLowerCase().includes(debouncedSearch.toLowerCase());
-
-    // Contact Method Filter
-    const matchesMethod = methodFilter === "ALL" || item.contactMethod === methodFilter;
-
-    // Status Filter
-    const matchesStatus = statusFilter === "ALL" || item.status === statusFilter;
-
-    return matchesSearch && matchesMethod && matchesStatus;
-  });
+  const items = data?.items ?? [];
 
   const hasActiveFilters = !!(searchTerm || methodFilter !== "ALL" || statusFilter !== "ALL" || stageFilter !== "ALL");
 
@@ -162,7 +136,7 @@ export function InfiniteOutreachList({
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setCategory(tab.id)}
+              onClick={() => { setCategory(tab.id); setCurrentPage(1); }}
               className={cn(
                 "pb-3 text-sm font-semibold transition-all relative whitespace-nowrap",
                 category === tab.id 
@@ -184,6 +158,8 @@ export function InfiniteOutreachList({
         <div className="relative">
           <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input 
+            aria-label="Search follow-ups"
+            maxLength={200}
             placeholder="Search company or contact..." 
             className="pl-10 h-11"
             value={searchTerm}
@@ -191,8 +167,8 @@ export function InfiniteOutreachList({
           />
         </div>
 
-        <Select value={methodFilter} onValueChange={setMethodFilter}>
-          <SelectTrigger className="h-11 border-2">
+        <Select value={methodFilter} onValueChange={value => { setMethodFilter(value); setCurrentPage(1); }}>
+          <SelectTrigger aria-label="Follow-up contact method" className="h-11 border-2">
             <div className="flex items-center gap-2">
               <FiFilter className="w-4 h-4 text-muted-foreground" />
               <SelectValue placeholder="Method" />
@@ -205,8 +181,8 @@ export function InfiniteOutreachList({
           </SelectContent>
         </Select>
 
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="h-11 border-2">
+        <Select value={statusFilter} onValueChange={value => { setStatusFilter(value); setCurrentPage(1); }}>
+          <SelectTrigger aria-label="Follow-up status" className="h-11 border-2">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded-full bg-primary/20" />
               <SelectValue placeholder="Status" />
@@ -227,10 +203,10 @@ export function InfiniteOutreachList({
 
         <Select 
           value={stageFilter} 
-          onValueChange={(v: "ALL" | "1" | "2") => setStageFilter(v)}
+          onValueChange={(v: "ALL" | "1" | "2") => { setStageFilter(v); setCurrentPage(1); }}
           disabled={category === "SENT"}
         >
-          <SelectTrigger className="h-11 border-2">
+          <SelectTrigger aria-label="Follow-up stage" className="h-11 border-2">
             <div className="flex items-center gap-2">
               <FiClock className="w-4 h-4 text-muted-foreground" />
               <SelectValue placeholder="Stage" />
@@ -257,9 +233,9 @@ export function InfiniteOutreachList({
       </div>
 
       {/* List */}
-      <div className="space-y-4">
-        {(!timeZone || isLoading) && allRawItems.length === 0 ? (
-          <div className="flex justify-center p-12">
+      <div className="space-y-4" aria-busy={isFetching}>
+        {(!timeZone || !localDate || isLoading) && items.length === 0 ? (
+          <div role="status" aria-label="Loading follow-ups" className="flex justify-center p-12">
             <FiRefreshCw className="w-8 h-8 animate-spin text-primary/40" />
           </div>
         ) : isError ? (
@@ -267,10 +243,10 @@ export function InfiniteOutreachList({
             <p>We could not load your follow-ups. Please try again.</p>
             <Button variant="outline" className="mt-3" onClick={() => void refetch()}>Retry</Button>
           </div>
-        ) : filteredItems.length === 0 ? (
+        ) : items.length === 0 ? (
           <div className="rounded-2xl border-2 border-dashed border-border/50 bg-muted/20 p-8 text-center">
             <p className="text-muted-foreground italic">
-              {hasActiveFilters 
+              {currentPage > 1 ? "No follow-ups on this page. Go back to the previous page." : hasActiveFilters
                 ? "No follow-ups match your current filters." 
                 : "No follow-ups found for this category."}
             </p>
@@ -279,18 +255,13 @@ export function InfiniteOutreachList({
                     Clear all filters
                 </Button>
             )}
-            {/* If we have no visible results but more data is on server, we should let user load more */}
-            {hasNextPage && (
-              <div ref={lastElementRef} className="h-4 w-full" />
-            )}
           </div>
         ) : (
           <div className="rounded-2xl border-2 border-border/50 bg-card overflow-hidden">
             <div className="divide-y divide-border/30">
-              {filteredItems.map((item, index) => (
+              {items.map((item) => (
                 <div 
                   key={`${item.id}-${item.contactId}`}
-                  ref={index === filteredItems.length - 1 ? lastElementRef : null}
                   data-follow-up-row
                   className="grid min-w-0 gap-4 p-4 transition-colors hover:bg-muted/30 md:p-6 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center"
                 >
@@ -381,11 +352,11 @@ export function InfiniteOutreachList({
           </div>
         )}
         
-        {isFetchingNextPage && (
-          <div className="flex justify-center p-4">
-            <FiRefreshCw className="w-6 h-6 animate-spin text-primary" />
-          </div>
-        )}
+        <nav aria-label="Follow-up pages" className="flex items-center justify-between gap-3 pt-2">
+          <Button variant="outline" disabled={currentPage === 1 || isFetching} onClick={() => setCurrentPage(currentPage - 1)}>Previous</Button>
+          <span role="status" className="text-sm text-muted-foreground">Page {currentPage}</span>
+          <Button variant="outline" disabled={!data?.hasMore || isFetching} onClick={() => setCurrentPage(currentPage + 1)}>Next</Button>
+        </nav>
       </div>
     </div>
   );
