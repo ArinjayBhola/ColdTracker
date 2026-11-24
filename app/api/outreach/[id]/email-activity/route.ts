@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { outreach, outreachEmailMessages, outreachEmailOpenEvents } from "@/db/schema";
-import { and, eq, desc } from "drizzle-orm";
+import { and, eq, desc, sql } from "drizzle-orm";
 import { z } from "zod";
 import { missingTrackingSchema } from "@/lib/email-tracking-store";
 
@@ -23,14 +23,30 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       lastOpenAt: outreachEmailMessages.lastOpenAt, openCount: outreachEmailMessages.openCount,
     }).from(outreachEmailMessages).where(and(eq(outreachEmailMessages.userId, owner), eq(outreachEmailMessages.outreachId, id)))
       .orderBy(desc(outreachEmailMessages.sentAt), desc(outreachEmailMessages.createdAt)).limit(50);
-    const rows = await Promise.all(messages.map(async message => ({ ...message,
+    const acceptedIds = messages.filter(message => message.deliveryState === "accepted").map(message => message.id);
+    const events = acceptedIds.length ? await db.execute<{ messageId: string; observedAt: string | Date }>(sql`
+      SELECT selected.message_id AS "messageId", recent.observed_at AS "observedAt"
+      FROM unnest(${`{${acceptedIds.join(",")}}`}::uuid[]) AS selected(message_id)
+      CROSS JOIN LATERAL (
+        SELECT ${outreachEmailOpenEvents.observedAt} AS observed_at FROM ${outreachEmailOpenEvents}
+        WHERE ${outreachEmailOpenEvents.messageId} = selected.message_id
+        ORDER BY ${outreachEmailOpenEvents.observedAt} DESC LIMIT 20
+      ) recent
+      ORDER BY selected.message_id, recent.observed_at DESC
+    `) : [];
+    const eventsByMessage = new Map<string, { observedAt: Date }[]>();
+    for (const event of events) {
+      const recent = eventsByMessage.get(event.messageId) ?? [];
+      recent.push({ observedAt: new Date(event.observedAt) });
+      eventsByMessage.set(event.messageId, recent);
+    }
+    const rows = messages.map(message => ({ ...message,
       collectionExpired: Date.now() - +message.createdAt > 90 * 86400000,
       firstOpenAt: message.deliveryState === "accepted" ? message.firstOpenAt : null,
       lastOpenAt: message.deliveryState === "accepted" ? message.lastOpenAt : null,
       openCount: message.deliveryState === "accepted" ? message.openCount : null,
-      recentEvents: message.deliveryState === "accepted" ? await db.select({ observedAt: outreachEmailOpenEvents.observedAt }).from(outreachEmailOpenEvents)
-        .where(eq(outreachEmailOpenEvents.messageId, message.id)).orderBy(desc(outreachEmailOpenEvents.observedAt)).limit(20) : [],
-    })));
+      recentEvents: eventsByMessage.get(message.id) ?? [],
+    }));
     return Response.json({ available: true, collectionEnabled: process.env.EMAIL_OPEN_TRACKING_ENABLED === "true", messages: rows,
       limit: 50, expiresAfterDays: 90 }, { headers });
   } catch (error) {

@@ -236,6 +236,14 @@ migration approval and deployment verification. See [configuration, limitations
 and isolated tests](docs/email-open-tracking.md). No email or migration is run by
 opening the page, and existing emails are not retrospectively tracked.
 
+Email activity uses at most three database queries for up to 50 messages, with
+the newest 20 events per accepted message fetched in one indexed batch. Run
+`node --test scripts/check-email-tracking.cjs` for isolated checks and
+`node scripts/check-email-activity-api.mjs` against a local production or dev
+server for HTTP regression checks. Set `EMAIL_ACTIVITY_TEST_URL` if the server
+uses a port other than 3000. The HTTP checks create disposable accounts and
+message records, clean them up, and never send emails.
+
 ## In-app notifications
 
 A notification bell appears beside the help button on every signed-in app route.
