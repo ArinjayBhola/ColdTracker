@@ -1,10 +1,13 @@
 "use client";
 
 import { usePreferences } from "@/components/preferences-provider";
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { ArrowUpRight, BarChart3, Download, MessageCircle, Send, Target, Trophy, SlidersHorizontal, CalendarDays } from "lucide-react";
-import { buildOutreachAnalytics, percent, type AnalyticsRecord, type AnalyticsRange, type OutreachAnalytics } from "@/lib/outreach-analytics";
+import { percent, type AnalyticsRange, type OutreachAnalytics } from "@/lib/outreach-analytics";
+import type { StatsSnapshot } from "@/lib/stats-summary";
+import { GoalsStreaksCard } from "@/components/goals-streaks-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,10 +16,11 @@ import { ActivityHeatmap } from "@/components/activity-heatmap";
 
 const number = (value: number) => value.toLocaleString("en-US");
 const rate = (value: number) => `${value.toFixed(1)}%`;
-const date = (value: string, full = false) => new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short", ...(full ? { year: "numeric" } : {}) });
+const formatDate = (value: string, full: boolean, timeZone: string) => new Date(value).toLocaleDateString("en-GB", { timeZone, day: "numeric", month: "short", ...(full ? { year: "numeric" } : {}) });
 const rangeLabels = { "7": "Last 7 days", "30": "Last 30 days", "90": "Last 90 days", all: "All time" };
 
-function ComparisonChart({ analytics }: { analytics: OutreachAnalytics }) {
+function ComparisonChart({ analytics, timeZone }: { analytics: OutreachAnalytics; timeZone: string }) {
+  const date = (value: string, full = false) => formatDate(value, full, timeZone);
   const [mode, setMode] = useState<"count" | "rate">("count");
   const [active, setActive] = useState<number | null>(null);
   const buckets = analytics.buckets;
@@ -86,36 +90,71 @@ function ComparisonChart({ analytics }: { analytics: OutreachAnalytics }) {
   </Card>;
 }
 
-export function OutreachAnalyticsDashboard({ records }: { records: AnalyticsRecord[] }) {
-  const { ready, error, preferences } = usePreferences();
-  const [asOf, setAsOf] = useState<string | null>(null);
+export function OutreachAnalyticsDashboard({ owner, initialSnapshot }: { owner: string; initialSnapshot: StatsSnapshot | null }) {
+  const client = useQueryClient();
+  const { ready, preferences } = usePreferences();
+  const [timeZone, setTimeZone] = useState(initialSnapshot?.timeZone ?? null);
   const followedInitialAnchor = useRef(false);
   useEffect(() => {
-    const sync = () => setAsOf(new Date().toISOString());
+    const sync = () => setTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
     sync();
-    const timer = setInterval(sync, 30_000);
     window.addEventListener("focus", sync);
-    return () => { clearInterval(timer); window.removeEventListener("focus", sync); };
+    window.addEventListener("coldtrack-calendar-change", sync);
+    return () => { window.removeEventListener("focus", sync); window.removeEventListener("coldtrack-calendar-change", sync); };
   }, []);
+  const query = useQuery<StatsSnapshot>({
+    queryKey: ["stats", owner, timeZone], enabled: !!timeZone,
+    queryFn: async ({ signal }) => {
+      const response = await fetch(`/api/stats?${new URLSearchParams({ timeZone: timeZone! })}`, { cache: "no-store", signal });
+      if (!response.ok) throw new Error("Could not load statistics");
+      return response.json();
+    },
+    initialData: initialSnapshot?.timeZone === timeZone ? initialSnapshot : undefined,
+    staleTime: 60_000, refetchOnMount: () => initialSnapshot?.timeZone !== timeZone, refetchOnWindowFocus: true,
+  });
   useEffect(() => {
-    if (!asOf || (!ready && !error) || followedInitialAnchor.current || window.location.hash !== "#goals") return;
-    // Local charts expand after hydration; follow the anchor after that layout.
+    if (!initialSnapshot || initialSnapshot.timeZone !== timeZone) return;
+    const key = ["stats", owner, timeZone];
+    const cached = client.getQueryData<StatsSnapshot>(key);
+    if (!cached || initialSnapshot.asOf > cached.asOf) client.setQueryData(key, initialSnapshot);
+  }, [client, initialSnapshot, owner, timeZone]);
+  // Server actions can deliver newer data while a persistent query entry exists.
+  const snapshot = initialSnapshot?.timeZone === timeZone && (!query.data || initialSnapshot.asOf > query.data.asOf) ? initialSnapshot : query.data;
+  const refetch = query.refetch;
+  useEffect(() => {
+    if (!snapshot) return;
+    const timer = setTimeout(() => { void refetch(); }, Math.max(1000, Date.parse(snapshot.nextUpdateAt) - Date.now() + 100));
+    return () => clearTimeout(timer);
+  }, [snapshot, refetch]);
+  useEffect(() => {
+    if (!snapshot || followedInitialAnchor.current || window.location.hash !== "#goals") return;
     const frame = requestAnimationFrame(() => {
       const goals = document.getElementById("goals");
       if (goals) { goals.scrollIntoView({ block: "start" }); followedInitialAnchor.current = true; }
     });
     return () => cancelAnimationFrame(frame);
-  }, [asOf, ready, error]);
-  if (!asOf || (!ready && !error)) return <p className="text-muted-foreground" role="status">Loading your local statistics...</p>;
-  return <LocalOutreachAnalytics key={preferences.stats.range} records={records} asOf={asOf} />;
+  }, [snapshot]);
+  if (!snapshot) return query.isError ? <div role="alert"><p>Could not load statistics.</p><Button variant="outline" onClick={() => void refetch()}>Try again</Button></div> : <p className="text-muted-foreground" role="status">Loading your local statistics...</p>;
+  const statsPreferences = ready ? preferences.stats : snapshot.preferences;
+  return <>
+    {query.isError && <p role="alert">Could not refresh statistics. Displayed data may be out of date. <button className="underline" onClick={() => void refetch()}>Try again</button></p>}
+    <LocalOutreachAnalytics key={statsPreferences.range} snapshot={snapshot} preferences={statsPreferences} />
+    <section id="goals" className="scroll-mt-8 space-y-5 border-t pt-8" aria-labelledby="goals-heading">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="space-y-1"><p className="eyebrow">Keep the momentum</p><h2 id="goals-heading" className="text-xl">Goals & consistency</h2></div>
+        <p className="text-sm text-muted-foreground">Small steps, every day. Track your targets and streaks.</p>
+      </div>
+      <GoalsStreaksCard dailyProgress={snapshot.goals.daily} weeklyProgress={snapshot.goals.weekly} streakData={snapshot.goals.streak} />
+    </section>
+  </>;
 }
 
-function LocalOutreachAnalytics({ records, asOf }: { records: AnalyticsRecord[]; asOf: string }) {
-  const { preferences } = usePreferences();
-  const [range, setRange] = useState<AnalyticsRange>(preferences.stats.range);
-  const show = (widget: typeof preferences.stats.widgets[number]) => preferences.stats.widgets.includes(widget);
-  const analytics = useMemo(() => buildOutreachAnalytics(records, range, asOf, Intl.DateTimeFormat().resolvedOptions().timeZone), [records, range, asOf]);
-  const a = analytics;
+function LocalOutreachAnalytics({ snapshot, preferences }: { snapshot: StatsSnapshot; preferences: StatsSnapshot["preferences"] }) {
+  const { asOf } = snapshot;
+  const date = (value: string, full = false) => formatDate(value, full, snapshot.timeZone);
+  const [range, setRange] = useState<AnalyticsRange>(preferences.range);
+  const show = (widget: typeof preferences.widgets[number]) => preferences.widgets.includes(widget);
+  const a = snapshot.analytics[range];
   const previousRate = a.previous ? percent(a.previous.responded, a.previous.sent) : null;
   const change = previousRate !== null && a.previous!.sent > 0 && a.sent > 0 ? a.responseRate - previousRate : null;
   const metrics = [
@@ -157,9 +196,9 @@ function LocalOutreachAnalytics({ records, asOf }: { records: AnalyticsRecord[];
       {a.previous && <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-muted/25 px-5 py-3 text-xs text-muted-foreground"><span>Previous {range} days: {number(a.previous.sent)} sent · {rate(percent(a.previous.responded, a.previous.sent))} recorded response rate</span>{change !== null && <span className="inline-flex items-center gap-1 rounded-md border bg-card px-2 py-1 text-foreground"><ArrowUpRight className={`h-3.5 w-3.5 ${change < 0 ? "rotate-90" : ""}`} />{change > 0 ? "+" : ""}{change.toFixed(1)} percentage points</span>}</div>}
     </section>}
 
-    {show("comparison") && (a.sent === 0 ? <Card><CardContent className="space-y-3 py-10 text-center"><BarChart3 className="mx-auto h-9 w-9 text-muted-foreground" /><h2 className="text-xl">No sent outreach in this period</h2><p className="text-sm text-muted-foreground">{records.length ? "Choose a wider date range, or send an outreach to start seeing trends." : "Add your first outreach to build your performance picture."}</p><Button asChild><Link href="/outreach/new">Add outreach</Link></Button></CardContent></Card> : <ComparisonChart analytics={a} />)}
+    {show("comparison") && (a.sent === 0 ? <Card><CardContent className="space-y-3 py-10 text-center"><BarChart3 className="mx-auto h-9 w-9 text-muted-foreground" /><h2 className="text-xl">No sent outreach in this period</h2><p className="text-sm text-muted-foreground">{snapshot.totalRecords ? "Choose a wider date range, or send an outreach to start seeing trends." : "Add your first outreach to build your performance picture."}</p><Button asChild><Link href="/outreach/new">Add outreach</Link></Button></CardContent></Card> : <ComparisonChart analytics={a} timeZone={snapshot.timeZone} />)}
 
-    {show("heatmap") && <ActivityHeatmap records={records} asOf={asOf} />}
+    {show("heatmap") && <ActivityHeatmap counts={snapshot.heatmap.counts} years={snapshot.heatmap.years} asOf={asOf} timeZone={snapshot.timeZone} weekStartsOn={preferences.weekStartsOn} />}
 
     {(show("funnel") || show("pipeline")) && <div className={`grid min-w-0 gap-6 ${show("funnel") && show("pipeline") ? "xl:grid-cols-2" : ""}`}>
       {show("funnel") && <Card><CardHeader><CardTitle>Conversion funnel</CardTitle><CardDescription>Each stage includes the later stages we can confirm.</CardDescription></CardHeader><CardContent className="space-y-5">

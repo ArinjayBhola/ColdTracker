@@ -13,6 +13,15 @@ export function buildActivityHeatmap(records: AnalyticsRecord[], year: number, a
     const key = calendarKey(record.sentAt, timeZone);
     if (Number(key.slice(0, 4)) === year) counts.set(key, (counts.get(key) ?? 0) + 1);
   }
+  return buildHeatmapGrid(counts, year, today, weekStartsOn);
+}
+
+export function buildCountHeatmap(rows: { day: string; count: number }[], year: number, asOf: string, timeZone: string, weekStartsOn: 0 | 1 = 1) {
+  const counts = new Map(rows.filter(row => Number(row.day.slice(0, 4)) === year).map(row => [row.day, row.count]));
+  return buildHeatmapGrid(counts, year, calendarKey(asOf, timeZone), weekStartsOn);
+}
+
+function buildHeatmapGrid(counts: Map<string, number>, year: number, today: string, weekStartsOn: 0 | 1) {
   const start = `${year}-01-01`;
   const end = `${year}-12-31`;
   const weekday = (new Date(`${start}T12:00:00Z`).getUTCDay() - weekStartsOn + 7) % 7;

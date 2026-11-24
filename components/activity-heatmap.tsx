@@ -1,10 +1,8 @@
 "use client";
 
-import { usePreferences } from "@/components/preferences-provider";
 import { useMemo, useState } from "react";
-import { buildActivityHeatmap } from "@/lib/outreach-heatmap";
+import { buildCountHeatmap } from "@/lib/outreach-heatmap";
 import { calendarKey } from "@/lib/user-calendar";
-import type { AnalyticsRecord } from "@/lib/outreach-analytics";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -12,15 +10,13 @@ import { cn } from "@/lib/utils";
 const shades = ["bg-muted", "bg-primary/25", "bg-primary/45", "bg-primary/70", "bg-primary"];
 const label = (key: string) => new Date(`${key}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
-export function ActivityHeatmap({ records, asOf }: { records: AnalyticsRecord[]; asOf: string }) {
-  const { preferences } = usePreferences();
-  const weekStartsOn = preferences.stats.weekStartsOn;
-  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+export function ActivityHeatmap({ counts, years, asOf, timeZone, weekStartsOn }: {
+  counts: { day: string; count: number }[]; years: number[]; asOf: string; timeZone: string; weekStartsOn: 0 | 1;
+}) {
   const currentYear = Number(calendarKey(asOf, timeZone).slice(0, 4));
   const [year, setYear] = useState(currentYear);
   const [selected, setSelected] = useState<string | null>(null);
-  const data = useMemo(() => buildActivityHeatmap(records, year, asOf, timeZone, weekStartsOn), [records, year, asOf, timeZone, weekStartsOn]);
-  const years = useMemo(() => [...new Set([currentYear, ...records.filter(record => record.status !== "DRAFT" && Number.isFinite(Date.parse(record.sentAt)) && Date.parse(record.sentAt) <= Date.parse(asOf)).map(record => Number(calendarKey(record.sentAt, timeZone).slice(0, 4)))])].sort((a, b) => b - a), [currentYear, records, asOf, timeZone]);
+  const data = useMemo(() => buildCountHeatmap(counts, year, asOf, timeZone, weekStartsOn), [counts, year, asOf, timeZone, weekStartsOn]);
   const day = data.days.find(day => day.key === selected && day.available);
   const todayKey = calendarKey(asOf, timeZone);
   const defaultDay = data.days.find(day => day.key === todayKey && day.available) ?? data.days.findLast(day => day.available);

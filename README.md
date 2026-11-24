@@ -212,6 +212,24 @@ into the signed-in account in one transaction without deleting unrelated records
 Passwords and OAuth tokens are excluded. Backups are limited to 5 MB and 5,000
 records per data type. Startup tracking requires its catalog startup to exist.
 
+## Statistics performance
+
+Stats reads one database snapshot containing daily cohort counts, heatmap day
+counts, saved display preferences, and creation-date goal activity. Individual
+outreach records, contacts, and stage histories stay on the server. All four
+date ranges are precomputed so changing the range requires no network request.
+The initial charts render with the saved device timezone and preferences, and
+refresh on stale window focus, timezone changes, local midnight, or the next
+future send becoming current; there is no repeating chart-processing interval.
+This query uses PostgreSQL 16+ safe timestamp validation (verified on PostgreSQL
+17) and requires no schema migration.
+
+Run `node scripts/check-stats-summary.mjs` for rollback-only database parity and
+scale checks. Run `node scripts/check-stats-api.mjs` and
+`node scripts/check-stats-browser.mjs` against a local production/dev server;
+set `STATS_TEST_URL` for a port other than 3000. HTTP/browser fixtures are
+disposable and removed after the checks; no emails are sent.
+
 ## Automation lookup performance
 
 Run `npm run db:migrate:automation-index` on an existing database to add the

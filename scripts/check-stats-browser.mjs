@@ -9,12 +9,15 @@ import path from "node:path";
 import { encode } from "next-auth/jwt";
 import postgres from "postgres";
 
-const base = "http://localhost:3000";
+const base = process.env.STATS_TEST_URL || "http://localhost:3000";
+if (!["localhost", "127.0.0.1"].includes(new URL(base).hostname)) throw new Error("Tests require a local server");
 const owner = `stats-browser-test-${randomUUID()}`;
 const sql = postgres(process.env.DATABASE_URL, { prepare: false, max: 1 });
 const profile = await mkdtemp(path.join(tmpdir(), "coldtrack-stats-test-"));
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 let chrome, socket, send, evaluate;
+let statsRequests = 0;
+const browserErrors = [];
 async function waitFor(check, label, timeout = 60000) {
   const until = Date.now() + timeout;
   while (Date.now() < until) {
@@ -51,6 +54,9 @@ try {
   const pending = new Map();
   socket.onmessage = ({ data }) => {
     const message = JSON.parse(data);
+    if (message.method === "Network.requestWillBeSent" && new URL(message.params.request.url).pathname === "/api/stats") statsRequests++;
+    if (message.method === "Runtime.exceptionThrown") browserErrors.push(message.params.exceptionDetails.text);
+    if (message.method === "Runtime.consoleAPICalled" && message.params.type === "error") browserErrors.push(message.params.args.map(arg => arg.value || arg.description || "").join(" "));
     if (!message.id) return;
     const task = pending.get(message.id);
     if (!task) return;
@@ -69,6 +75,7 @@ try {
     return response.result.value;
   };
   await send("Network.enable");
+  await send("Runtime.enable");
   const cookieName = "authjs.session-token";
   const token = await encode({ token: { sub: owner }, secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET, salt: cookieName, maxAge: 600 });
   await send("Network.setCookie", { name: cookieName, value: token, url: base, httpOnly: true, sameSite: "Lax" });
@@ -83,6 +90,28 @@ try {
   // Capture export contents without writing a download outside the browser profile.
   await evaluate(`window.statsBlob=null; window.statsCreateURL=URL.createObjectURL; URL.createObjectURL=(blob)=>{window.statsBlob=blob;return window.statsCreateURL(blob)}; Array.from(document.querySelectorAll('button')).find(b=>b.textContent.includes('Export CSV')).click()`);
   assert.match(await evaluate(`window.statsBlob.text()`), /"Sent","21"/, "CSV retains real totals");
+  await pause(500);
+  const beforeRange = statsRequests;
+  for (const label of ["Last 7 days", "Last 90 days", "All time", "Last 30 days"]) {
+    await evaluate(`document.querySelector('[aria-label="Statistics date range"]').click()`);
+    await waitFor(() => evaluate(`!!document.querySelector('[role="option"]')`), "range options");
+    await evaluate(`Array.from(document.querySelectorAll('[role="option"]')).find(option=>option.textContent===${JSON.stringify(label)}).click()`);
+    await waitFor(() => evaluate(`document.querySelector('[aria-label="Statistics date range"]').textContent===${JSON.stringify(label)}`), "range updates locally");
+  }
+  assert.equal(statsRequests, beforeRange, "changing date ranges makes no API requests");
+  const [navigationFixture] = await sql`INSERT INTO public.outreach ("userId", company_name, role_targeted, status, contacts)
+    VALUES (${owner}, 'Navigation freshness fixture', 'Designer', 'SENT', ${sql.json([{ personName: "Navigation", contactMethod: "EMAIL", messageSentAt: new Date().toISOString() }])}) RETURNING id`;
+  await waitFor(() => evaluate(`document.readyState === 'complete' && !!document.querySelector('a[href="/settings?tab=statistics"]')`), "Stats navigation is ready");
+  await evaluate(`document.querySelector('a[href="/settings?tab=statistics"]').click()`);
+  await waitFor(() => evaluate(`!!document.querySelector('#stats-range')`), "settings before returning to Stats");
+  const beforeReturn = statsRequests;
+  await evaluate(`document.querySelector('a[href="/stats"]').click()`);
+  await waitFor(() => evaluate(`document.querySelector('[aria-label="Summary metrics"]')?.innerText.includes('22')`), "new server snapshot replaces cached Stats on navigation");
+  await pause(300);
+  assert.equal(statsRequests, beforeReturn, "fresh server snapshots avoid duplicate API reads");
+  await sql`DELETE FROM public.outreach WHERE id = ${navigationFixture.id} AND "userId" = ${owner}`;
+  await send("Page.navigate", { url: `${base}/stats` });
+  await waitFor(() => evaluate(`document.querySelector('[aria-label="Summary metrics"]')?.innerText.includes('21')`), "navigation fixture removed");
   for (const width of [390, 768]) {
     await send("Emulation.setDeviceMetricsOverride", { width, height: 900, deviceScaleFactor: 1, mobile: width < 500 });
     await pause(400);
@@ -95,6 +124,16 @@ try {
   assert.equal(await evaluate(`document.querySelector('main').scrollWidth <= document.querySelector('main').clientWidth`), true, "large text has no page overflow");
   await screenshot("mobile-dark-large-text");
   await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1050, deviceScaleFactor: 1, mobile: false });
+  const futureSentAt = new Date(Date.now() + 6000).toISOString();
+  const [future] = await sql`INSERT INTO public.outreach ("userId", company_name, role_targeted, status, contacts)
+    VALUES (${owner}, 'Future synthetic outreach', 'Designer', 'SENT', ${sql.json([{ personName: "Future", contactMethod: "EMAIL", messageSentAt: futureSentAt }])}) RETURNING id`;
+  await send("Page.navigate", { url: `${base}/stats` });
+  await waitFor(() => evaluate(`document.querySelector('[aria-label="Summary metrics"]')?.innerText.includes('21')`), "future sends start excluded");
+  await waitFor(() => evaluate(`document.querySelector('[aria-label="Summary metrics"]')?.innerText.includes('22')`), "future send becomes current automatically", 15000);
+  await sql`DELETE FROM public.outreach WHERE id = ${future.id} AND "userId" = ${owner}`;
+  await send("Page.navigate", { url: `${base}/stats` });
+  await waitFor(() => evaluate(`document.querySelector('[aria-label="Summary metrics"]')?.innerText.includes('21')`), "future fixture removed");
+  await waitFor(() => evaluate(`document.readyState === 'complete' && !!document.querySelector('a[href="/settings?tab=statistics"]')`), "Stats reload completes before Settings navigation");
   await evaluate(`document.querySelector('a[href="/settings?tab=statistics"]').click()`);
   await waitFor(() => evaluate(`document.querySelector('[role="tab"][aria-selected="true"]')?.textContent === 'Statistics' && !!document.querySelector('#stats-range')`), "customize opens Statistics settings");
   await evaluate(`Array.from(document.querySelectorAll('label')).find(l=>l.textContent.includes('Summary metrics')).querySelector('input').click()`);
@@ -119,6 +158,8 @@ try {
   assert.equal(await evaluate(`document.querySelector('[aria-label="Statistics date range"]').textContent`), "Last 7 days", "saved default range respected");
   assert.equal(await evaluate(`document.querySelector('[aria-label="Scrollable yearly outreach activity calendar"]').innerText.includes('Sun') && !document.querySelector('[aria-label="Scrollable yearly outreach activity calendar"]').innerText.includes('Mon')`), true, "heatmap follows saved week start");
   await waitFor(() => evaluate(`document.getElementById('goals').getBoundingClientRect().top < innerHeight`), "goals anchor");
+  assert.deepEqual(browserErrors, [], "Stats must not cause hydration or runtime errors");
+  console.log("Aggregate Stats checks passed: instant local ranges, future-send refresh, and no browser/hydration errors.");
   console.log("Stats browser checks passed: charts, CSV, responsive layout, dark mode, large text, Settings navigation, widget visibility, saved date range, heatmap week start, goals anchor.");
   console.log(`Screenshots saved in ${tmpdir()} as coldtrack-stats-*.png`);
 } catch (error) {
