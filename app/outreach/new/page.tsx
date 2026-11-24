@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
   Select,
@@ -77,6 +78,7 @@ function NewOutreachPageContent() {
     const [showMoreDetails, setShowMoreDetails] = useState(false);
     const formRef = useRef<HTMLFormElement>(null);
     const router = useRouter();
+    const queryClient = useQueryClient();
     const { toast } = useToast();
 
     const addContact = () => {
@@ -138,16 +140,21 @@ function NewOutreachPageContent() {
     const [state, formAction] = useActionState(async (previous: Parameters<typeof createOutreachAction>[0], data: FormData) => {
       const result = await createOutreachAction(previous, data);
       if (result.success && result.outreachId) {
-        toast({ title: "Outreach saved", description: "Your conversation is in the tracker." });
+        void queryClient.invalidateQueries({ queryKey: ["outreach", result.outreachId] });
+        void queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
+        toast({ title: "Outreach saved", description: result.merged ? "Contacts added to the existing company outreach." : "Your conversation is in the tracker." });
         if (data.get("intent") === "another") {
           const company = String(data.get("companyName") || "");
           const role = String(data.get("roleTargeted") || "");
           handleClearAll();
           if (keepCompany) { setCompanyName(company); setPosition(role); }
           requestAnimationFrame(() => { (formRef.current?.querySelector(keepCompany ? 'input[name="contacts.0.personName"]' : 'input[name="companyName"]') as HTMLInputElement)?.focus(); });
-          return {};
+          return result;
         }
         router.push(`/outreach/${result.outreachId}`);
+      }
+      if (result.error) {
+        toast({ title: "Outreach could not be saved", description: result.error, variant: "destructive" });
       }
       return result;
     }, { error: undefined, details: undefined, success: false });
@@ -494,6 +501,8 @@ function NewOutreachPageContent() {
             </div>
           </div>
           <div className="sticky bottom-0 mx-auto mt-8 flex max-w-4xl flex-wrap items-center justify-between gap-4 border-t bg-background/95 px-1 pt-6 pb-2 backdrop-blur">
+            {state.error && <p role="alert" className="w-full text-sm font-semibold text-destructive">{state.error}</p>}
+            {state.success && state.outreachId && <p role="status" className="w-full text-sm text-primary">{state.merged ? "Contacts added to the existing company outreach." : "Outreach saved."} <Link href={`/outreach/${state.outreachId}`} className="underline underline-offset-4">View saved outreach</Link></p>}
             <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={keepCompany} onChange={e => setKeepCompany(e.target.checked)} className="accent-[var(--primary)]" />Keep company & position for the next entry</label>
             <div className="flex w-full flex-wrap gap-3 sm:w-auto"><SubmitButton another /><SubmitButton /></div>
           </div>

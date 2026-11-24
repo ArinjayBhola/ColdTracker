@@ -27,6 +27,7 @@ export type ActionState = {
   success?: boolean;
   details?: Record<string, string[]>;
   outreachId?: string;
+  merged?: boolean;
 };
 
 export async function createOutreachAction(prevState: ActionState, formData: FormData): Promise<ActionState> {
@@ -74,18 +75,22 @@ export async function createOutreachAction(prevState: ActionState, formData: For
       notes: formData.get("notes") || undefined,
       contacts: contacts.map((c, idx) => ({
         ...c,
-        messageSentAt: formData.get(`contacts.${idx}.messageSentAt`) || formData.get("messageSentAt"),
-        followUpDueAt: formData.get(`contacts.${idx}.followUpDueAt`) || formData.get("followUpDueAt"),
+        messageSentAt: formData.get(`contacts.${idx}.messageSentAt`) || formData.get("messageSentAt") || undefined,
+        followUpDueAt: formData.get(`contacts.${idx}.followUpDueAt`) || formData.get("followUpDueAt") || undefined,
       })),
     };
 
     const parsed = outreachFormSchema.safeParse(rawData);
     
     if (!parsed.success) {
-      console.error("Validation failed:", parsed.error.flatten().fieldErrors);
+      const details: Record<string, string[]> = {};
+      for (const issue of parsed.error.issues) {
+        const field = issue.path.join(".");
+        (details[field] ??= []).push(issue.message);
+      }
       return { 
-          error: "Please check the form for errors", 
-          details: parsed.error.flatten().fieldErrors as Record<string, string[]>
+          error: parsed.error.issues[0]?.message || "Please check the form for errors",
+          details,
       };
     }
 
@@ -142,7 +147,10 @@ export async function createOutreachAction(prevState: ActionState, formData: For
       if (!merged) return { error: "Contacts changed while saving. Refresh and try again." };
       
       revalidatePath("/dashboard");
-      return { success: true, outreachId: existing.id };
+      revalidatePath(`/outreach/${existing.id}`);
+      revalidatePath("/follow-ups");
+      revalidatePath("/stats");
+      return { success: true, outreachId: existing.id, merged: true };
     } else {
       // Create new outreach entry
       const result = await db.insert(outreach).values({
@@ -161,6 +169,8 @@ export async function createOutreachAction(prevState: ActionState, formData: For
       }).returning({ id: outreach.id });
 
       revalidatePath("/dashboard");
+      revalidatePath("/follow-ups");
+      revalidatePath("/stats");
       return { success: true, outreachId: result[0]?.id };
     }
   } catch (error) {

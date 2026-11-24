@@ -8,6 +8,48 @@ const { reminderDay, validReminderTime } = load("lib/reminder-schedule.ts");
 const now = "2026-10-29T12:00:00Z";
 const record = (status, history = []) => ({ id: "one", status, statusHistory: history.map(status => ({ status, at: now, source: "observed" })), createdAt: "2026-10-25T10:00:00Z", sentAt: "2026-10-25T10:00:00Z", channel: "Email", followUpDueAt: null });
 
+function outreachSaveHarness() {
+  const inserted = [];
+  const { createOutreachAction } = createLoader({
+    "@/lib/auth": { auth: async () => ({ user: { id: "save-test" } }) },
+    "@/db": { db: {
+      query: { users: { findFirst: async () => ({ preferences: null }) }, outreach: { findFirst: async () => undefined } },
+      insert: () => ({ values: values => ({ returning: async () => { inserted.push(values); return [{ id: "saved-outreach" }]; } }) }),
+    } },
+    "next/cache": { revalidatePath() {} },
+    "@/lib/user-time-zone": { getUserTimeZone: async () => "Asia/Kolkata" },
+    "@/actions/preferences": {},
+    "@/actions/analytics": {},
+    "@/lib/dashboard-query": {},
+  })("actions/outreach.ts");
+  return { createOutreachAction, inserted };
+}
+
+test("save-and-add-another accepts mandatory fields with omitted optional dates", async () => {
+  const { createOutreachAction, inserted } = outreachSaveHarness();
+  for (const company of ["First company", "Next company"]) {
+    const data = new FormData();
+    data.set("companyName", company);
+    data.set("contacts.0.personName", "");
+    data.set("intent", "another");
+    assert.deepEqual(await createOutreachAction({}, data), { success: true, outreachId: "saved-outreach" });
+  }
+  assert.equal(inserted.length, 2);
+  assert.ok(inserted.every(row => row.contacts[0].messageSentAt instanceof Date && row.contacts[0].followUpDueAt instanceof Date));
+});
+
+test("contact validation returns the exact field error without saving", async () => {
+  const { createOutreachAction, inserted } = outreachSaveHarness();
+  const data = new FormData();
+  data.set("companyName", "Example company");
+  data.set("contacts.0.personName", "Someone");
+  data.set("contacts.0.emailAddress", "invalid-email");
+  const result = await createOutreachAction({}, data);
+  assert.equal(result.error, "Invalid email(s)");
+  assert.deepEqual(result.details["contacts.0.emailAddress"], ["Invalid email(s)"]);
+  assert.equal(inserted.length, 0);
+});
+
 test("a replied then rejected outreach retains its response in totals, channel and cohort", () => {
   const result = buildOutreachAnalytics([record("REJECTED", ["SENT", "REPLIED", "REJECTED"])], "30", now, "UTC");
   assert.equal(result.responded, 1);
