@@ -21,7 +21,10 @@ export function buildReminderEmail(kind: "daily" | "follow_up", to: string, name
 
 export async function sendReminderEmail(payload: ReminderEmail, idempotencyKey?: string) {
   const resend = new Resend(process.env.RESEND_API_KEY);
-  return resend.emails.send(payload, idempotencyKey ? { idempotencyKey } : undefined);
+  // The installed SDK forwards these options to fetch. Abort the transport,
+  // rather than racing a promise and leaving an email request running afterward.
+  const options = { idempotencyKey, signal: AbortSignal.timeout(10_000) };
+  return resend.emails.send(payload, options);
 }
 
 export async function sendDailyOutreachReminder(to: string, name: string) {

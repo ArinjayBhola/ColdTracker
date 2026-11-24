@@ -144,6 +144,40 @@ duplicate sends. The log records provider acceptance rather than inbox delivery.
 The built-in daily schedule does not provide five-minute retries. A failed daily
 attempt may expire before the next scheduled run; the next day evaluates whether
 a new reminder is needed.
+
+The scheduler reads accounts in keyset pages of 50 and batches sent/due/delivery
+summaries into one SQL statement per page. Due counts use the follow-up lookup
+indexes installed by `db:migrate:follow-up-lookup`; sent activity uses an existence
+check and safely ignores malformed timestamps (PostgreSQL 16+). It runs at most
+two delivery operations concurrently, spacing claim starts by 250 ms within each
+invocation. Already sent/expired kinds are skipped before claiming. Expiration
+updates at most 1,000 old attempts per invocation. The email transport aborts after
+10 seconds while retaining the existing frozen payload/idempotency-key behavior.
+
+The route declares `maxDuration = 60` and stops starting new work after a 45-second
+cooperative budget, leaving time for outstanding operations. Database calls can
+still overrun that budget; this is not a hard timeout guarantee. Incomplete runs
+return 503 with `complete: false` and `nextCursor`; failures also return a
+`retryCursor` that includes the earliest failed or unfinished account. Resume by
+passing the chosen value as `?cursor=...` with the same cron authorization header.
+Cursors keep the original calendar-day anchor and expire after 23 hours. Persist
+and follow these cursors in an external authenticated runner when the workload
+outgrows one invocation; no automatic continuation service has been configured.
+The default daily schedule is unchanged. Vercel does not automatically retry failed
+cron invocations ([cron error handling](https://vercel.com/docs/schedules/cron-jobs/manage-cron-jobs#cron-job-error-handling)).
+The 60-second route setting fits both Fluid and legacy Hobby duration limits
+([function duration](https://vercel.com/docs/functions/configuring-functions/duration)).
+
+`node scripts/check-reminder-runner.mjs` checks paging, concurrency, pacing,
+deadlines, failure/continuation cursors, frozen retries, route authentication, and
+the installed SDK's abort-signal forwarding with mocked IO. Run
+`node scripts/check-reminder-query.mjs` for rollback-only SQL parity, query plans,
+bounded expiration, and summary-read timings against disposable data. The timing
+comparison covers summary reads, not provider latency or end-to-end cron duration.
+`npm run test:reliability:db` verifies real delivery claims and frozen retries in a
+private rollback-only schema with a mocked provider. These checks send no emails
+and require no new schema changes or dependencies.
+
 Set `RESEND_API_KEY`, optionally `REMINDER_FROM` for your verified sender, and
 `NEXTAUTH_URL` for links. The manual test-email button intentionally sends a new
 test message on each click.
