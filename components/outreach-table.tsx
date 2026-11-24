@@ -20,6 +20,8 @@ import { calendarKey } from "@/lib/user-calendar";
 import { AutomationOutreachBadge } from "@/components/automation-outreach-badge";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateOutreachLists } from "@/lib/outreach-cache";
 
 type OutreachItem = { isAutomated?: boolean; id: string; companyName: string; roleTargeted: string; personName: string; status: string; messageSentAt: Date | string; followUpDueAt: Date | string | null; contactMethod: string; contactCount: number };
 type Props = { items: OutreachItem[]; totalCount: number; currentPage: number; pageSize?: number; timeZone?: string };
@@ -31,6 +33,7 @@ export function OutreachTable({ items, totalCount, currentPage, pageSize = 10, t
   const formatDay = (value: Date | string) => { const key = calendarKey(value, timeZone); return format(new Date(`${key}T12:00:00`), key.slice(0, 4) === todayKey.slice(0, 4) ? "MMM d" : "MMM d, yyyy"); };
   const overdue = (value: Date | string) => calendarKey(value, timeZone) < todayKey;
   const router = useRouter();
+  const queryClient = useQueryClient();
   const params = useSearchParams();
   const { preferences } = usePreferences();
   const { toast } = useToast();
@@ -94,6 +97,8 @@ export function OutreachTable({ items, totalCount, currentPage, pageSize = 10, t
     try {
       const result = await bulkDeleteOutreach(deleteIds);
       if (!result.success) throw new Error(result.error || "Could not delete outreach");
+      for (const id of deleteIds) queryClient.removeQueries({ queryKey: ["outreach", id] });
+      void invalidateOutreachLists(queryClient);
       toast({ title: deleteIds.length === 1 ? "Outreach deleted" : `${deleteIds.length} entries deleted` });
       setDeleteIds([]); setSelection({ scope, ids: new Set() });
     } catch (error) { toast({ title: "Could not delete", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" }); }

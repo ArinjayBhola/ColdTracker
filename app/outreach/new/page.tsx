@@ -1,4 +1,5 @@
 "use client";
+import { invalidateOutreachLists } from "@/lib/outreach-cache";
 
 import { createOutreachAction } from "@/actions/outreach";
 import { Button } from "@/components/ui/button";
@@ -141,7 +142,7 @@ function NewOutreachPageContent() {
       const result = await createOutreachAction(previous, data);
       if (result.success && result.outreachId) {
         void queryClient.invalidateQueries({ queryKey: ["outreach", result.outreachId] });
-        void queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
+        void invalidateOutreachLists(queryClient);
         toast({ title: "Outreach saved", description: result.merged ? "Contacts added to the existing company outreach." : "Your conversation is in the tracker." });
         if (data.get("intent") === "another") {
           const company = String(data.get("companyName") || "");

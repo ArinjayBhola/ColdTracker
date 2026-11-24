@@ -16,13 +16,13 @@ import { OutreachHistory } from "@/components/outreach/outreach-history";
 import { type OutreachContact } from "@/db/schema";
 import { FollowUpMessageCard } from "@/components/outreach/follow-up-message-card";
 import { EmailActivityCard } from "@/components/outreach/email-activity-card";
+import { invalidateOutreachLists } from "@/lib/outreach-cache";
 
 type OutreachDetailClientProps = {
-  initialData: Awaited<ReturnType<typeof getOutreachById>>;
   id: string;
 };
 
-export function OutreachDetailClient({ initialData, id }: OutreachDetailClientProps) {
+export function OutreachDetailClient({ id }: OutreachDetailClientProps) {
   const [activeContactIndex, setActiveContactIndex] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isUpdatingFollowUp, setIsUpdatingFollowUp] = useState(false);
@@ -38,10 +38,11 @@ export function OutreachDetailClient({ initialData, id }: OutreachDetailClientPr
       if (!response.ok) throw new Error("Could not load outreach");
       const data = await response.json();
       for (const key of ["createdAt", "updatedAt", "followUpSentAt", "followUp2DueAt", "followUp2SentAt"]) if (data[key]) data[key] = new Date(data[key]);
-      return data as NonNullable<OutreachDetailClientProps["initialData"]>;
+      return data as NonNullable<Awaited<ReturnType<typeof getOutreachById>>>;
     },
-    initialData,
     staleTime: 60 * 1000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   const handleRefresh = async () => {
@@ -83,7 +84,7 @@ export function OutreachDetailClient({ initialData, id }: OutreachDetailClientPr
       });
       if (res.item) queryClient.setQueryData(["outreach", id], { ...res.item, isAutomated: item.isAutomated });
       else await refetchItem();
-      void queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
+      void invalidateOutreachLists(queryClient);
       setIsEditingSentDate(null);
     } else {
       toast({
@@ -109,7 +110,7 @@ export function OutreachDetailClient({ initialData, id }: OutreachDetailClientPr
       });
       if (res.item) queryClient.setQueryData(["outreach", id], { ...res.item, isAutomated: item.isAutomated });
       else await refetchItem();
-      void queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
+      void invalidateOutreachLists(queryClient);
       setIsEditingDate(false);
     } else {
       toast({
@@ -130,7 +131,7 @@ export function OutreachDetailClient({ initialData, id }: OutreachDetailClientPr
       if (!result.success) throw new Error(result.error || "Could not update follow-ups.");
       if (result.item) queryClient.setQueryData(["outreach", id], { ...result.item, isAutomated: item.isAutomated });
       else await refetchItem();
-      void queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
+      void invalidateOutreachLists(queryClient);
       setIsEditingSentDate(null);
       setIsEditingDate(false);
       toast({ title: `Follow-up ${stage} marked sent`, description: `${result.updatedCount ?? 0} contacts updated.` });
@@ -150,6 +151,7 @@ export function OutreachDetailClient({ initialData, id }: OutreachDetailClientPr
         description: "The outreach information has been saved.",
       });
       await refetchItem();
+      void invalidateOutreachLists(queryClient);
     } else {
       throw new Error(res.error || "Failed to update details");
     }
@@ -171,6 +173,7 @@ export function OutreachDetailClient({ initialData, id }: OutreachDetailClientPr
       }
       
       await refetchItem();
+      void invalidateOutreachLists(queryClient);
     } else {
       toast({
         title: "Error",

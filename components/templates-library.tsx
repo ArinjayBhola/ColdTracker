@@ -1,6 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { messageTemplates } from "@/db/schema";
 import { deleteTemplate, saveTemplate, setTemplateFavorite, setTemplatePinned } from "@/actions/templates";
@@ -51,6 +52,7 @@ function TemplateCopyButton({ body, subject, onError }: {
 
 export function TemplatesLibrary({ initialTemplates, initialFollowUpStage }: { initialTemplates: Template[]; initialFollowUpStage?: FollowUpStage }) {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const channel = useRef<BroadcastChannel | null>(null);
   const subjectInput = useRef<HTMLInputElement>(null);
   const bodyInput = useRef<HTMLTextAreaElement>(null);
@@ -58,10 +60,15 @@ export function TemplatesLibrary({ initialTemplates, initialFollowUpStage }: { i
   useEffect(() => {
     if (typeof BroadcastChannel === "undefined") return;
     channel.current = new BroadcastChannel("coldtrack-templates");
+    channel.current.onmessage = () => router.refresh();
     return () => { channel.current?.close(); channel.current = null; };
-  }, []);
+  }, [router]);
   const initialFollowUpTemplate = initialTemplates.find(template => template.followUpStage === initialFollowUpStage);
-  const [templates, setTemplates] = useState(initialTemplates);
+  const [localTemplates, setLocalTemplates] = useState({ base: initialTemplates, items: initialTemplates });
+  const templates = localTemplates.base === initialTemplates ? localTemplates.items : initialTemplates;
+  function setTemplates(update: (current: Template[]) => Template[]) {
+    setLocalTemplates(current => ({ base: initialTemplates, items: update(current.base === initialTemplates ? current.items : initialTemplates) }));
+  }
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [tag, setTag] = useState("");

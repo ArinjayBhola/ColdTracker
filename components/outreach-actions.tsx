@@ -1,4 +1,5 @@
 "use client";
+import { invalidateOutreachLists } from "@/lib/outreach-cache";
 
 import { updateOutreachStatus } from "@/actions/outreach";
 import { useState } from "react";
@@ -45,7 +46,8 @@ export function OutreachActions({ id, currentStatus, compact = false }: { id: st
         },
         onSuccess: (_result, status) => {
             queryClient.setQueryData(["outreach", id], (previous: Record<string, unknown> | undefined) => previous ? { ...previous, status } : previous);
-            void queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
+            void queryClient.invalidateQueries({ queryKey: ["outreach", id] });
+            void invalidateOutreachLists(queryClient);
             toast({
                 title: "Status updated",
                 description: "The outreach status has been successfully updated.",

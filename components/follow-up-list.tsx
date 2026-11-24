@@ -16,14 +16,15 @@ import Link from "next/link";
 import { OutreachActions } from "@/components/outreach-actions";
 import { DeleteArchiveActions } from "@/components/delete-archive-actions";
 import { useToast } from "@/hooks/use-toast";
+import { invalidateOutreachLists } from "@/lib/outreach-cache";
 
 type Category = "OVERDUE" | "TODAY" | "UPCOMING" | "SENT" | "ALL_ACTIVE";
 
 export function FollowUpList({
-  initialCategory, initialPage, initialTimeZone = null, initialDay
+  owner, initialCategory, initialTimeZone = null, initialDay
 }: {
   initialCategory: Category;
-  initialPage?: Awaited<ReturnType<typeof getPaginatedFollowUpItemsAction>>;
+  owner: string;
   initialTimeZone?: string | null;
   initialDay?: string;
 }) {
@@ -52,7 +53,6 @@ export function FollowUpList({
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [initialUpdatedAt] = useState(Date.now);
 
   // One server request after typing settles, rather than loading history pages
   // until a locally filtered match happens to appear.
@@ -73,18 +73,17 @@ export function FollowUpList({
     refetch
   } = useQuery({
     enabled: !!timeZone && !!localDate,
-    queryKey: ["follow-ups", category, stageFilter, timeZone, localDate, debouncedSearch, methodFilter, statusFilter, currentPage],
+    queryKey: ["follow-ups", owner, category, stageFilter, timeZone, localDate, debouncedSearch, methodFilter, statusFilter, currentPage],
     queryFn: async ({ signal }) => {
       const params = new URLSearchParams({ category, page: String(currentPage), stage: stageFilter, timeZone: timeZone!, q: debouncedSearch, method: methodFilter, status: statusFilter });
       const response = await fetch(`/api/follow-ups?${params}`, { cache: "no-store", signal });
       if (!response.ok) throw new Error("Could not load follow-ups");
       return await response.json() as Awaited<ReturnType<typeof getPaginatedFollowUpItemsAction>>;
     },
-    initialData: initialPage && currentPage === 1 && !debouncedSearch && methodFilter === "ALL" && statusFilter === "ALL" && category === initialCategory && stageFilter === "ALL" && timeZone === initialTimeZone && localDate === initialDay ? initialPage : undefined,
-    initialDataUpdatedAt: initialUpdatedAt,
     staleTime: 5 * 60 * 1000,
     gcTime: 60_000,
     refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   const handleToggleFollowUp = async (id: string, currentlySent: boolean, contactId: string, stage: 1 | 2) => {
@@ -96,7 +95,8 @@ export function FollowUpList({
         title: !currentlySent ? "Follow-up marked as sent" : "Follow-up marked as unsent",
         description: "The list will update momentarily.",
       });
-      queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
+      void invalidateOutreachLists(queryClient);
+      void queryClient.invalidateQueries({ queryKey: ["outreach", id] });
     } else {
       toast({
         title: "Error",

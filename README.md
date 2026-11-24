@@ -269,6 +269,23 @@ scale checks. Run `node scripts/check-stats-api.mjs` and
 set `STATS_TEST_URL` for a port other than 3000. HTTP/browser fixtures are
 disposable and removed after the checks; no emails are sent.
 
+## Client cache freshness
+
+Follow-up pages and outreach details hydrate timestamped server snapshots into
+TanStack Query, including existing browser cache entries after a router refresh.
+Follow-up query keys include the signed-in owner. Fresh mounts reuse cached data;
+stale mounts revalidate, and follow-ups/details also revalidate on stale focus.
+Successful outreach changes invalidate follow-up variants and Stats without
+fetching inactive views. Deletions clear the matching detail cache. Template
+server refreshes replace the displayed list while preserving an open draft;
+template save/delete broadcasts from another tab trigger a server refresh without polling.
+
+Run `node scripts/check-cache-freshness.mjs` for cache ordering, invalidation, and
+request-count checks. Run `node scripts/check-cache-browser.mjs` against a local
+production server (`CACHE_TEST_URL` changes the default port 3000). It verifies
+server refreshes, a status edit, and template broadcasts with a disposable account
+that is removed afterward. No emails are sent.
+
 ## Startup browsing performance
 
 Startup browsing reads the page, search-scoped team-size counts, and personal

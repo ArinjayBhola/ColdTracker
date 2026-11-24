@@ -6,6 +6,8 @@ import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateOutreachLists } from "@/lib/outreach-cache";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +28,7 @@ export function DeleteArchiveActions({ id, isIcon = false }: { id: string; isIco
     const dropdownRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
     const { toast } = useToast();
+    const queryClient = useQueryClient();
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -54,6 +57,8 @@ export function DeleteArchiveActions({ id, isIcon = false }: { id: string; isIco
         const result = await deleteOutreach(id);
         
         if (result.success) {
+            queryClient.removeQueries({ queryKey: ["outreach", id] });
+            void invalidateOutreachLists(queryClient);
             toast({
                 title: "Deleted",
                 description: "The job opportunity has been permanently removed.",

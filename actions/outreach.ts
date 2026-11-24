@@ -303,6 +303,9 @@ export async function deleteOutreach(id: string) {
             );
         
         revalidatePath("/dashboard");
+        revalidatePath("/follow-ups");
+        revalidatePath("/stats");
+        revalidatePath(`/outreach/${id}`);
         return { success: true };
     } catch (error) {
         console.error("Failed to delete outreach:", error);
@@ -501,6 +504,8 @@ export async function deleteContactAction(outreachId: string, contactIndex: numb
         if (!saved) return { error: "Contacts changed while saving. Refresh and try again." };
 
         revalidatePath("/dashboard");
+        revalidatePath("/follow-ups");
+        revalidatePath("/stats");
         revalidatePath(`/outreach/${outreachId}`);
         return { success: true };
     } catch (error) {
@@ -522,6 +527,9 @@ export async function bulkDeleteOutreach(ids: string[]) {
             );
         
         revalidatePath("/dashboard");
+        revalidatePath("/follow-ups");
+        revalidatePath("/stats");
+        for (const id of ids) revalidatePath(`/outreach/${id}`);
         return { success: true };
     } catch (error) {
         console.error("Failed to bulk delete outreach:", error);

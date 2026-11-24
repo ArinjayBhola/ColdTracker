@@ -4,11 +4,19 @@ import { getPaginatedFollowUpItemsAction } from "@/actions/follow-ups";
 import { Sidebar } from "@/components/sidebar";
 import { FiCheckCircle } from "react-icons/fi";
 import { FollowUpList } from "@/components/follow-up-list";
+import { auth } from "@/lib/auth";
+import { ServerQuerySnapshot } from "@/components/server-query-snapshot";
 
 async function FollowUpContent() {
-  const [timeZone, day] = await Promise.all([getUserTimeZone(), getUserDayBounds()]);
+  const [timeZone, day, session] = await Promise.all([getUserTimeZone(), getUserDayBounds(), auth()]);
+  if (!session?.user?.id) return null;
+  // Request freshness belongs to this server read, not to the last row edit.
+  // eslint-disable-next-line react-hooks/purity
+  const updatedAt = Date.now();
   const initialPage = timeZone && day ? await getPaginatedFollowUpItemsAction("ALL_ACTIVE", 1, 15, "ALL", timeZone, { key: day.key, start: day.start.toISOString(), end: day.end.toISOString() }) : undefined;
-  return <FollowUpList initialCategory="ALL_ACTIVE" initialPage={initialPage} initialTimeZone={timeZone} initialDay={day?.key} />;
+  return <ServerQuerySnapshot queryKey={["follow-ups", session.user.id, "ALL_ACTIVE", "ALL", timeZone, day?.key, "", "ALL", "ALL", 1]} data={initialPage} updatedAt={updatedAt}>
+    <FollowUpList owner={session.user.id} initialCategory="ALL_ACTIVE" initialTimeZone={timeZone} initialDay={day?.key} />
+  </ServerQuerySnapshot>;
 }
 
 export default async function FollowUpsPage() {

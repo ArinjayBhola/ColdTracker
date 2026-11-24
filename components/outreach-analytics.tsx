@@ -110,7 +110,8 @@ export function OutreachAnalyticsDashboard({ owner, initialSnapshot }: { owner: 
       return response.json();
     },
     initialData: initialSnapshot?.timeZone === timeZone ? initialSnapshot : undefined,
-    staleTime: 60_000, refetchOnMount: () => initialSnapshot?.timeZone !== timeZone, refetchOnWindowFocus: true,
+    initialDataUpdatedAt: initialSnapshot ? Date.parse(initialSnapshot.asOf) : undefined,
+    staleTime: 60_000, refetchOnMount: true, refetchOnWindowFocus: true,
   });
   useEffect(() => {
     if (!initialSnapshot || initialSnapshot.timeZone !== timeZone) return;

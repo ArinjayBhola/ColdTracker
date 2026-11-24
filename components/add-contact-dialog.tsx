@@ -21,12 +21,15 @@ import {
 } from "@/components/ui/select";
 import { addContactToCompanyAction } from "@/actions/outreach";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateOutreachLists } from "@/lib/outreach-cache";
 
 export function AddContactDialog({ outreachId }: { outreachId: string }) {
     const [open, setOpen] = useState(false);
     const [isPending, setIsPending] = useState(false);
     const [showCustomRole, setShowCustomRole] = useState(false);
     const { toast } = useToast();
+    const queryClient = useQueryClient();
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -37,6 +40,8 @@ export function AddContactDialog({ outreachId }: { outreachId: string }) {
 
         setIsPending(false);
         if (result.success) {
+            void queryClient.invalidateQueries({ queryKey: ["outreach", outreachId] });
+            void invalidateOutreachLists(queryClient);
             toast({
                 title: "Contact added successfully",
                 description: "The new contact has been added to the company.",

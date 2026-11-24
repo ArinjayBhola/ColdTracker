@@ -39,7 +39,7 @@ export function NotesEditor({ id, initialNotes, onSave }: NotesEditorProps) {
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setIsEditing(true)}
+                        onClick={() => { setNotes(initialNotes || ""); setIsEditing(true); }}
                         className="gap-2 h-8"
                     >
                         <FiEdit2 className="w-3.5 h-3.5" />
@@ -80,7 +80,7 @@ export function NotesEditor({ id, initialNotes, onSave }: NotesEditorProps) {
                 </div>
             ) : (
                 <div className="min-h-[200px] whitespace-pre-wrap text-sm leading-relaxed p-6 rounded-xl bg-muted/30 border">
-                    {notes || <span className="text-muted-foreground italic">No notes added. Click Edit to add notes.</span>}
+                    {initialNotes || <span className="text-muted-foreground italic">No notes added. Click Edit to add notes.</span>}
                 </div>
             )}
         </div>
