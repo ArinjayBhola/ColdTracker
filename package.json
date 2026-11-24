@@ -20,6 +20,7 @@
     "db:migrate:preferences": "node scripts/migrate-preferences.mjs",
     "db:migrate:performance": "node scripts/migrate-performance.mjs",
     "db:migrate:automation-index": "node scripts/migrate-automation-index.mjs",
+    "db:migrate:follow-up-lookup": "node scripts/migrate-follow-up-lookup.mjs",
     "db:migrate:notifications": "node scripts/migrate-notifications.mjs",
     "db:migrate:reliability": "node scripts/migrate-outreach-reliability.mjs",
     "db:migrate:follow-ups": "node scripts/simplify-follow-up-templates.cjs --apply"

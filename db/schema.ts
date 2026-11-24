@@ -153,6 +153,32 @@ export const outreach = pgTable("outreach", {
   userIdStatusCreatedAtIdx: index("outreach_user_id_status_created_at_idx").on(table.userId, table.status, table.createdAt),
 }));
 
+// Derived lookup maintained by the 0018 database trigger, including external
+// automation writes. Contacts in outreach remain the authoritative data.
+export const outreachFollowUpLookup = pgTable("outreach_follow_up_lookup", {
+  outreachId: uuid("outreach_id").notNull().references(() => outreach.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  contactIndex: integer("contact_index").notNull(),
+  contactId: text("contact_id"),
+  stage: integer("stage").notNull(),
+  active: boolean("active").notNull(),
+  pending: boolean("pending").notNull(),
+  dueAt: timestamp("due_at", { withTimezone: true, mode: "date" }),
+  completedAt: timestamp("completed_at", { withTimezone: true, mode: "date" }),
+}, table => ({
+  pk: primaryKey({ name: "outreach_follow_up_lookup_pkey", columns: [table.outreachId, table.contactIndex] }),
+  ownerDue: index("outreach_follow_up_lookup_owner_due_idx").on(table.userId, table.dueAt, table.outreachId, table.contactId)
+    .where(sql`${table.active} AND ${table.pending} AND ${table.dueAt} IS NOT NULL`),
+  ownerStageDue: index("outreach_follow_up_lookup_owner_stage_due_idx").on(table.userId, table.stage, table.dueAt, table.outreachId, table.contactId)
+    .where(sql`${table.active} AND ${table.pending} AND ${table.dueAt} IS NOT NULL`),
+  ownerCompleted: index("outreach_follow_up_lookup_owner_completed_idx").on(table.userId, table.completedAt.desc().nullsFirst(), table.outreachId, table.contactId)
+    .where(sql`${table.completedAt} IS NOT NULL`),
+  ownerStageCompleted: index("outreach_follow_up_lookup_owner_stage_completed_idx").on(table.userId, table.stage, table.completedAt.desc().nullsFirst(), table.outreachId, table.contactId)
+    .where(sql`${table.completedAt} IS NOT NULL`),
+  contactIndexCheck: check("outreach_follow_up_lookup_contact_index_check", sql`${table.contactIndex} >= 0`),
+  stageCheck: check("outreach_follow_up_lookup_stage_check", sql`${table.stage} IN (1,2)`),
+}));
+
 export const reminderDeliveries = pgTable("reminder_deliveries", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),

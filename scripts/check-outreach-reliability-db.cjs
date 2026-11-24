@@ -38,6 +38,9 @@ async function main() {
       assert.deepEqual(afterRerun.contacts, beforeRerun.contacts, "migration must preserve IDs and follow-ups on rerun");
       assert.equal(afterRerun.status_history.length, 1);
       assert.equal(afterRerun.status_history[0].source, "baseline");
+      const lookupMigration = fs.readFileSync("drizzle/0018_follow_up_lookup.sql", "utf8").replace(/\bpublic\b/g, namespace);
+      await pg.unsafe(lookupMigration);
+      await pg.unsafe(`SELECT "${namespace}".coldtrack_sync_follow_up_lookup(id, "userId", status::text, contacts) FROM outreach`);
       assert.ok(afterRerun.contacts[0].followUpSentAt);
       assert.equal(afterRerun.contacts[1].followUpSentAt, undefined, "legacy completion must not be copied to every contact");
       assert.notEqual(afterRerun.contacts[0].id, afterRerun.contacts[1].id);

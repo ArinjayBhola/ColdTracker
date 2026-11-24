@@ -13,16 +13,16 @@ export async function getDashboardFocus() {
   const week = calendarMidnight(shiftCalendarKey(day.key, -weekday), zone).toISOString();
   const weekEnd = calendarMidnight(shiftCalendarKey(day.key, 7 - weekday), zone).toISOString();
   const [row] = await db.execute<{ daily: number; weekly: number; due: number; dailyTarget: number; weeklyTarget: number }>(sql`
-    SELECT count(*) FILTER (WHERE created_at >= ${day.start.toISOString()}::timestamptz AT TIME ZONE 'UTC' AND created_at < ${day.end.toISOString()}::timestamptz AT TIME ZONE 'UTC')::int AS daily,
-      count(*) FILTER (WHERE created_at >= ${week}::timestamptz AT TIME ZONE 'UTC' AND created_at < ${weekEnd}::timestamptz AT TIME ZONE 'UTC')::int AS weekly,
-      coalesce(sum(CASE WHEN status NOT IN ('DRAFT','REPLIED','INTERVIEW','REJECTED','OFFER','CLOSED') THEN
-        (SELECT count(*) FROM jsonb_array_elements(contacts) c WHERE nullif(c->>'followUp2SentAt', '') IS NULL AND
-          (CASE WHEN nullif(c->>'followUpSentAt', '') IS NOT NULL THEN nullif(c->>'followUp2DueAt', '')::timestamptz
-           ELSE nullif(c->>'followUpDueAt', '')::timestamptz END) < ${day.end.toISOString()}::timestamptz)
-        ELSE 0 END), 0)::int AS due,
-      coalesce((SELECT daily_target FROM goals WHERE user_id = ${userId} LIMIT 1), 3) AS "dailyTarget",
-      coalesce((SELECT weekly_target FROM goals WHERE user_id = ${userId} LIMIT 1), 10) AS "weeklyTarget"
-    FROM outreach WHERE "userId" = ${userId}
+    WITH goal AS (SELECT daily_target, weekly_target FROM goals WHERE user_id = ${userId} LIMIT 1)
+    SELECT (SELECT count(*)::int FROM outreach WHERE "userId" = ${userId}
+      AND created_at >= ${day.start.toISOString()}::timestamptz AT TIME ZONE 'UTC'
+      AND created_at < ${day.end.toISOString()}::timestamptz AT TIME ZONE 'UTC') AS daily,
+      (SELECT count(*)::int FROM outreach WHERE "userId" = ${userId}
+        AND created_at >= ${week}::timestamptz AT TIME ZONE 'UTC' AND created_at < ${weekEnd}::timestamptz AT TIME ZONE 'UTC') AS weekly,
+      (SELECT count(*)::int FROM outreach_follow_up_lookup
+        WHERE user_id = ${userId} AND active AND pending AND due_at IS NOT NULL AND due_at < ${day.end.toISOString()}::timestamptz) AS due,
+      coalesce((SELECT daily_target FROM goal), 3) AS "dailyTarget",
+      coalesce((SELECT weekly_target FROM goal), 10) AS "weeklyTarget"
   `);
   return row;
 }

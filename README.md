@@ -212,6 +212,35 @@ into the signed-in account in one transaction without deleting unrelated records
 Passwords and OAuth tokens are excluded. Backups are limited to 5 MB and 5,000
 records per data type. Startup tracking requires its catalog startup to exist.
 
+## Follow-up query performance
+
+Before deploying the indexed follow-up queries, run
+`npm run db:migrate:follow-up-lookup`. This additive migration installs a derived
+contact/date lookup and database triggers, then backfills existing contacts in
+250-outreach batches. Each batch briefly locks its source rows to avoid races
+with automation; it never updates the source outreach or contacts. The command
+is rerunnable and validates the completed lookup. Run it separately from
+`db:migrate`; `db:push` alone does not install triggers or backfill this lookup.
+If interrupted, rerun it before deploying the query changes.
+
+The contacts JSON remains authoritative. App, import, and external automation
+writes update the lookup in the same transaction. Removed contacts and deleted
+outreach/accounts remove their derived rows; unrelated edits avoid rewriting
+unchanged lookup fields. Fixed-path definer triggers require no additional
+table grants for existing source writers. PostgreSQL 16+ is required for safe
+date parsing; invalid legacy date strings are excluded from due-date lookups.
+
+Follow-up pages now select indexed contact positions before fetching their JSON.
+Dashboard focus uses the same lookup for due counts and indexed date ranges for
+daily/weekly activity. `node scripts/check-follow-up-lookup.mjs` compares the
+new queries with the previous JSONB queries across categories, stages, dates,
+contact/status mutations, and 10,000 synthetic outreach rows, in a private schema
+that is always rolled back. `npm run test:reliability:db` additionally exercises
+the real follow-up mutation actions and reminder logic without sending emails.
+`node scripts/check-follow-ups-api.mjs` checks a local production/dev server,
+including a populated migration rerun; set `FOLLOW_UP_TEST_URL` for a different
+port. Its disposable source and lookup records are removed afterward.
+
 ## Statistics performance
 
 Stats reads one database snapshot containing daily cohort counts, heatmap day
