@@ -80,7 +80,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: appearanceScript }} />
         <link
           rel="apple-touch-icon"
-          href="/icons/icon-192.png"
+          href="/icons/apple-touch-icon.png"
         />
       </head>
       <body className="min-h-screen bg-background text-foreground antialiased">
