@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test:reliability": "node scripts/check-outreach-reliability.cjs",
     "test:reliability:db": "node scripts/check-outreach-reliability-db.cjs",
+    "test:performance:automation": "node scripts/check-automation-index.mjs",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:generate": "drizzle-kit generate",
@@ -18,6 +19,7 @@
     "db:migrate:time-zone": "node scripts/migrate-time-zone.mjs",
     "db:migrate:preferences": "node scripts/migrate-preferences.mjs",
     "db:migrate:performance": "node scripts/migrate-performance.mjs",
+    "db:migrate:automation-index": "node scripts/migrate-automation-index.mjs",
     "db:migrate:notifications": "node scripts/migrate-notifications.mjs",
     "db:migrate:reliability": "node scripts/migrate-outreach-reliability.mjs",
     "db:migrate:follow-ups": "node scripts/simplify-follow-up-templates.cjs --apply"

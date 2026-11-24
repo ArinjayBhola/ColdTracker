@@ -182,6 +182,7 @@ export const automationOutreachEvents = pgTable("automation_outreach_events", {
   messageSentAt: timestamp("message_sent_at", { mode: "date" }).notNull(),
   loggedAt: timestamp("logged_at", { mode: "date" }).notNull().default(sql`(now() AT TIME ZONE 'UTC')`),
 }, (table) => ({
+  ownerOutreachIdx: index("automation_outreach_events_owner_outreach_idx").on(table.userId, table.outreachId),
   payloadCheck: check("automation_outreach_events_payload_sha256_check", sql`${table.payloadSha256} ~ '^[0-9a-f]{64}$'`),
   resultCheck: check("automation_outreach_events_result_check", sql`${table.result} IN ('created', 'merged')`),
 }));

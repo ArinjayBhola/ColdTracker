@@ -212,6 +212,23 @@ into the signed-in account in one transaction without deleting unrelated records
 Passwords and OAuth tokens are excluded. Backups are limited to 5 MB and 5,000
 records per data type. Startup tracking requires its catalog startup to exist.
 
+## Automation lookup performance
+
+Run `npm run db:migrate:automation-index` on an existing database to add the
+`(user_id, outreach_id)` automation-ledger index used by dashboard origin filters
+and outreach detail lookups. This additive migration creates the index concurrently
+so automation writes remain available. Run it separately from `db:migrate` because
+PostgreSQL forbids concurrent index creation inside a transaction. The command is
+rerunnable and verifies that the index is valid and ready before reporting success.
+If a prior interrupted build left an invalid index, the command fails for manual
+inspection rather than removing it automatically.
+
+`npm run test:performance:automation` checks the actual dashboard query against
+10,000 synthetic outreach rows in temporary tables, compares plans before and
+after indexing, and verifies origin filters, duplicate ledger entries, account
+isolation, and pagination. All temporary objects are rolled back. It never edits
+application records or sends email.
+
 ## Optional email-open activity
 
 Per-message activity can appear directly on `/outreach/[id]`. It is disabled pending
