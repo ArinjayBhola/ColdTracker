@@ -10,7 +10,8 @@ import path from "node:path";
 import { encode } from "next-auth/jwt";
 import postgres from "postgres";
 
-const base = "http://localhost:3000";
+const base = process.env.NOTIFICATION_TEST_URL || "http://localhost:3000";
+if (!["localhost", "127.0.0.1"].includes(new URL(base).hostname)) throw new Error("Tests require a local server");
 const owner = `notification-browser-test-${randomUUID()}`;
 const sql = postgres(process.env.DATABASE_URL, { prepare: false, max: 1 });
 const profile = await mkdtemp(path.join(tmpdir(), "coldtrack-notification-test-"));
@@ -18,6 +19,7 @@ let chrome;
 let socket;
 let send;
 let evaluate;
+const notificationRequests = [];
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function waitFor(check, label, timeout = 45000) {
   const until = Date.now() + timeout;
@@ -50,6 +52,9 @@ try {
   const pending = new Map();
   socket.onmessage = ({ data }) => {
     const message = JSON.parse(data);
+    if (message.method === "Network.requestWillBeSent" && new URL(message.params.request.url).pathname === "/api/notifications") {
+      notificationRequests.push({ url: message.params.request.url, method: message.params.request.method });
+    }
     if (!message.id) return;
     const task = pending.get(message.id);
     if (!task) return;
@@ -120,6 +125,30 @@ try {
   await waitFor(() => evaluate(`document.body.innerText.includes('No notifications yet')`), "clear all notifications");
   await pause(5500);
   assert.equal(await evaluate(`!!document.querySelector('a[aria-label="Open detected for Alex Morgan. Open outreach"]')`), false, "polling does not repeat old toasts");
+  // Populate enough history to expose infinite-query refetch amplification.
+  await sql`INSERT INTO public.notifications (id, user_id, outreach_id, recipient, subject, observed_at, created_at)
+    SELECT gen_random_uuid(), ${owner}, ${outreach.id}, 'alex@example.invalid', 'Polling history check', now(),
+      now() - g * interval '1 second' FROM generate_series(1,95) g`;
+  await waitFor(() => evaluate(`document.querySelector('[role="dialog"] ul')?.children.length === 30`), "history arrives");
+  for (const expected of [60, 90]) {
+    await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent==='Load older notifications')?.click()`);
+    await waitFor(() => evaluate(`document.querySelector('[role="dialog"] ul')?.children.length === ${expected}`), `load ${expected} notifications`);
+  }
+  await pause(1500);
+  notificationRequests.length = 0;
+  await pause(11500);
+  const steady = notificationRequests.filter(request => request.method === "GET");
+  assert.ok(steady.length >= 1, "revision polling continues");
+  assert.ok(steady.every(request => new URL(request.url).searchParams.get("summary") === "1"), "unchanged polling never reloads head or history pages");
+  assert.ok(steady.length <= 4, "poll frequency does not grow with loaded pages");
+  assert.equal(await evaluate(`document.querySelector('[role="dialog"] ul')?.children.length`), 90, "polls preserve loaded history");
+  const [oldest] = await sql`SELECT id FROM public.notifications WHERE user_id = ${owner} AND cleared_at IS NULL ORDER BY created_at DESC, id DESC OFFSET 89 LIMIT 1`;
+  await sql`UPDATE public.notifications SET read_at = now() WHERE id = ${oldest.id}`;
+  await waitFor(() => evaluate(`document.querySelector('[role="dialog"] ul li:last-child button[aria-label="Mark unread: Alex Morgan"]') !== null`), "remote read on page three syncs", 20000);
+  await sql`UPDATE public.notifications SET cleared_at = now(), read_at = now() WHERE id = ${oldest.id}`;
+  // A cleared row is replaced by the next history entry when loaded pages refresh.
+  await waitFor(() => evaluate(`document.querySelector('[role="dialog"] ul li:last-child button[aria-label="Mark read: Alex Morgan"]') !== null`), "remote clear on page three syncs", 20000);
+  console.log(JSON.stringify({ loadedPages: 3, unchangedWindowSeconds: 11.5, revisionRequests: steady.length, historyRequests: steady.filter(request => !new URL(request.url).searchParams.has("summary")).length }));
   console.log("Browser checks passed: live toast, read/unread fade, inbox/toast navigation, automatic closing, clearing, and mobile layout.");
   console.log(`Screenshots: ${path.join(tmpdir(), "coldtrack-notifications-desktop.png")} and ${path.join(tmpdir(), "coldtrack-notifications-mobile.png")}`);
 } catch (error) {

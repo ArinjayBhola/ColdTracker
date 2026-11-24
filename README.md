@@ -264,7 +264,11 @@ account is deleted. Use this migration even when managing tables with Drizzle:
 `db:push` alone does not install the triggers.
 
 The open app checks for updates every five seconds and on window focus; background
-polling pauses in hidden tabs. This is an in-app inbox, not browser push when the
+polling pauses in hidden tabs. Each check uses one compact revision query for the
+loaded inbox range and unread count. Loaded history pages are fetched again only
+when notifications, read/clear status, or their outreach details change. Loading
+older pages does not multiply unchanged polling requests. This needs no migration.
+This is an in-app inbox, not browser push when the
 app is closed. Detections are image loads, not confirmation of who read an email.
 The bell stays available during request failures and offers a retry.
 

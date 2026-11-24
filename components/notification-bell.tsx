@@ -3,14 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useInfiniteQuery, useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { Bell, CheckCheck, Eye, Loader2, Mail, MailOpen, RefreshCw, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import type { NotificationPage } from "@/lib/notifications";
+import { notificationRevision, oldestNotification, type NotificationPage, type NotificationSummary } from "@/lib/notifications";
 
-const queryKey = ["notifications"];
+const rootKey = ["notifications"];
+const queryKey = [...rootKey, "pages"];
+const revisionKey = [...rootKey, "revision"];
 const mutationKey = ["notification-status"];
 type StatusChange = { action: "read" | "unread" | "clear"; id: string } | { action: "read_all" | "clear_all"; through: string };
 
@@ -21,8 +23,8 @@ export function NotificationBell() {
   useEffect(() => {
     if (!inApp) {
       // Clear account data on sign-out, without disrupting Strict Mode remounts.
-      void client.cancelQueries({ queryKey });
-      client.removeQueries({ queryKey });
+      void client.cancelQueries({ queryKey: rootKey });
+      client.removeQueries({ queryKey: rootKey });
     }
   }, [inApp, client]);
   if (!inApp) return null;
@@ -44,7 +46,7 @@ function NotificationInbox() {
       if (!response.ok) throw new Error("Could not update notification status");
     },
     onMutate: async action => {
-      await client.cancelQueries({ queryKey });
+      await client.cancelQueries({ queryKey: rootKey });
       const previous = client.getQueryData<InfiniteData<NotificationPage>>(queryKey);
       client.setQueryData<InfiniteData<NotificationPage>>(queryKey, current => {
         if (!current) return current;
@@ -71,7 +73,7 @@ function NotificationInbox() {
       toast({ title: "Could not save notification status", description: "Please try again.", variant: "destructive" });
     },
     onSettled: () => {
-      if (client.isMutating({ mutationKey }) === 1) void client.invalidateQueries({ queryKey });
+      if (client.isMutating({ mutationKey }) === 1) void client.invalidateQueries({ queryKey: revisionKey });
     },
   });
   const query = useInfiniteQuery({
@@ -84,6 +86,34 @@ function NotificationInbox() {
     },
     getNextPageParam: page => page.nextCursor,
     enabled: !read.isPending,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnMount: "always",
+    retry: 1,
+  });
+
+  const live = useQuery({
+    queryKey: revisionKey,
+    enabled: !!query.data && !read.isPending && !query.isFetching,
+    queryFn: async ({ signal }) => {
+      const snapshot = client.getQueryState<InfiniteData<NotificationPage>>(queryKey);
+      const items = snapshot?.data?.pages.flatMap(page => page.items) ?? [];
+      const oldest = oldestNotification(items);
+      const params = new URLSearchParams({ summary: "1" });
+      if (oldest) { params.set("oldestAt", oldest.createdAt); params.set("oldestId", oldest.id); }
+      const revision = await notificationRevision(items);
+      const response = await fetch(`/api/notifications?${params}`, { cache: "no-store", signal });
+      if (!response.ok) throw new Error("Notifications unavailable");
+      const summary: NotificationSummary = await response.json();
+      // A pagination request or optimistic mutation may have changed the cache
+      // while this check was in flight. The next poll will check that new range.
+      if (!signal.aborted && snapshot?.dataUpdatedAt === client.getQueryState(queryKey)?.dataUpdatedAt &&
+          !client.isMutating({ mutationKey }) && !client.isFetching({ queryKey }) &&
+          (revision !== summary.revision || snapshot?.data?.pages[0]?.unreadCount !== summary.unreadCount)) {
+        void client.invalidateQueries({ queryKey });
+      }
+      return summary;
+    },
     staleTime: 3000,
     refetchInterval: 5000,
     refetchIntervalInBackground: false,
@@ -91,11 +121,13 @@ function NotificationInbox() {
     refetchOnMount: "always",
     retry: 1,
   });
+  const isError = query.isError || live.isError;
+  const refresh = () => { if (!query.data || query.isError) void query.refetch(); else void live.refetch(); };
 
   useEffect(() => {
     if (typeof BroadcastChannel !== "undefined") {
       channel.current = new BroadcastChannel("coldtrack-notifications");
-      channel.current.onmessage = () => void client.invalidateQueries({ queryKey });
+      channel.current.onmessage = () => void client.invalidateQueries({ queryKey: revisionKey });
     }
     return () => {
       channel.current?.close();
@@ -134,12 +166,12 @@ function NotificationInbox() {
   const items = [...new Map(query.data?.pages.flatMap(page => page.items).map(item => [item.id, item]) ?? []).values()];
 
   return (
-    <Popover open={open} onOpenChange={value => { setOpen(value); if (value && !read.isPending) void query.refetch(); }}>
+    <Popover open={open} onOpenChange={value => { setOpen(value); if (value && !read.isPending) refresh(); }}>
       <PopoverTrigger asChild>
         <Button type="button" variant="outline" size="icon" className="fixed right-16 top-4 z-40 h-9 w-9 rounded-full bg-background shadow-sm md:right-[4.5rem]" aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`} title="Notifications">
           <Bell className="h-4 w-4" />
           {unread > 0 && <span key={unread} aria-hidden="true" className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground ring-2 ring-background animate-in zoom-in duration-200 motion-reduce:animate-none">{unread > 99 ? "99+" : unread}</span>}
-          {query.isError && !unread && <span aria-hidden="true" className="absolute right-0 top-0 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-background" />}
+          {isError && !unread && <span aria-hidden="true" className="absolute right-0 top-0 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-background" />}
         </Button>
       </PopoverTrigger>
       <span className="sr-only" role="status" aria-live="polite">{unread ? `${unread} unread notifications` : ""}</span>
@@ -147,10 +179,10 @@ function NotificationInbox() {
         <div className="border-b px-5 pb-4 pt-5">
           <div className="flex items-center justify-between gap-3">
             <h2 className="flex items-center gap-2 text-base font-bold">Notifications{unread > 0 && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{unread}</span>}</h2>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" aria-label="Refresh notifications" disabled={query.isFetching || read.isPending} onClick={() => void query.refetch()}><RefreshCw className={`h-3.5 w-3.5 ${query.isFetching ? "animate-spin" : ""}`} /></Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" aria-label="Refresh notifications" disabled={query.isFetching || live.isFetching || read.isPending} onClick={refresh}><RefreshCw className={`h-3.5 w-3.5 ${query.isFetching || live.isFetching ? "animate-spin" : ""}`} /></Button>
           </div>
           <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
-            <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><span className={`h-1.5 w-1.5 rounded-full ${query.isError ? "bg-amber-500" : "bg-emerald-500"}`} />{query.isError ? "Reconnecting" : "Updates automatically"}</p>
+            <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><span className={`h-1.5 w-1.5 rounded-full ${isError ? "bg-amber-500" : "bg-emerald-500"}`} />{isError ? "Reconnecting" : "Updates automatically"}</p>
           </div>
           <div className="mt-3 flex items-center gap-1">
             <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-xs text-primary" disabled={!unread || !firstPage || read.isPending} onClick={() => firstPage && read.mutate({ action: "read_all", through: firstPage.through })}><CheckCheck className="h-3.5 w-3.5" />Mark all read</Button>
@@ -159,8 +191,8 @@ function NotificationInbox() {
         </div>
         <div className="max-h-[min(65dvh,32rem)] overflow-y-auto overscroll-contain">
           {query.isPending ? <p className="flex items-center justify-center gap-2 p-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Loading notifications...</p> : null}
-          {query.isError && <div role="alert" className="space-y-2 border-b bg-destructive/5 p-4 text-xs text-destructive"><p>Could not refresh notifications.{items.length ? " Displayed activity may be out of date." : " Please try again."}</p><Button variant="outline" size="sm" onClick={() => void query.refetch()}>Try again</Button></div>}
-          {!query.isPending && !query.isError && !items.length && <div className="px-6 py-10 text-center"><div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/5"><Bell className="h-5 w-5 text-primary/70" /></div><p className="text-sm font-semibold">No notifications yet</p><p className="mt-2 text-xs leading-relaxed text-muted-foreground">When an open is detected for a tracked email, it will appear here.</p></div>}
+          {isError && <div role="alert" className="space-y-2 border-b bg-destructive/5 p-4 text-xs text-destructive"><p>Could not refresh notifications.{items.length ? " Displayed activity may be out of date." : " Please try again."}</p><Button variant="outline" size="sm" onClick={refresh}>Try again</Button></div>}
+          {!query.isPending && !isError && !items.length && <div className="px-6 py-10 text-center"><div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/5"><Bell className="h-5 w-5 text-primary/70" /></div><p className="text-sm font-semibold">No notifications yet</p><p className="mt-2 text-xs leading-relaxed text-muted-foreground">When an open is detected for a tracked email, it will appear here.</p></div>}
           <ul className="space-y-1 p-2">
             {items.map(item => <li key={item.id} className={`flex items-center gap-1 rounded-2xl pr-2 transition-colors duration-500 motion-reduce:transition-none ${!item.readAt ? "bg-primary/[0.08]" : "bg-transparent"}`}>
               <Link href={`/outreach/${item.outreachId}#email-activity`} onClick={() => { if (!item.readAt) read.mutate({ action: "read", id: item.id }); setOpen(false); liveToast.current?.dismiss(); }} className="group flex min-w-0 flex-1 items-center gap-3 rounded-2xl px-3 py-4 focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-ring">

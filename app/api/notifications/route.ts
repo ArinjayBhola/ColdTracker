@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { notifications, outreach } from "@/db/schema";
 import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
+import { readNotificationSummary } from "@/lib/notification-summary";
 
 export const dynamic = "force-dynamic";
 const headers = { "Cache-Control": "private, no-store" };
@@ -16,10 +17,26 @@ const readSchema = z.discriminatedUnion("action", [
 ]);
 
 export async function GET(request: Request) {
+  const started = performance.now();
   const session = await auth();
   if (!session?.user?.id) return Response.json({ error: "Sign in required" }, { status: 401, headers });
+  const params = new URL(request.url).searchParams;
+  if (params.get("summary") === "1") {
+    let oldest: z.infer<typeof cursorSchema> | undefined;
+    if (params.has("oldestAt") || params.has("oldestId")) {
+      const parsed = cursorSchema.safeParse({ at: params.get("oldestAt"), id: params.get("oldestId") });
+      if (!parsed.success) return Response.json({ error: "Invalid summary range" }, { status: 400, headers });
+      oldest = parsed.data;
+    }
+    try {
+      const summary = await readNotificationSummary(session.user.id, oldest);
+      return Response.json(summary, { headers: { ...headers, "Server-Timing": `handler;dur=${(performance.now() - started).toFixed(1)}` } });
+    } catch {
+      return Response.json({ error: "Notifications temporarily unavailable" }, { status: 503, headers });
+    }
+  }
   let cursor: z.infer<typeof cursorSchema> | undefined;
-  const raw = new URL(request.url).searchParams.get("cursor");
+  const raw = params.get("cursor");
   if (raw) {
     try {
       if (raw.length > 512) throw new Error("Invalid cursor");
@@ -38,6 +55,7 @@ export async function GET(request: Request) {
         id: notifications.id, outreachId: notifications.outreachId,
         recipient: notifications.recipient, subject: notifications.subject,
         companyName: outreach.companyName,
+        outreachUpdatedAt: sql<string>`to_char(${outreach.updatedAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
         personName: sql<string | null>`(
           SELECT NULLIF(btrim(contact->>'personName'), '')
           FROM jsonb_array_elements(${outreach.contacts}) AS contact
