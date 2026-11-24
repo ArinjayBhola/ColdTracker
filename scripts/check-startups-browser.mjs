@@ -84,8 +84,13 @@ try {
   assert.equal(requests.length,1,"fresh preview cache is reused when toggling views");
   await evaluate(`document.querySelector('button[aria-label^="Edit ${prefix}"]').click()`);
   await waitFor(()=>evaluate(`document.querySelectorAll('[aria-label="Team members"] h4').length===5`),"editor still loads the entire team");
+  await evaluate(`(()=>{const input=document.querySelector('[role="dialog"] input[id$="employees.0.name"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'Edited preview member');input.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+  await evaluate(`document.querySelector('[role="dialog"] form').requestSubmit()`);
+  await waitFor(()=>evaluate(`!document.querySelector('[role="dialog"]') && document.querySelector('tbody')?.innerText.includes('Edited preview member')`),"save refreshes the team preview");
+  const saved=await sql`SELECT name FROM public.startup_employees WHERE startup_id=${ids[0]} ORDER BY created_at,id`;
+  assert.equal(saved.length,5);assert.equal(saved[0].name,'Edited preview member');
   assert.deepEqual(errors,[]);
-  console.log(JSON.stringify({productionPageTimesMs:times,gridEmployeeRequests:0,detailsEmployeeRequests:1,previewMembersPerCompany:2,editorMembers:5,apiChecks:"passed",browserChecks:"passed"}));
+  console.log(JSON.stringify({productionPageTimesMs:times,gridEmployeeRequests:0,detailsEmployeeRequests:1,previewMembersPerCompany:2,editorMembers:5,saveAndPreviewRefresh:"passed",apiChecks:"passed",browserChecks:"passed"}));
 } finally {
   socket?.close(); if(chrome){chrome.kill();await pause(500);}
   if(ids.length) await sql`DELETE FROM public.startups WHERE id IN ${sql(ids)}`;

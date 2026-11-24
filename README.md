@@ -300,7 +300,23 @@ Run `node scripts/check-startup-query.mjs` for rollback-only SQL parity and
 performance checks. Run `node scripts/check-startups-browser.mjs` against a local
 production server, using `STARTUP_TEST_URL` for a port other than 3000. The browser
 check creates disposable catalog rows and a user, then removes them in `finally`;
-it verifies lazy previews, API validation, and full-team editing without saving.
+it verifies lazy previews, API validation, and saving a disposable startup's team.
+
+Startup form saves use transaction-scoped advisory locks on normalized name/domain
+keys and row locks for edits, so unrelated saves can proceed concurrently. Team
+updates and inserts are batched while retaining employee IDs, creation dates,
+contact status, and email counts. Conservative SQL prefilters reduce catalog data
+transferred for duplicate checks; JavaScript still applies the exact Unicode and
+URL normalization rules. PostgreSQL still scans the catalog for candidates, and
+unusual URLs/non-ASCII names can require more fallback rows. Indexed identity keys
+would require a separate schema change; this improvement requires no migration.
+
+`node scripts/check-startup-save.mjs` checks create/edit/remove operations,
+transaction rollback, duplicate races, independent saves, Unicode/URL cases, and
+a 100-member save against a 10,000-company fixture. It creates and removes a
+private schema, compares statement counts/timings with the old save path, and
+examines the read-only duplicate-query plan. These are database timings, excluding
+authentication, rendering, and tag invalidation; they depend on database latency.
 
 ## Automation lookup performance
 
