@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import type { StartupTeamPreview } from "@/lib/startup-query";
 
 import { FiCheckCircle, FiCircle, FiExternalLink, FiLinkedin, FiMail, FiEye } from "react-icons/fi";
 import { Button } from "@/components/ui/button";
@@ -26,15 +27,6 @@ type StartupItem = {
   logoUrl: string | null;
   tracking: {
     outreachDone: boolean;
-    followUpDate: Date | null;
-    notes: string | null;
-  }[];
-  employees: {
-    id: string;
-    name: string;
-    role: string | null;
-    email: string | null;
-    linkedinUrl: string | null;
   }[];
 };
 
@@ -45,9 +37,11 @@ type StartupsTableProps = {
   currentPage: number;
   selectedIds: string[];
   onSelect: (id: string, checked: boolean) => void;
+  teams?: Record<string, StartupTeamPreview>;
+  teamsLoading: boolean;
 };
 
-export function StartupsTable({ items, totalCount, currentPage, selectedIds, onSelect }: StartupsTableProps) {
+export function StartupsTable({ items, teams, teamsLoading, totalCount, currentPage, selectedIds, onSelect }: StartupsTableProps) {
   const { toast } = useToast();
   const router = useRouter();
   const itemsPerPage = 21;
@@ -120,6 +114,7 @@ export function StartupsTable({ items, totalCount, currentPage, selectedIds, onS
           ) : (
             filteredItems.map((item) => {
               const tracking = item.tracking[0] || { outreachDone: false, followUpDate: null };
+              const team = teams?.[item.id];
               return (
                 <motion.tr 
                   key={item.id} 
@@ -151,7 +146,7 @@ export function StartupsTable({ items, totalCount, currentPage, selectedIds, onS
                   </td>
                   <td className="p-6 align-middle">
                     <div className="flex flex-col gap-1">
-                      {item.employees.slice(0, 2).map((emp) => (
+                      {team?.employees.map((emp) => (
                         <div key={emp.id} className="flex items-center gap-2 text-xs">
                           <span className="font-semibold text-foreground/80 truncate max-w-[100px]">{emp.name}</span>
                           <div className="flex items-center gap-1 shrink-0">
@@ -168,10 +163,11 @@ export function StartupsTable({ items, totalCount, currentPage, selectedIds, onS
                           </div>
                         </div>
                       ))}
-                      {item.employees.length > 2 && (
-                        <span className="text-[10px] text-muted-foreground font-medium">+{item.employees.length - 2} more</span>
+                      {team && team.employeeCount > 2 && (
+                        <span className="text-[10px] text-muted-foreground font-medium">+{team.employeeCount - 2} more</span>
                       )}
-                      {item.employees.length === 0 && <span className="text-[10px] text-muted-foreground italic">No founders listed</span>}
+                      {!team && <span className="text-[10px] text-muted-foreground" role={teamsLoading ? "status" : undefined}>{teamsLoading ? "Loading team..." : "Team unavailable"}</span>}
+                      {team?.employeeCount === 0 && <span className="text-[10px] text-muted-foreground italic">No founders listed</span>}
                     </div>
                   </td>
                   <td className="p-6 align-middle">

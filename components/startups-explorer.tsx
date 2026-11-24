@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import type { StartupListItem, StartupTeamPreview } from "@/lib/startup-query";
 import { FiGrid, FiList, FiSearch } from "react-icons/fi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,24 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-type StartupItem = {
-  id: string;
-  name: string;
-  sector: string | null;
-  description: string | null;
-  website: string | null;
-  logoUrl: string | null;
-  location: string | null;
-  teamSize: string | null;
-  fundingAmount: string | null;
-  isHiring: boolean | null;
-  isTrending: boolean | null;
-  tracking: { outreachDone: boolean; followUpDate: Date | null; notes: string | null }[];
-  employees: { id: string; name: string; role: string | null; email: string | null; linkedinUrl: string | null }[];
-};
-
 type StartupsExplorerProps = {
-  items: StartupItem[];
+  items: StartupListItem[];
   totalCount: number;
   currentPage: number;
   initialSearch: string;
@@ -61,6 +47,15 @@ export function StartupsExplorer({ items, totalCount, currentPage, initialSearch
   };
   const isFirstSearchEffect = useRef(true);
   const router = useRouter();
+  const teams = useQuery<Record<string, StartupTeamPreview>>({
+    queryKey: ["startup-team-previews", items.map(item => [item.id,item.updatedAt])],
+    enabled: view === "list" && items.length > 0,
+    queryFn: async ({ signal }) => {
+      const response = await fetch(`/api/startups/teams?${new URLSearchParams({ ids: items.map(item => item.id).join(",") })}`, { cache: "no-store", signal });
+      if (!response.ok) throw new Error("Could not load team members");
+      return response.json();
+    }, staleTime: 60_000, gcTime: 60_000, refetchOnMount: true,
+  });
 
   const pageSize = 21;
   const totalPages = Math.ceil(totalCount / pageSize);
@@ -188,13 +183,14 @@ export function StartupsExplorer({ items, totalCount, currentPage, initialSearch
       )}
 
       <div className="min-h-[400px]">
+        {view === "list" && teams.isError && <div role="alert" className="mb-4 flex flex-wrap items-center gap-3 text-sm text-destructive">Could not load team members.<Button variant="outline" size="sm" onClick={() => void teams.refetch()}>Try again</Button></div>}
 
         {items.length === 0 ? (
           <div className="rounded-2xl border border-border/50 p-12 text-center text-muted-foreground">No startups match your search and team size.</div>
         ) : view === "grid" ? (
         <StartupsGrid items={items} selectedIds={selectedIds} onSelect={toggleSelection} />
       ) : (
-          <StartupsTable items={items} totalCount={totalCount} currentPage={currentPage} selectedIds={selectedIds} onSelect={toggleSelection} />
+          <StartupsTable items={items} teams={teams.data} teamsLoading={teams.isPending} totalCount={totalCount} currentPage={currentPage} selectedIds={selectedIds} onSelect={toggleSelection} />
         )}
       </div>
 

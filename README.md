@@ -269,6 +269,22 @@ scale checks. Run `node scripts/check-stats-api.mjs` and
 set `STATS_TEST_URL` for a port other than 3000. HTTP/browser fixtures are
 disposable and removed after the checks; no emails are sent.
 
+## Startup browsing performance
+
+Startup browsing reads the page, search-scoped team-size counts, and personal
+outreach summary in one SQL statement. The grid receives only displayed company
+fields and outreach status; employee records are not included. Opening Details
+loads one authenticated batch of two team members per company plus full counts.
+Previews are cached for 60 seconds and keyed by company IDs and update timestamps.
+The editor and startup detail page still load the entire team on demand. This
+change requires no database migration.
+
+Run `node scripts/check-startup-query.mjs` for rollback-only SQL parity and
+performance checks. Run `node scripts/check-startups-browser.mjs` against a local
+production server, using `STARTUP_TEST_URL` for a port other than 3000. The browser
+check creates disposable catalog rows and a user, then removes them in `finally`;
+it verifies lazy previews, API validation, and full-team editing without saving.
+
 ## Automation lookup performance
 
 Run `npm run db:migrate:automation-index` on an existing database to add the
