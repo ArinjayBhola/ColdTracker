@@ -12,9 +12,10 @@ export async function getFollowUpTemplates(): Promise<(FollowUpTemplate & { id: 
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
   const userId = session.user.id;
-  await ensureFollowUpTemplates(userId);
   const ids = DEFAULT_FOLLOW_UP_TEMPLATES.map(t => followUpTemplateId(userId, t.stage));
-  const saved = await db.select().from(messageTemplates).where(and(eq(messageTemplates.userId, userId), inArray(messageTemplates.id, ids)));
+  const read=()=>db.select().from(messageTemplates).where(and(eq(messageTemplates.userId,userId),inArray(messageTemplates.id,ids)));
+  let saved=await read();
+  if(await ensureFollowUpTemplates(userId,saved.map(row=>row.id)))saved=await read();
   return DEFAULT_FOLLOW_UP_TEMPLATES.flatMap(t => {
     const custom = saved.find(row => row.id === followUpTemplateId(userId, t.stage));
     return custom ? [{ ...t, id: custom.id, subject: custom.subject, body: custom.body }] : [];

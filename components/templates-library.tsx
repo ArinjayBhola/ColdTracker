@@ -2,12 +2,13 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
-import type { messageTemplates } from "@/db/schema";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { TEMPLATE_PAGE_SIZE, templatePreview, type TemplateItem, type TemplatePage, type TemplateFilters } from "@/lib/template-types";
+import { TablePagination } from "@/components/ui/data-table/table-pagination";
 import { deleteTemplate, saveTemplate, setTemplateFavorite, setTemplatePinned } from "@/actions/templates";
 import { TemplateOptionPicker } from "@/components/template-option-picker";
 import { characterCount, templateSchema, type TemplateInput } from "@/lib/template-validation";
-import { FOLLOW_UP_PLACEHOLDERS, type FollowUpStage } from "@/lib/follow-up-templates";
+import { FOLLOW_UP_PLACEHOLDERS } from "@/lib/follow-up-templates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,38 +20,57 @@ import { Check, ChevronDown, Copy, FileText, Plus, Search, Star, Pencil, Trash2,
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-type Template = typeof messageTemplates.$inferSelect & { followUpStage?: FollowUpStage | null };
+type Template = TemplateItem;
 const empty: TemplateInput = { title: "", subject: "", body: "", category: "", tags: [], characterLimit: null, favorite: false, pinned: false };
 
-function TemplateCopyButton({ body, subject, onError }: {
-  body: string; subject: string; onError: (message: string) => void;
+function TemplateCopyButton({ template, load, onError }: {
+  template: Template; load: () => Promise<Template>; onError: (message: string) => void;
 }) {
-  const [copied, setCopied] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
-
-  async function copy(text: string) {
+  const {subject}=template;
+  const [copied,setCopied]=useState(false);
+  const timer=useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(()=>()=>{if(timer.current)clearTimeout(timer.current);},[]);
+  async function copy(kind: "body" | "subject" | "both") {
     try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => setCopied(false), 5000);
-    } catch {
-      onError("Could not copy. Open Edit and select the text to copy manually.");
-    }
+      const text=async()=>{
+        const full=kind==='subject' ? template : await load();
+        return kind==='subject' ? full.subject : kind==='both' ? `Subject: ${full.subject}\n\n${full.body}` : full.body;
+      };
+      // Start clipboard permission during the click, including Safari's gesture requirement.
+      if(typeof ClipboardItem!=="undefined" && navigator.clipboard.write)
+        await navigator.clipboard.write([new ClipboardItem({'text/plain':text().then(value=>new Blob([value],{type:'text/plain'}))})]);
+      else await navigator.clipboard.writeText(await text());
+      setCopied(true);if(timer.current)clearTimeout(timer.current);
+      timer.current=setTimeout(()=>setCopied(false),5000);
+    }catch{onError("Could not copy. Open Edit and select the text to copy manually.");}
   }
-
-  const button = <Button size="sm" className="h-8 gap-1.5 px-2.5 text-xs" variant="outline" onClick={subject ? undefined : () => void copy(body)} aria-label={copied ? "Copied" : subject ? "Copy options" : "Copy message"}>
-    {copied ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}{copied ? "Copied" : "Copy"}{subject && <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+  const button=<Button size="sm" className="h-8 gap-1.5 px-2.5 text-xs" variant="outline" onClick={subject ? undefined : ()=>void copy('body')} aria-label={copied ? "Copied" : subject ? "Copy options" : "Copy message"}>
+    {copied ? <Check className="h-3.5 w-3.5 text-green-600"/> : <Copy className="h-3.5 w-3.5"/>}{copied ? "Copied" : "Copy"}{subject && <ChevronDown className="h-3 w-3 text-muted-foreground"/>}
   </Button>;
   return subject ? <DropdownMenu><DropdownMenuTrigger asChild>{button}</DropdownMenuTrigger><DropdownMenuContent align="start">
-    <DropdownMenuItem onSelect={() => void copy(body)}>Message</DropdownMenuItem>
-    <DropdownMenuItem onSelect={() => void copy(subject)}>Subject</DropdownMenuItem>
-    <DropdownMenuItem onSelect={() => void copy(`Subject: ${subject}\n\n${body}`)}>Subject and message</DropdownMenuItem>
+    <DropdownMenuItem onSelect={()=>void copy('body')}>Message</DropdownMenuItem>
+    <DropdownMenuItem onSelect={()=>void copy('subject')}>Subject</DropdownMenuItem>
+    <DropdownMenuItem onSelect={()=>void copy('both')}>Subject and message</DropdownMenuItem>
   </DropdownMenuContent></DropdownMenu> : button;
 }
 
-export function TemplatesLibrary({ initialTemplates, initialFollowUpStage }: { initialTemplates: Template[]; initialFollowUpStage?: FollowUpStage }) {
+function TemplateBody({template,load}:{template:Template;load:()=>Promise<Template>}) {
+  const [body,setBody]=useState<string | null>(null);
+  const [loading,setLoading]=useState(false);
+  const [error,setError]=useState(false);
+  return <div className="min-h-0 flex-1 overflow-y-auto rounded-md bg-muted/40 p-3 !shrink">
+    <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{body ?? template.body}</p>
+    {template.bodyTruncated && body===null && <Button variant="ghost" size="sm" disabled={loading} onClick={async()=>{
+      setLoading(true);setError(false);
+      try{setBody((await load()).body);}catch{setError(true);}finally{setLoading(false);}
+    }}>{loading ? 'Loading message...' : error ? 'Try loading message again' : 'Read full message'}</Button>}
+  </div>;
+}
+
+export function TemplatesLibrary({ owner, initialPage, initialFilters, initialFollowUpTemplate }: {
+  owner:string; initialPage:TemplatePage; initialFilters:TemplateFilters; initialFollowUpTemplate:Template | null;
+}) {
+  const initialTemplates=initialPage.items;
   const queryClient = useQueryClient();
   const router = useRouter();
   const channel = useRef<BroadcastChannel | null>(null);
@@ -63,16 +83,30 @@ export function TemplatesLibrary({ initialTemplates, initialFollowUpStage }: { i
     channel.current.onmessage = () => router.refresh();
     return () => { channel.current?.close(); channel.current = null; };
   }, [router]);
-  const initialFollowUpTemplate = initialTemplates.find(template => template.followUpStage === initialFollowUpStage);
   const [localTemplates, setLocalTemplates] = useState({ base: initialTemplates, items: initialTemplates });
   const templates = localTemplates.base === initialTemplates ? localTemplates.items : initialTemplates;
-  function setTemplates(update: (current: Template[]) => Template[]) {
-    setLocalTemplates(current => ({ base: initialTemplates, items: update(current.base === initialTemplates ? current.items : initialTemplates) }));
-  }
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("");
-  const [tag, setTag] = useState("");
-  const [favorites, setFavorites] = useState(false);
+  const setTemplates=useCallback((update:(current:Template[])=>Template[])=>{
+    setLocalTemplates(current=>({base:initialTemplates,items:update(current.base===initialTemplates ? current.items : initialTemplates)}));
+  },[initialTemplates]);
+  const [search,setSearch]=useState(initialFilters.q);
+  const [appliedSearch,setAppliedSearch]=useState(initialFilters.q);
+  const [submittedSearch,setSubmittedSearch]=useState(initialFilters.q);
+  if(appliedSearch!==initialFilters.q){setAppliedSearch(initialFilters.q);if(initialFilters.q!==submittedSearch)setSearch(initialFilters.q);}
+  const [navigating,startNavigation]=useTransition();
+  const navigate=useCallback((patch:Record<string,string|number>,push=false)=>{
+    const params=new URLSearchParams(window.location.search);
+    for(const [key,value] of Object.entries(patch)){if(value==='')params.delete(key);else params.set(key,String(value));}
+    startNavigation(()=>{if(push)router.push(`/templates?${params}`);else router.replace(`/templates?${params}`);});
+  },[router,startNavigation]);
+  useEffect(()=>{
+    if(search.trim()===initialFilters.q || search.trim()===submittedSearch)return;
+    const timer=setTimeout(()=>{setSubmittedSearch(search.trim());navigate({q:search.trim(),page:1});},350);
+    return()=>clearTimeout(timer);
+  },[search,initialFilters.q,submittedSearch,navigate]);
+  const category=initialFilters.category,tag=initialFilters.tag,favorites=initialFilters.favorites;
+  const setCategory=useCallback((value:string)=>{setSubmittedSearch(search.trim());navigate({category:value,q:search.trim(),page:1});},[navigate,search]);
+  const setTag=useCallback((value:string)=>{setSubmittedSearch(search.trim());navigate({tag:value,q:search.trim(),page:1});},[navigate,search]);
+  const setFavorites=(value:boolean)=>{setSubmittedSearch(search.trim());navigate({favorites:value?'1':'',q:search.trim(),page:1});};
   const [view, setView] = useState<"grid" | "column">("grid");
   const [editor, setEditor] = useState<{ id?: string; value: TemplateInput } | null>(() => initialFollowUpTemplate ? {
     id: initialFollowUpTemplate.id,
@@ -83,35 +117,41 @@ export function TemplatesLibrary({ initialTemplates, initialFollowUpStage }: { i
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [pending, startTransition] = useTransition();
-  const categories = [...new Set(templates.map(t => t.category).filter(Boolean))].sort();
-  const tags = [...new Set(templates.flatMap(t => t.tags))].sort();
-  const visible = templates.filter(t =>
-    (!favorites || t.favorite) && (!category || t.category === category) && (!tag || t.tags.includes(tag)) &&
-    [t.title, t.subject, t.body, t.category, ...t.tags].join(" ").toLowerCase().includes(search.toLowerCase())
-  ).sort((a, b) => Number(b.pinned) - Number(a.pinned) ||
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() || a.id.localeCompare(b.id));
-
-  function openEditor(template?: Template, duplicate = false) {
-    activeField.current = "body";
-    setError("");
-    setEditor({
-      id: duplicate ? undefined : template?.id, value: template ? {
-        title: duplicate ? `${template.title.slice(0, 193)} (copy)` : template.title,
-        subject: template.subject, body: template.body, category: template.category,
-        tags: template.tags, characterLimit: template.characterLimit, favorite: duplicate ? false : template.favorite,
-        pinned: duplicate ? false : template.pinned,
-      } : { ...empty }
-    });
-    setLimitText(template?.characterLimit?.toString() ?? "");
-  }
+  const categories=initialPage.categories,tags=initialPage.tags;
+  const visible=useMemo(()=>[...templates].sort((a,b)=>Number(b.pinned)-Number(a.pinned)||Date.parse(b.createdAt)-Date.parse(a.createdAt)||a.id.localeCompare(b.id)).slice(0,TEMPLATE_PAGE_SIZE),[templates]);
+  const editorRequest=useRef(0);
+  useEffect(()=>()=>{editorRequest.current++;},[]);
+  const loadTemplate=useCallback(async(template:Template):Promise<Template>=>{
+    if(!template.bodyTruncated)return template;
+    return queryClient.fetchQuery({queryKey:['template-body',owner,template.id,Date.parse(template.updatedAt)],staleTime:60_000,gcTime:60_000,
+      queryFn:async({signal})=>{
+        const response=await fetch(`/api/templates/${template.id}`,{cache:'no-store',signal});
+        if(!response.ok)throw new Error('Could not load template');return response.json();
+      }});
+  },[queryClient,owner]);
+  const openEditor=useCallback(async(template?:Template,duplicate=false)=>{
+    const request=++editorRequest.current;
+    activeField.current='body';setError('');
+    try{
+      if(template?.bodyTruncated)setNotice('Loading template...');
+      const full=template ? await loadTemplate(template) : undefined;
+      if(request!==editorRequest.current)return;
+      setEditor({id:duplicate ? undefined : full?.id,value:full ? {
+        title:duplicate ? `${full.title.slice(0,193)} (copy)` : full.title,subject:full.subject,body:full.body,
+        category:full.category,tags:full.tags,characterLimit:full.characterLimit,favorite:duplicate?false:full.favorite,pinned:duplicate?false:full.pinned,
+      } : {...empty}});
+      setLimitText(full?.characterLimit?.toString()??'');setNotice('');
+    }catch{if(request===editorRequest.current)setNotice('Could not load template. Try opening it again.');}
+  },[loadTemplate,setError,setNotice,setEditor,setLimitText]);
 
   function update(value: Partial<TemplateInput>) {
     setEditor(current => current ? { ...current, value: { ...current.value, ...value } } : null);
   }
 
-  function upsert(template: Template) {
-    setTemplates(current => [...current.filter(t => t.id !== template.id), { ...current.find(t => t.id === template.id), ...template }]);
-  }
+  const upsert=useCallback((template:Template)=>{
+    setTemplates(current=>[...current.filter(t=>t.id!==template.id),templatePreview(template)]);
+    channel.current?.postMessage('updated');
+  },[setTemplates]);
 
   function insertPlaceholder(token: string) {
     if (!editor) return;
@@ -136,12 +176,61 @@ export function TemplatesLibrary({ initialTemplates, initialFollowUpStage }: { i
         if (result.error) { setError(result.error); return; }
         if (result.template) upsert(result.template);
         void queryClient.invalidateQueries({ queryKey: ["follow-up-templates"] });
-        channel.current?.postMessage("updated");
         setEditor(null);
         setNotice("Template saved.");
       } catch { setError("Could not save. Please try again."); }
     });
   }
+
+  const cards=useMemo(()=>(visible.length === 0 ? (
+        <div className="rounded-2xl border border-dashed p-12 text-center">
+          <FileText className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
+          <h2 className="text-lg font-semibold">{initialPage.total ? "No matching templates" : "Build your message library"}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{initialPage.total ? "Try another search or clear your filters." : "Create your first template for any platform or purpose."}</p>
+          <Button className="mt-5" variant="outline" onClick={() => initialPage.total ? (setSearch(""),setSubmittedSearch(""),navigate({q:"",category:"",tag:"",favorites:"",page:1})) : openEditor()}>{initialPage.total ? "Clear filters" : "Create a template"}</Button>
+        </div>
+      ) : <div className={`grid items-stretch gap-3 ${view === "grid" ? "lg:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"}`}>
+        {visible.map(template => {
+          const length = template.characterCount;
+          const exceeded = template.characterLimit !== null && length > template.characterLimit;
+          return <article data-template-card key={template.id} className="flex h-[420px] min-w-0 flex-col gap-2 rounded-xl border bg-card p-3.5 [&>div]:shrink-0 [&>p]:shrink-0">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="min-w-0 flex-1"><h2 className="line-clamp-2 break-words text-base font-semibold" title={template.title}>{template.title}</h2>{template.followUpStage ? <p className="mt-1 text-xs font-medium text-primary">Linked to Follow-up {template.followUpStage}</p> : template.category && <p className="mt-0.5 truncate text-xs text-muted-foreground" title={template.category}>{template.category}</p>}</div>
+              <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                <Button size="icon" className="h-7 w-7" title={template.pinned ? "Unpin" : "Pin to top"} variant="ghost" disabled={pending} aria-label={`${template.pinned ? "Unpin" : "Pin"} ${template.title}`} aria-pressed={template.pinned} onClick={() => startTransition(async () => {
+                  try {
+                    const result = await setTemplatePinned(template.id, !template.pinned);
+                    if (result.template) upsert(result.template);
+                    if (result.error) setNotice(result.error);
+                  } catch { setNotice("Could not update pin. Please try again."); }
+                })}><Pin className={`h-3.5 w-3.5 ${template.pinned ? "fill-primary text-primary" : ""}`} /></Button>
+                <Button size="icon" className="h-7 w-7" title={template.favorite ? "Remove favorite" : "Favorite"} variant="ghost" disabled={pending} aria-label={`${template.favorite ? "Unfavorite" : "Favorite"} ${template.title}`} aria-pressed={template.favorite} onClick={() => startTransition(async () => {
+                  try {
+                    const result = await setTemplateFavorite(template.id, !template.favorite);
+                    if (result.template) upsert(result.template);
+                    if (result.error) setNotice(result.error);
+                  } catch { setNotice("Could not update favorite. Please try again."); }
+                })}><Star className={`h-3.5 w-3.5 ${template.favorite ? "fill-amber-400 text-amber-500" : ""}`} /></Button>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">Created on {new Date(template.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</p>
+            {template.subject && <p className="truncate text-sm" title={template.subject}><span className="font-medium">Subject: </span>{template.subject}</p>}
+            <TemplateBody key={`${template.id}:${template.updatedAt}`} template={template} load={()=>loadTemplate(template)} />
+            {template.tags.length > 0 && <div className="flex max-h-14 flex-wrap gap-1 overflow-y-auto">{template.tags.map(t => <button key={t} onClick={() => setTag(t)} className="max-w-full break-words rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">#{t}</button>)}</div>}
+            <p className={`text-xs ${exceeded ? "text-destructive" : "text-muted-foreground"}`}>{length}{template.characterLimit !== null ? ` / ${template.characterLimit}` : ""} characters{exceeded ? " · Over limit" : ""}</p>
+            <div className="mt-1 flex items-center justify-between gap-2 border-t pt-2">
+              <TemplateCopyButton template={template} load={()=>loadTemplate(template)} onError={setNotice} />
+              <div className="flex shrink-0 items-center gap-1">
+              <Button size="icon" className="h-7 w-7" title="Edit" aria-label={`Edit ${template.title}`} variant="ghost" onClick={() => openEditor(template)}><Pencil className="h-3.5 w-3.5" /></Button>
+              {!template.followUpStage && <>
+                <Button size="icon" className="h-7 w-7" title="Duplicate" aria-label={`Duplicate ${template.title}`} variant="ghost" onClick={() => openEditor(template, true)}><FilePlus2 className="h-3.5 w-3.5" /></Button>
+                <Button size="icon" className="h-7 w-7" title="Delete" variant="ghost" aria-label={`Delete ${template.title}`} onClick={() => { setError(""); setDeleting(template); }}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+              </>}
+              </div>
+            </div>
+          </article>;
+        })}
+      </div>),[visible,initialPage.total,pending,view,openEditor,upsert,loadTemplate,setTag,navigate,setNotice,startTransition,setError,setDeleting,setSearch,setSubmittedSearch]);
 
   const count = characterCount(editor?.value.body ?? "");
   const limit = limitText.trim() ? Number(limitText) : null;
@@ -150,13 +239,13 @@ export function TemplatesLibrary({ initialTemplates, initialFollowUpStage }: { i
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">{templates.length} templates · {templates.filter(t => t.favorite).length} favorites</p>
+        <p className="text-sm text-muted-foreground">{initialPage.total} templates · {initialPage.favoriteCount} favorites</p>
         <Button onClick={() => openEditor()}><Plus className="mr-2 h-4 w-4" />New template</Button>
       </div>
       <div className="flex flex-wrap gap-3">
         <div className="relative min-w-48 flex-1">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input aria-label="Search templates" placeholder="Search templates, messages, tags…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+          <Input maxLength={200} aria-label="Search templates" placeholder="Search templates, messages, tags…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select value={category ? `category:${category}` : "all"} onValueChange={value => setCategory(value === "all" ? "" : value.slice(9))}>
           <SelectTrigger aria-label="Filter by category" className="h-10 w-full rounded-xl border-border/50 bg-background sm:w-[220px]">
@@ -184,56 +273,9 @@ export function TemplatesLibrary({ initialTemplates, initialFollowUpStage }: { i
           <Button size="sm" variant={view === "column" ? "default" : "ghost"} aria-pressed={view === "column"} onClick={() => setView("column")}><Rows3 className="mr-2 h-4 w-4" />Column</Button>
         </div>
       </div>
-      <p role="status" className="text-sm text-muted-foreground">{notice}</p>
-      {visible.length === 0 ? (
-        <div className="rounded-2xl border border-dashed p-12 text-center">
-          <FileText className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
-          <h2 className="text-lg font-semibold">{templates.length ? "No matching templates" : "Build your message library"}</h2>
-          <p className="mt-2 text-sm text-muted-foreground">{templates.length ? "Try another search or clear your filters." : "Create your first template for any platform or purpose."}</p>
-          <Button className="mt-5" variant="outline" onClick={() => templates.length ? (setSearch(""), setCategory(""), setTag(""), setFavorites(false)) : openEditor()}>{templates.length ? "Clear filters" : "Create a template"}</Button>
-        </div>
-      ) : <div className={`grid items-stretch gap-3 ${view === "grid" ? "lg:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"}`}>
-        {visible.map(template => {
-          const length = characterCount(template.body);
-          const exceeded = template.characterLimit !== null && length > template.characterLimit;
-          return <article key={template.id} className="flex h-[420px] min-w-0 flex-col gap-2 rounded-xl border bg-card p-3.5 [&>div]:shrink-0 [&>p]:shrink-0">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div className="min-w-0 flex-1"><h2 className="line-clamp-2 break-words text-base font-semibold" title={template.title}>{template.title}</h2>{template.followUpStage ? <p className="mt-1 text-xs font-medium text-primary">Linked to Follow-up {template.followUpStage}</p> : template.category && <p className="mt-0.5 truncate text-xs text-muted-foreground" title={template.category}>{template.category}</p>}</div>
-              <div className="flex shrink-0 flex-wrap justify-end gap-1">
-                <Button size="icon" className="h-7 w-7" title={template.pinned ? "Unpin" : "Pin to top"} variant="ghost" disabled={pending} aria-label={`${template.pinned ? "Unpin" : "Pin"} ${template.title}`} aria-pressed={template.pinned} onClick={() => startTransition(async () => {
-                  try {
-                    const result = await setTemplatePinned(template.id, !template.pinned);
-                    if (result.template) upsert(result.template);
-                    if (result.error) setNotice(result.error);
-                  } catch { setNotice("Could not update pin. Please try again."); }
-                })}><Pin className={`h-3.5 w-3.5 ${template.pinned ? "fill-primary text-primary" : ""}`} /></Button>
-                <Button size="icon" className="h-7 w-7" title={template.favorite ? "Remove favorite" : "Favorite"} variant="ghost" disabled={pending} aria-label={`${template.favorite ? "Unfavorite" : "Favorite"} ${template.title}`} aria-pressed={template.favorite} onClick={() => startTransition(async () => {
-                  try {
-                    const result = await setTemplateFavorite(template.id, !template.favorite);
-                    if (result.template) upsert(result.template);
-                    if (result.error) setNotice(result.error);
-                  } catch { setNotice("Could not update favorite. Please try again."); }
-                })}><Star className={`h-3.5 w-3.5 ${template.favorite ? "fill-amber-400 text-amber-500" : ""}`} /></Button>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground">Created on {new Date(template.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</p>
-            {template.subject && <p className="truncate text-sm" title={template.subject}><span className="font-medium">Subject: </span>{template.subject}</p>}
-            <p className="min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-muted/40 p-3 text-sm leading-relaxed !shrink">{template.body}</p>
-            {template.tags.length > 0 && <div className="flex max-h-14 flex-wrap gap-1 overflow-y-auto">{template.tags.map(t => <button key={t} onClick={() => setTag(t)} className="max-w-full break-words rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">#{t}</button>)}</div>}
-            <p className={`text-xs ${exceeded ? "text-destructive" : "text-muted-foreground"}`}>{length}{template.characterLimit !== null ? ` / ${template.characterLimit}` : ""} characters{exceeded ? " · Over limit" : ""}</p>
-            <div className="mt-1 flex items-center justify-between gap-2 border-t pt-2">
-              <TemplateCopyButton body={template.body} subject={template.subject} onError={setNotice} />
-              <div className="flex shrink-0 items-center gap-1">
-              <Button size="icon" className="h-7 w-7" title="Edit" aria-label={`Edit ${template.title}`} variant="ghost" onClick={() => openEditor(template)}><Pencil className="h-3.5 w-3.5" /></Button>
-              {!template.followUpStage && <>
-                <Button size="icon" className="h-7 w-7" title="Duplicate" aria-label={`Duplicate ${template.title}`} variant="ghost" onClick={() => openEditor(template, true)}><FilePlus2 className="h-3.5 w-3.5" /></Button>
-                <Button size="icon" className="h-7 w-7" title="Delete" variant="ghost" aria-label={`Delete ${template.title}`} onClick={() => { setError(""); setDeleting(template); }}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
-              </>}
-              </div>
-            </div>
-          </article>;
-        })}
-      </div>}
+      <p role="status" className="text-sm text-muted-foreground">{navigating ? "Loading templates..." : notice}</p>
+      {cards}
+      <nav aria-label="Template pages"><TablePagination currentPage={initialPage.currentPage} totalPages={Math.ceil(initialPage.totalCount/TEMPLATE_PAGE_SIZE)} onPageChange={page=>navigate({page},true)}/></nav>
 
       <Dialog open={editor !== null} onOpenChange={open => { if (!open && !pending) setEditor(null); }}>
         <SideDrawerContent busy={pending}>
@@ -275,6 +317,7 @@ export function TemplatesLibrary({ initialTemplates, initialFollowUpStage }: { i
                 if (result.error) { setError(result.error); return; }
                 setTemplates(current => current.filter(t => t.id !== id));
                 void queryClient.invalidateQueries({ queryKey: ["follow-up-templates"] });
+                channel.current?.postMessage("updated");
                 setDeleting(null); setNotice("Template deleted.");
               } catch { setError("Could not delete. Please try again."); }
             });

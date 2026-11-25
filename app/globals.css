@@ -348,6 +348,13 @@
   animation: spin-slow 8s linear infinite;
 }
 
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.page-enter { animation: page-enter 0.3s ease-out; }
+@media (prefers-reduced-motion: reduce) { .page-enter { animation: none; } }
+
 html[data-reduced-motion="true"] *,
 html[data-reduced-motion="true"] *::before,
 html[data-reduced-motion="true"] *::after {

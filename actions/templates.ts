@@ -4,21 +4,11 @@ import { db } from "@/db";
 import { messageTemplates } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { templateSchema, type TemplateInput } from "@/lib/template-validation";
-import { and, desc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { ensureFollowUpTemplates } from "@/lib/follow-up-template-store";
 import { followUpTemplateStage } from "@/lib/follow-up-template-slots";
-
-export async function getTemplates() {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
-  await ensureFollowUpTemplates(session.user.id);
-  const templates = await db.select().from(messageTemplates)
-    .where(eq(messageTemplates.userId, session.user.id))
-    .orderBy(desc(messageTemplates.pinned), desc(messageTemplates.createdAt));
-  return templates.map(template => ({ ...template, followUpStage: followUpTemplateStage(session.user.id, template.id) }));
-}
+import { serializeTemplate } from "@/lib/template-query";
 
 export async function saveTemplate(input: TemplateInput, id?: string) {
   const session = await auth();
@@ -34,7 +24,7 @@ export async function saveTemplate(input: TemplateInput, id?: string) {
     if (!template) return { error: "Template not found." };
     revalidatePath("/templates");
     revalidatePath("/outreach/[id]", "page");
-    return { template };
+    return { template:serializeTemplate(template,session.user.id) };
   } catch {
     return { error: "Could not save the template. Please try again." };
   }
@@ -66,7 +56,7 @@ export async function setTemplateFavorite(id: string, favorite: boolean) {
       .where(and(eq(messageTemplates.id, id), eq(messageTemplates.userId, session.user.id))).returning();
     if (!template) return { error: "Template not found." };
     revalidatePath("/templates");
-    return { template };
+    return { template:serializeTemplate(template,session.user.id) };
   } catch {
     return { error: "Could not update favorite. Please try again." };
   }
@@ -81,7 +71,7 @@ export async function setTemplatePinned(id: string, pinned: boolean) {
       .where(and(eq(messageTemplates.id, id), eq(messageTemplates.userId, session.user.id))).returning();
     if (!template) return { error: "Template not found." };
     revalidatePath("/templates");
-    return { template };
+    return { template:serializeTemplate(template,session.user.id) };
   } catch {
     return { error: "Could not update pin. Please try again." };
   }

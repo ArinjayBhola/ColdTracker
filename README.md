@@ -303,6 +303,45 @@ scale checks. Run `node scripts/check-stats-api.mjs` and
 set `STATS_TEST_URL` for a port other than 3000. HTTP/browser fixtures are
 disposable and removed after the checks; no emails are sent.
 
+## Template library performance
+
+The library renders 18 cards per page with previews capped at 1,000 Unicode code
+points. Search still checks complete saved messages, subjects, categories, and
+tags on the server; filters apply before paging. Counts and category/tag options
+cover the full owned library. Full messages load through an authenticated,
+owner-scoped endpoint when expanded, copied, edited, or duplicated. Versioned
+body-cache entries expire after one minute, and the editor always saves the full
+message. Linked follow-up edit URLs load their selected message directly.
+
+Existing default follow-ups are read without attempting inserts. Only missing
+slots are inserted, with conflict handling that preserves saved edits. Both the
+library and the outreach follow-up picker use one SELECT on steady-state reads.
+Memoized card elements avoid reprocessing the list while typing in the editor.
+The shared page-entry animation uses CSS, including reduced-motion support, so
+that wrapper no longer loads Framer Motion; other components retain that package.
+No schema change or dependency installation is required.
+
+Run `node scripts/check-template-query.mjs` for rollback-only SQL parity, default
+initialization, body-search, ownership, pagination, and query-plan checks. Run
+`node scripts/check-templates-browser.mjs` with a local production server;
+`TEMPLATE_TEST_URL` changes its default port 3000. It checks full-body copy and
+save, request races/recovery, page/filter navigation, mutations, linked follow-ups,
+mobile layout, and reduced motion using disposable accounts. Clipboard transport
+is isolated in memory to preserve the host clipboard. Also run
+`node scripts/check-cache-browser.mjs` (`CACHE_TEST_URL`) for draft-preserving
+server refreshes and template broadcasts.
+
+`node scripts/measure-templates.mjs` measures three local production responses
+with 120 synthetic 10,000-character messages plus the two default follow-ups.
+The measured HTML fell from about 3.54 MB to 258 KB, and the two warm responses
+fell from 1,297–1,382 ms to 239–252 ms in the first comparison; later samples under
+concurrent browser-test load ranged from 276–498 ms. Initial script gzip estimates fell
+from about 386 KB to 348 KB. HTML sizes are uncompressed; script sizes are local
+gzip estimates, not browser wire-transfer measurements. Timings are a small local
+fixture sample, not deployment percentiles or mobile-device measurements. Search
+and facet aggregation still scan the owner's matching data; this does not add a
+full-text index or promise constant query time at arbitrary library sizes.
+
 ## Client cache freshness
 
 Follow-up pages and outreach details hydrate timestamped server snapshots into
