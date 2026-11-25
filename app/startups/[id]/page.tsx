@@ -1,7 +1,7 @@
 import { Sidebar } from "@/components/sidebar";
 import { getStartupByIdAction } from "@/actions/startups";
 import { notFound } from "next/navigation";
-import { FiArrowLeft, FiGlobe, FiMapPin, FiUsers, FiDollarSign, FiBriefcase, FiLinkedin } from "react-icons/fi";
+import { FiArrowLeft, FiGlobe, FiMapPin, FiUsers, FiDollarSign, FiBriefcase, FiLinkedin, FiCheckCircle } from "react-icons/fi";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -23,7 +23,7 @@ export default async function StartupDetailPage({ params }: { params: Promise<{ 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto p-4 md:p-8">
+      <main className="min-w-0 flex-1 overflow-y-auto p-4 md:p-8">
         <div className="max-w-5xl mx-auto space-y-8 pt-16 md:pt-0 pb-12">
           {/* Back Button */}
           <Link href="/startups" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors font-medium group">
@@ -33,66 +33,50 @@ export default async function StartupDetailPage({ params }: { params: Promise<{ 
 
           {/* Header Card */}
           <Card className="border-border/50 shadow-sm rounded-3xl overflow-hidden bg-card">
-            <CardContent className="p-8 md:p-10">
-              <div className="flex flex-col md:flex-row gap-8 items-start">
-                <Avatar className="h-24 w-24 border-4 border-muted rounded-3xl shrink-0 shadow-lg">
-                  <AvatarImage src={startup.logoUrl || ""} alt={startup.name} className="object-cover" />
-                  <AvatarFallback className="rounded-3xl text-3xl font-bold bg-primary/5 text-primary">
-                    {startup.name.substring(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                
-                <div className="flex-1 space-y-6 min-w-0">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-3">
-                        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight truncate">
-                          {startup.name}
-                        </h1>
-                        <Badge className="bg-emerald-500/10 text-emerald-600 border-none font-bold px-3 py-1 rounded-full text-[10px]">
-                          Verified
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <StartupFormDialog startupId={startup.id} startupName={startup.name} />
-                      <OutreachToggle 
-                        startupId={startup.id} 
-                        initialStatus={startup.tracking?.[0]?.outreachDone || false} 
-                      />
-                      {startup.website && (
-                        <Button variant="outline" size="icon" asChild className="rounded-full h-12 w-12 border-2 hover:bg-primary/5 hover:text-primary hover:border-primary/20">
-                          <a href={startup.website} target="_blank" rel="noopener noreferrer">
-                            <FiGlobe className="w-5 h-5" />
-                          </a>
-                        </Button>
-                      )}
-                      <DeleteStartupButton
-                        startupId={startup.id}
-                        startupName={startup.name}
-                        redirectTo="/startups"
-                        className="rounded-full h-12 w-12 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                      />
-                    </div>
-
+            <CardContent className="space-y-5 p-5 sm:p-8 md:p-10">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-4">
+                <div className="flex min-w-0 flex-[1_1_22em] items-center gap-4">
+                  <Avatar className="h-16 w-16 shrink-0 rounded-2xl border border-border/60 shadow-sm sm:h-20 sm:w-20">
+                    <AvatarImage src={startup.logoUrl || ""} alt={startup.name} className="object-cover" />
+                    <AvatarFallback className="rounded-2xl bg-primary/5 text-2xl font-bold text-primary">
+                      {startup.name.substring(0,2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2">
+                    <h1 className="min-w-0 max-w-full text-2xl font-extrabold leading-[normal] tracking-tight [overflow-wrap:anywhere] sm:text-3xl">
+                      {startup.name}
+                    </h1>
+                    <Badge variant="success" className="w-fit shrink-0 whitespace-nowrap gap-1.5 px-2.5 py-1 text-xs font-semibold leading-normal">
+                      <FiCheckCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                      Verified
+                    </Badge>
                   </div>
-
-                  <p className="text-lg text-muted-foreground leading-relaxed max-w-3xl">
-                    {startup.description || "No detailed description available for this startup yet."}
-                  </p>
-
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    {startup.sector && (
-                      <Badge variant="secondary" className="rounded-xl bg-muted/50 px-4 py-1.5 text-xs font-bold border-none">
-                        {startup.sector}
-                      </Badge>
+                </div>
+                <div role="group" aria-label="Startup actions" className="flex max-w-full flex-wrap items-center gap-2 sm:ml-auto">
+                  <OutreachToggle startupId={startup.id} initialStatus={startup.tracking?.[0]?.outreachDone || false} compact
+                    className="h-auto min-h-10 gap-2 rounded-xl px-3 py-2 leading-normal shadow-none" />
+                  <div className="flex shrink-0 items-center gap-1 rounded-xl border border-border/70 bg-muted/20 p-1">
+                    <StartupFormDialog startupId={startup.id} startupName={startup.name} compact
+                      className="h-8 w-8 shrink-0 rounded-lg border-0 bg-transparent text-muted-foreground shadow-none hover:text-foreground" />
+                    {startup.website && (
+                      <Button variant="ghost" size="icon" asChild className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:text-foreground">
+                        <a href={startup.website} target="_blank" rel="noopener noreferrer" aria-label="Visit startup website">
+                          <FiGlobe className="h-4 w-4" />
+                        </a>
+                      </Button>
                     )}
-                    {startup.isTrending && (
-                      <Badge variant="secondary" className="rounded-xl bg-blue-500/10 text-blue-600 px-4 py-1.5 text-xs font-bold border-none">
-                        Trending
-                      </Badge>
-                    )}
+                    <DeleteStartupButton startupId={startup.id} startupName={startup.name} redirectTo="/startups"
+                      className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive" />
                   </div>
+                </div>
+              </div>
+              <div className="space-y-4 sm:pl-24">
+                <p className="max-w-3xl text-base leading-relaxed text-muted-foreground [overflow-wrap:anywhere] sm:text-lg">
+                  {startup.description || "No detailed description available for this startup yet."}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {startup.sector && <Badge variant="secondary" className="max-w-full rounded-lg border-none bg-muted/50 px-3 py-1 text-xs font-medium">{startup.sector}</Badge>}
+                  {startup.isTrending && <Badge variant="secondary" className="rounded-lg border-none bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-600">Trending</Badge>}
                 </div>
               </div>
             </CardContent>

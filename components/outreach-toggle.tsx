@@ -11,9 +11,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 type OutreachToggleProps = {
   startupId: string;
   initialStatus: boolean;
+  className?: string;
+  compact?: boolean;
 };
 
-export function OutreachToggle({ startupId, initialStatus }: OutreachToggleProps) {
+export function OutreachToggle({ startupId, initialStatus, className, compact = false }: OutreachToggleProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -70,7 +72,8 @@ export function OutreachToggle({ startupId, initialStatus }: OutreachToggleProps
       variant={currentStatus ? "default" : "outline"}
       className={cn(
         "rounded-2xl h-12 px-6 gap-3 font-bold transition-all shadow-lg",
-        currentStatus ? "bg-blue-600 hover:bg-blue-700 shadow-blue-500/20" : "border-2 hover:bg-blue-50"
+        currentStatus ? "bg-blue-600 hover:bg-blue-700 shadow-blue-500/20" : "border-2 hover:bg-blue-50",
+        className
       )}
       onClick={handleToggle}
       disabled={isPending}
@@ -82,7 +85,7 @@ export function OutreachToggle({ startupId, initialStatus }: OutreachToggleProps
       ) : (
         <FiCircle className="w-5 h-5" />
       )}
-      {currentStatus ? "Outreach Done" : "Mark as Outreach Done"}
+      {compact ? (currentStatus ? "Contacted" : "Mark contacted") : (currentStatus ? "Outreach Done" : "Mark as Outreach Done")}
     </Button>
   );
 }

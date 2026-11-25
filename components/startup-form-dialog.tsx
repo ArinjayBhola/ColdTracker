@@ -12,6 +12,7 @@ import { SideDrawerContent } from "@/components/ui/side-drawer";
 import { DatePicker } from "@/components/ui/date-picker";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 const emptyMember = () => ({ name: "", role: "", email: "", linkedinUrl: "" });
 const emptyForm = (): StartupFormValues => ({
@@ -19,8 +20,8 @@ const emptyForm = (): StartupFormValues => ({
   fundingRound: "", fundingAmount: "", fundingDate: "", isHiring: false, isTrending: false, employees: [emptyMember()],
 });
 
-export function StartupFormDialog({ startupId, startupName, compact = false }: {
-  startupId?: string; startupName?: string; compact?: boolean;
+export function StartupFormDialog({ startupId, startupName, compact = false, className }: {
+  startupId?: string; startupName?: string; compact?: boolean; className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState<StartupFormValues>(emptyForm);
@@ -66,7 +67,7 @@ export function StartupFormDialog({ startupId, startupName, compact = false }: {
     }}>
       <DialogTrigger asChild>
         <Button variant={startupId ? "outline" : "default"} size={compact ? "icon" : "default"}
-          className={compact ? "h-8 w-8 rounded-lg" : "gap-2 rounded-xl"}
+          className={cn(compact ? "h-8 w-8 rounded-lg" : "gap-2 rounded-xl",className)}
           title={startupId ? `Edit ${startupName ?? "startup"}` : "Add startup"}
           aria-label={startupId ? `Edit ${startupName ?? "startup"}` : "Add startup"}>
           {startupId ? <FiEdit2 aria-hidden="true" /> : <FiPlus aria-hidden="true" />}
