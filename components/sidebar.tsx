@@ -5,7 +5,7 @@ import { usePreferences } from "@/components/preferences-provider";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { FiLayout, FiPlusCircle, FiBarChart2, FiLogOut, FiCheckSquare, FiChevronLeft, FiChevronRight, FiSettings, FiLinkedin, FiTrendingUp, FiFileText } from "react-icons/fi";
+import { FiHome, FiLayout, FiPlusCircle, FiBarChart2, FiLogOut, FiCheckSquare, FiChevronLeft, FiChevronRight, FiSettings, FiLinkedin, FiTrendingUp, FiFileText } from "react-icons/fi";
 import { Button } from "./ui/button";
 import { signOutAction } from "@/actions/auth";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -115,6 +115,9 @@ export function Sidebar() {
         </div>
 
         <nav aria-label="Main navigation" className="min-h-0 flex-1 space-y-6 overflow-y-auto">
+          <Link href="/home" title="Home" aria-current={pathname === "/home" ? "page" : undefined} className={cn("flex items-center rounded-lg py-2.5 text-sm transition-colors", !isCollapsed || isMobileOpen ? "gap-3 px-3" : "justify-center", pathname === "/home" ? "bg-primary/8 text-primary font-medium" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground")}>
+            <FiHome aria-hidden="true" className="h-[17px] w-[17px] shrink-0" /><span className={isCollapsed && !isMobileOpen ? "sr-only" : ""}>Home</span>
+          </Link>
           {orderedLinks.some(link => link.href === "/outreach/new") && <Button variant="outline" asChild className={cn("mb-1 h-10 w-full bg-card shadow-none", isCollapsed && !isMobileOpen ? "px-0" : "justify-start gap-2.5 px-3")}>
             <Link href="/outreach/new" title="New outreach"><FiPlusCircle className="h-4 w-4 shrink-0" /><span className={isCollapsed && !isMobileOpen ? "sr-only" : ""}>New outreach</span></Link>
           </Button>}
